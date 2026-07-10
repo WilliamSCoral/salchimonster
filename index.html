@@ -697,7 +697,9 @@
       <button class="btn-sm btn-ghost" onclick="closeModal('modal-hist')">✕</button>
     </div>
     <div id="hist-modal-body"></div>
-    <button class="btn-danger mt8" style="width:100%;padding:11px" onclick="deleteRecord()">🗑 Eliminar este registro</button>
+    <button class="btn-export mt8" onclick="exportExcelFromRecord()">📥 Exportar a Excel</button>
+    <div style="height:8px"></div>
+    <button class="btn-danger" style="width:100%;padding:11px" onclick="deleteRecord()">🗑 Eliminar este registro</button>
   </div>
 </div>
 
@@ -1181,6 +1183,78 @@ function deleteRecord(){
   localStorage.removeItem(currentHistKey);
   closeModal('modal-hist');
   renderHistorial();
+}
+
+function exportExcelFromRecord(){
+  if(!currentHistKey) return;
+  const r = JSON.parse(localStorage.getItem(currentHistKey));
+  if(!r) return;
+  const s = r.state;   // state guardado
+  const t = r.totals;  // totals pre-calculados
+
+  const wb   = XLSX.utils.book_new();
+  const data = [];
+
+  data.push(['CONTROL DE FACTURAS — '+fmtDate(r.fecha)]);
+  data.push([]);
+
+  // ── Facturas (expandidas igual que en el export normal) ──
+  data.push(['FACTURAS']);
+  data.push(['N° Factura','Descripción','Monto','Tipo']);
+  s.facturas.forEach(f => {
+    if(!f.mixto) {
+      data.push([f.num, f.desc||'', f.monto, f.tipo==='efectivo'?'Efectivo':'Transferencia']);
+    } else {
+      const efTotal = f.pagos.filter(p=>p.tipo==='efectivo').reduce((a,p)=>a+p.monto,0);
+      const transfers = f.pagos.filter(p=>p.tipo==='transferencia');
+      if(efTotal > 0) data.push([f.num, f.desc||'', efTotal, 'Efectivo']);
+      transfers.forEach((p,ti) => data.push([`${f.num}-${ti+1}`, f.desc||'', p.monto, 'Transferencia']));
+    }
+  });
+  data.push(['','Total Efectivo', t.ef, '']);
+  data.push(['','Total Transferencias', t.tr, '']);
+  data.push(['','TOTAL BRUTO', t.bruto, '']);
+  data.push([]);
+
+  // ── Gastos ──
+  data.push(['GASTOS DEL DÍA']);
+  data.push(['Concepto','Monto']);
+  s.gastos.forEach(g => data.push([g.desc, g.monto]));
+  data.push(['TOTAL GASTOS', t.tg]);
+  data.push([]);
+
+  // ── Empleados ──
+  data.push(['PAGO A EMPLEADOS']);
+  data.push(['Empleado','Pago']);
+  s.empleados.forEach(e => data.push([e.nombre, e.pago]));
+  data.push(['TOTAL EMPLEADOS', t.te]);
+  data.push([]);
+
+  // ── Caja ──
+  data.push(['CAJA / COMPRAS']);
+  data.push(['Base inicial', t.base]);
+  data.push(['Ítem','Valor']);
+  s.compras.forEach(c => data.push([c.desc, c.monto]));
+  data.push(['TOTAL COMPRAS', t.tc]);
+  data.push(['SALDO CAJA', t.saldoCaja]);
+  data.push([]);
+
+  // ── Resumen ──
+  const ventaDia = (t.efNeto||0) + t.tr;
+  data.push(['RESUMEN FINAL']);
+  data.push(['Efectivo ingresado', t.ef]);
+  data.push(['(−) Gastos del día', t.tg]);
+  data.push(['(−) Pago empleados', t.te]);
+  data.push(['= Efectivo disponible', t.efNeto||0]);
+  data.push(['(+) Total transferencias', t.tr]);
+  data.push(['= Venta del día', ventaDia]);
+  data.push(['(+) Saldo en caja', t.saldoCaja]);
+  data.push(['TOTAL DISPONIBLE', t.total]);
+
+  const ws = XLSX.utils.aoa_to_sheet(data);
+  ws['!cols'] = [{wch:14},{wch:26},{wch:16},{wch:16}];
+  XLSX.utils.book_append_sheet(wb, ws, 'Resumen');
+  XLSX.writeFile(wb, 'facturas_'+r.fecha+'.xlsx');
 }
 
 // ══════════════════════════════════════
