@@ -163,8 +163,8 @@
     .mt8 { margin-top: 8px; }
     .row-space { display: flex; justify-content: space-between; align-items: center; }
     @media (max-width: 360px) { .stat-grid { grid-template-columns: 1fr 1fr; } }
+    @page { size: 58mm auto; margin: 0mm 2mm; }
     @media print {
-      @page { size: 58mm auto; margin: 0mm 2mm; }
       html, body { width: 58mm !important; max-width: 58mm !important; margin: 0 !important; padding: 0 !important; background: #fff !important; }
       body > *:not(#print-area) { display: none !important; }
       #print-area { display: block !important; width: 54mm !important; }
