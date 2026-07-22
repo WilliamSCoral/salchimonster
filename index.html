@@ -10,6 +10,9 @@
   <meta name="apple-mobile-web-app-title" content="Facturas"/>
   <title>Control de Facturas</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
   <style>
     :root {
       --blue:   #667eea;
@@ -22,64 +25,35 @@
       --border: #e2e8f0;
       --text:   #2d3748;
     }
-
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, 'Segoe UI', Roboto, sans-serif; background: #edf2f7; color: var(--text); min-height: 100vh; padding-bottom: 80px; }
 
-    body {
-      font-family: -apple-system, 'Segoe UI', Roboto, sans-serif;
-      background: #edf2f7;
-      color: var(--text);
-      min-height: 100vh;
-      padding-bottom: 80px;
+    /* ── Login overlay ── */
+    #login-overlay {
+      display: flex; position: fixed; inset: 0; background: linear-gradient(135deg,#667eea,#764ba2);
+      z-index: 9999; align-items: center; justify-content: center; padding: 20px;
     }
+    .login-box {
+      background: #fff; border-radius: 20px; padding: 32px 24px; width: 100%; max-width: 360px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    }
+    .login-logo { text-align: center; font-size: 2.5rem; margin-bottom: 6px; }
+    .login-title { text-align: center; font-size: 1.2rem; font-weight: 800; color: var(--text); margin-bottom: 4px; }
+    .login-sub { text-align: center; font-size: 0.8rem; color: var(--gray); margin-bottom: 24px; }
 
     /* ── Top bar ── */
-    .topbar {
-      background: var(--blue);
-      color: #fff;
-      padding: 14px 16px 12px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      position: sticky;
-      top: 0;
-      z-index: 100;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-    }
-
-    .topbar h1 { font-size: 1.1rem; font-weight: 700; }
-    .topbar .date-label { font-size: 0.78rem; opacity: 0.85; margin-top: 2px; }
+    .topbar { background: var(--blue); color: #fff; padding: 10px 12px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 8px rgba(0,0,0,0.15); gap: 8px; }
+    .topbar-left { display: flex; flex-direction: column; min-width: 0; }
+    .topbar-left h1 { font-size: 1rem; font-weight: 700; white-space: nowrap; }
+    .date-label { font-size: 0.72rem; opacity: 0.85; margin-top: 1px; }
+    .topbar-right { display: flex; gap: 6px; align-items: center; flex-shrink: 0; }
+    .user-badge { font-size: 0.7rem; background: rgba(255,255,255,0.2); padding: 3px 8px; border-radius: 12px; white-space: nowrap; max-width: 100px; overflow: hidden; text-overflow: ellipsis; }
 
     /* ── Tabs ── */
-    .tabs {
-      display: flex;
-      background: #fff;
-      border-bottom: 2px solid var(--border);
-      overflow-x: auto;
-      scrollbar-width: none;
-      position: sticky;
-      top: 56px;
-      z-index: 99;
-    }
-
+    .tabs { display: flex; background: #fff; border-bottom: 2px solid var(--border); overflow-x: auto; scrollbar-width: none; position: sticky; top: 52px; z-index: 99; }
     .tabs::-webkit-scrollbar { display: none; }
-
-    .tab {
-      flex: 1;
-      min-width: 80px;
-      padding: 10px 6px 8px;
-      text-align: center;
-      font-size: 0.72rem;
-      font-weight: 600;
-      color: var(--gray);
-      cursor: pointer;
-      border-bottom: 3px solid transparent;
-      transition: all 0.2s;
-      white-space: nowrap;
-      user-select: none;
-    }
-
-    .tab .tab-icon { font-size: 1.1rem; display: block; margin-bottom: 2px; }
+    .tab { flex: 1; min-width: 70px; padding: 8px 4px 6px; text-align: center; font-size: 0.68rem; font-weight: 600; color: var(--gray); cursor: pointer; border-bottom: 3px solid transparent; transition: all 0.2s; white-space: nowrap; user-select: none; }
+    .tab .tab-icon { font-size: 1rem; display: block; margin-bottom: 2px; }
     .tab.active { color: var(--blue); border-bottom-color: var(--blue); }
 
     /* ── Pages ── */
@@ -87,72 +61,17 @@
     .page.active { display: block; }
 
     /* ── Card ── */
-    .card {
-      background: #fff;
-      border-radius: 12px;
-      box-shadow: 0 1px 4px rgba(0,0,0,0.08);
-      padding: 14px;
-      margin-bottom: 14px;
-    }
-
-    .card-title {
-      font-size: 0.82rem;
-      font-weight: 700;
-      color: var(--gray);
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      margin-bottom: 12px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 6px;
-    }
+    .card { background: #fff; border-radius: 12px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); padding: 14px; margin-bottom: 14px; }
+    .card-title { font-size: 0.82rem; font-weight: 700; color: var(--gray); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between; gap: 6px; }
 
     /* ── Form ── */
-    .form-row {
-      display: flex;
-      gap: 8px;
-      align-items: flex-end;
-      flex-wrap: wrap;
-    }
-
+    .form-row { display: flex; gap: 8px; align-items: flex-end; flex-wrap: wrap; }
     .fg { display: flex; flex-direction: column; gap: 3px; flex: 1; min-width: 90px; }
-
-    .fg label {
-      font-size: 0.7rem;
-      font-weight: 600;
-      color: var(--gray);
-      text-transform: uppercase;
-      letter-spacing: 0.04em;
-    }
-
-    input, select {
-      padding: 9px 10px;
-      border: 1.5px solid var(--border);
-      border-radius: 8px;
-      font-size: 0.92rem;
-      outline: none;
-      background: var(--light);
-      width: 100%;
-      -webkit-appearance: none;
-      transition: border-color 0.18s;
-    }
-
+    .fg label { font-size: 0.7rem; font-weight: 600; color: var(--gray); text-transform: uppercase; letter-spacing: 0.04em; }
+    input, select { padding: 9px 10px; border: 1.5px solid var(--border); border-radius: 8px; font-size: 0.92rem; outline: none; background: var(--light); width: 100%; -webkit-appearance: none; transition: border-color 0.18s; }
     input:focus, select:focus { border-color: var(--blue); background: #fff; }
-
-    button {
-      padding: 9px 16px;
-      border: none;
-      border-radius: 8px;
-      font-size: 0.88rem;
-      font-weight: 700;
-      cursor: pointer;
-      transition: opacity 0.15s, transform 0.1s;
-      touch-action: manipulation;
-    }
-
+    button { padding: 9px 16px; border: none; border-radius: 8px; font-size: 0.88rem; font-weight: 700; cursor: pointer; transition: opacity 0.15s, transform 0.1s; touch-action: manipulation; }
     button:active { transform: scale(0.96); opacity: 0.85; }
-
     .btn-blue   { background: var(--blue);   color: #fff; }
     .btn-green  { background: var(--green);  color: #fff; }
     .btn-orange { background: var(--orange); color: #fff; }
@@ -162,55 +81,24 @@
     .btn-danger { background: #fff0f0; color: var(--red); }
     .btn-export { background: #276749; color: #fff; width: 100%; padding: 13px; font-size: 0.95rem; border-radius: 10px; margin-top: 4px; }
     .btn-save   { background: var(--blue); color: #fff; width: 100%; padding: 13px; font-size: 0.95rem; border-radius: 10px; }
+    .btn-import { background: #553c9a; color: #fff; width: 100%; padding: 13px; font-size: 0.95rem; border-radius: 10px; }
+    .btn-newday { background: #e53e3e; color: #fff; width: 100%; padding: 13px; font-size: 0.95rem; border-radius: 10px; }
 
     /* ── Table ── */
     table { width: 100%; border-collapse: collapse; font-size: 0.83rem; margin-top: 8px; }
-    thead th {
-      text-align: left;
-      padding: 6px 8px;
-      background: var(--light);
-      color: var(--gray);
-      font-size: 0.7rem;
-      text-transform: uppercase;
-      letter-spacing: 0.04em;
-      border-bottom: 2px solid var(--border);
-    }
-
+    thead th { text-align: left; padding: 6px 8px; background: var(--light); color: var(--gray); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.04em; border-bottom: 2px solid var(--border); }
     tbody tr { border-bottom: 1px solid #f0f4f8; }
     tbody tr:active { background: #f0f4f8; }
     td { padding: 8px; vertical-align: middle; }
-
     .total-row td { font-weight: 700; background: var(--light); border-top: 2px solid var(--border); }
-
-    .badge {
-      display: inline-block;
-      padding: 2px 8px;
-      border-radius: 20px;
-      font-size: 0.7rem;
-      font-weight: 700;
-    }
-
+    .badge { display: inline-block; padding: 2px 8px; border-radius: 20px; font-size: 0.7rem; font-weight: 700; }
     .badge-ef { background: #c6f6d5; color: #276749; }
     .badge-tr { background: #bee3f8; color: #2b6cb0; }
-
     .empty-msg { text-align: center; color: #a0aec0; padding: 16px 0; font-size: 0.82rem; }
 
     /* ── Stats ── */
-    .stat-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
-      gap: 10px;
-      margin-bottom: 12px;
-    }
-
-    .stat-box {
-      background: var(--light);
-      border-radius: 10px;
-      padding: 12px 10px;
-      text-align: center;
-      border: 1.5px solid var(--border);
-    }
-
+    .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; margin-bottom: 12px; }
+    .stat-box { background: var(--light); border-radius: 10px; padding: 12px 10px; text-align: center; border: 1.5px solid var(--border); }
     .stat-label { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--gray); font-weight: 600; margin-bottom: 5px; }
     .stat-value { font-size: 1.1rem; font-weight: 800; }
     .c-green  { color: #276749; }
@@ -219,20 +107,10 @@
     .c-orange { color: #c05621; }
     .c-gray   { color: #4a5568; }
     .c-purple { color: #553c9a; }
-
     .divider { border: none; border-top: 1.5px dashed var(--border); margin: 12px 0; }
 
     /* ── Neto box ── */
-    .neto-box {
-      border-radius: 12px;
-      padding: 14px 16px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      flex-wrap: wrap;
-      gap: 6px;
-    }
-
+    .neto-box { border-radius: 12px; padding: 14px 16px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 6px; }
     .neto-pos { background: #f0fff4; border: 2px solid #9ae6b4; }
     .neto-neg { background: #fff5f5; border: 2px solid #feb2b2; }
     .neto-label { font-size: 0.9rem; font-weight: 700; color: var(--text); }
@@ -240,194 +118,104 @@
     .neto-pos .neto-value { color: #276749; }
     .neto-neg .neto-value { color: var(--red); }
 
-    /* ── Caja / Base ── */
-    .caja-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 10px;
-      flex-wrap: wrap;
-      gap: 8px;
-    }
-
-    .caja-saldo {
-      background: linear-gradient(135deg, #667eea, #764ba2);
-      color: #fff;
-      border-radius: 12px;
-      padding: 14px 16px;
-      margin-bottom: 12px;
-    }
-
+    /* ── Caja ── */
+    .caja-saldo { background: linear-gradient(135deg, #667eea, #764ba2); color: #fff; border-radius: 12px; padding: 14px 16px; margin-bottom: 12px; }
     .caja-saldo .saldo-label { font-size: 0.72rem; opacity: 0.85; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; }
     .caja-saldo .saldo-value { font-size: 2rem; font-weight: 800; margin-top: 2px; }
     .caja-saldo .saldo-sub   { font-size: 0.75rem; opacity: 0.75; margin-top: 4px; }
 
     /* ── Historial ── */
-    .hist-item {
-      padding: 12px;
-      border-radius: 10px;
-      background: var(--light);
-      margin-bottom: 8px;
-      border: 1.5px solid var(--border);
-      cursor: pointer;
-      transition: background 0.15s;
-    }
-
+    .hist-item { padding: 12px; border-radius: 10px; background: var(--light); margin-bottom: 8px; border: 1.5px solid var(--border); cursor: pointer; transition: background 0.15s; }
     .hist-item:active { background: #e2e8f0; }
     .hist-item .hist-fecha { font-weight: 700; font-size: 0.88rem; margin-bottom: 4px; }
     .hist-item .hist-info  { font-size: 0.75rem; color: var(--gray); display: flex; gap: 12px; flex-wrap: wrap; }
     .hist-item .hist-neto  { font-size: 1rem; font-weight: 800; margin-top: 4px; }
 
     /* ── Modal ── */
-    .modal-bg {
-      display: none;
-      position: fixed;
-      inset: 0;
-      background: rgba(0,0,0,0.5);
-      z-index: 200;
-      align-items: flex-end;
-    }
-
+    .modal-bg { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 200; align-items: flex-end; }
     .modal-bg.open { display: flex; }
-
-    .modal {
-      background: #fff;
-      border-radius: 20px 20px 0 0;
-      padding: 20px 16px 32px;
-      width: 100%;
-      max-height: 90vh;
-      overflow-y: auto;
-    }
-
-    .modal-title {
-      font-size: 1rem;
-      font-weight: 700;
-      margin-bottom: 14px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-
-    /* ── Date selector ── */
-    .date-bar {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      margin-bottom: 14px;
-    }
-
-    .date-bar input[type="date"] {
-      flex: 1;
-      font-size: 0.88rem;
-    }
+    .modal { background: #fff; border-radius: 20px 20px 0 0; padding: 20px 16px 32px; width: 100%; max-height: 90vh; overflow-y: auto; }
+    .modal-title { font-size: 1rem; font-weight: 700; margin-bottom: 14px; display: flex; justify-content: space-between; align-items: center; }
 
     /* ── Locked banner ── */
-    .locked-banner {
-      display: none;
-      background: #fffbeb;
-      border: 1.5px solid #f6e05e;
-      border-radius: 10px;
-      padding: 10px 14px;
-      font-size: 0.82rem;
-      color: #744210;
-      font-weight: 600;
-      margin-bottom: 12px;
-      text-align: center;
-    }
+    .locked-banner { display: none; background: #fffbeb; border: 1.5px solid #f6e05e; border-radius: 10px; padding: 10px 14px; font-size: 0.82rem; color: #744210; font-weight: 600; margin-bottom: 12px; text-align: center; }
     .locked-banner.show { display: block; }
-
-    input[readonly] {
-      background: #edf2f7 !important;
-      color: #4a5568;
-      cursor: default;
-    }
+    input[readonly] { background: #edf2f7 !important; color: #4a5568; cursor: default; }
 
     /* ── Mixto ── */
-    .mixto-toggle {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      margin-top: 10px;
-      font-size: 0.83rem;
-      cursor: pointer;
-      user-select: none;
-    }
-    .mixto-toggle input[type="checkbox"] {
-      width: 16px; height: 16px;
-      accent-color: var(--purple);
-      cursor: pointer;
-    }
-    #mixto-section {
-      display: none;
-      margin-top: 12px;
-      border-top: 1.5px dashed var(--border);
-      padding-top: 12px;
-    }
-    .pago-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 6px 10px;
-      background: var(--light);
-      border-radius: 6px;
-      margin-bottom: 4px;
-      font-size: 0.83rem;
-      border: 1px solid var(--border);
-    }
-    #mixto-progress {
-      margin-top: 10px;
-      font-size: 0.82rem;
-      padding: 8px 12px;
-      border-radius: 8px;
-      background: var(--light);
-      border: 1.5px solid var(--border);
-      text-align: center;
-    }
+    .mixto-toggle { display: flex; align-items: center; gap: 8px; margin-top: 10px; font-size: 0.83rem; cursor: pointer; user-select: none; }
+    .mixto-toggle input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--purple); cursor: pointer; }
+    #mixto-section { display: none; margin-top: 12px; border-top: 1.5px dashed var(--border); padding-top: 12px; }
+    .pago-row { display: flex; justify-content: space-between; align-items: center; padding: 6px 10px; background: var(--light); border-radius: 6px; margin-bottom: 4px; font-size: 0.83rem; border: 1px solid var(--border); }
+    #mixto-progress { margin-top: 10px; font-size: 0.82rem; padding: 8px 12px; border-radius: 8px; background: var(--light); border: 1.5px solid var(--border); text-align: center; }
 
-    /* ── Import button ── */
-    .btn-import {
-      background: #553c9a;
-      color: #fff;
-      width: 100%;
-      padding: 13px;
-      font-size: 0.95rem;
-      border-radius: 10px;
-    }
+    /* ── User management ── */
+    .user-item { padding: 10px 12px; border-radius: 8px; background: var(--light); border: 1px solid var(--border); margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center; }
+    .user-item-info { flex: 1; min-width: 0; }
+    .user-item-name { font-weight: 700; font-size: 0.88rem; }
+    .user-item-sub { font-size: 0.72rem; color: var(--gray); margin-top: 2px; }
+    .role-badge { display: inline-block; padding: 2px 7px; border-radius: 10px; font-size: 0.68rem; font-weight: 700; }
+    .role-admin  { background: #feebc8; color: #c05621; }
+    .role-mesero { background: #bee3f8; color: #2b6cb0; }
 
     /* ── Misc ── */
     .text-right { text-align: right; }
     .mt8 { margin-top: 8px; }
     .row-space { display: flex; justify-content: space-between; align-items: center; }
-
-    @media (max-width: 360px) {
-      .stat-grid { grid-template-columns: 1fr 1fr; }
-    }
+    @media (max-width: 360px) { .stat-grid { grid-template-columns: 1fr 1fr; } }
   </style>
 </head>
 <body>
 
+<!-- ═══ LOGIN OVERLAY ═══ -->
+<div id="login-overlay">
+  <div class="login-box">
+    <div class="login-logo">🧾</div>
+    <div class="login-title">Control de Facturas</div>
+    <div class="login-sub">Salchimonster</div>
+    <div class="fg">
+      <label>Usuario</label>
+      <input type="text" id="login-user" placeholder="tu usuario" autocomplete="username" autocapitalize="none"/>
+    </div>
+    <div class="fg" style="margin-top:10px">
+      <label>Contraseña</label>
+      <input type="password" id="login-pass" placeholder="••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter') doLogin()"/>
+    </div>
+    <button onclick="doLogin()" class="btn-blue" style="width:100%;margin-top:16px;padding:13px;font-size:1rem">Ingresar</button>
+    <div id="login-error" style="color:var(--red);font-size:0.82rem;margin-top:8px;text-align:center;min-height:18px"></div>
+  </div>
+</div>
+
+<!-- ═══ APP WRAPPER ═══ -->
+<div id="app-wrapper" style="display:none">
+
 <!-- TOP BAR -->
 <div class="topbar">
-  <div>
-    <div class="topbar h1" style="font-size:1.05rem;font-weight:700;">📋 Control de Facturas</div>
+  <div class="topbar-left">
+    <h1>📋 Control de Facturas</h1>
     <div class="date-label" id="top-date"></div>
   </div>
-  <button class="btn-sm btn-ghost" id="top-save-btn" onclick="showSave()" style="font-size:0.78rem;">💾 Guardar día</button>
+  <div class="topbar-right">
+    <span class="user-badge" id="top-user-badge"></span>
+    <button class="btn-sm btn-ghost" id="top-save-btn" onclick="showSave()" style="font-size:0.75rem;">💾 Guardar</button>
+    <button onclick="doLogout()" style="background:rgba(255,255,255,0.15);color:#fff;border:none;padding:5px 8px;border-radius:6px;font-size:0.82rem;cursor:pointer">🚪</button>
+  </div>
 </div>
 
 <!-- TABS -->
 <div class="tabs">
-  <div class="tab active" onclick="goTab(0)"><span class="tab-icon">🧾</span>Facturas</div>
-  <div class="tab" onclick="goTab(1)"><span class="tab-icon">💸</span>Gastos</div>
-  <div class="tab" onclick="goTab(2)"><span class="tab-icon">👷</span>Empleados</div>
-  <div class="tab" onclick="goTab(3)"><span class="tab-icon">🏦</span>Caja</div>
-  <div class="tab" onclick="goTab(4)"><span class="tab-icon">📈</span>Resumen</div>
-  <div class="tab" onclick="goTab(5)"><span class="tab-icon">📅</span>Historial</div>
+  <div class="tab active" id="tab-0" onclick="goTab(0)"><span class="tab-icon">🧾</span>Facturas</div>
+  <div class="tab" id="tab-1" onclick="goTab(1)"><span class="tab-icon">💸</span>Gastos</div>
+  <div class="tab" id="tab-2" onclick="goTab(2)"><span class="tab-icon">👷</span>Empleados</div>
+  <div class="tab" id="tab-3" onclick="goTab(3)"><span class="tab-icon">🏦</span>Caja</div>
+  <div class="tab" id="tab-4" onclick="goTab(4)"><span class="tab-icon">📈</span>Resumen</div>
+  <div class="tab" id="tab-5" onclick="goTab(5)"><span class="tab-icon">📅</span>Historial</div>
+  <div class="tab" id="tab-6" onclick="goTab(6)"><span class="tab-icon">👥</span>Usuarios</div>
 </div>
 
 <!-- ═══ PAGE 0: FACTURAS ═══ -->
 <div class="page active" id="page-0">
-  <div class="locked-banner" id="lock-f">🔒 Día guardado — no se puede modificar la información</div>
+  <div class="locked-banner" id="lock-f">🔒 Día guardado — no se puede modificar</div>
   <div class="card">
     <div class="card-title">🧾 Nueva factura</div>
     <div class="form-row">
@@ -451,12 +239,10 @@
         </select>
       </div>
     </div>
-
     <label class="mixto-toggle">
       <input type="checkbox" id="f-mixto" onchange="toggleMixto()"/>
-      <span>💳 Pago mixto — varios métodos en la misma factura</span>
+      <span>💳 Pago mixto — varios métodos</span>
     </label>
-
     <div id="mixto-section">
       <div style="font-size:0.75rem;color:var(--gray);font-weight:600;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:8px">Pagos parciales</div>
       <div id="mixto-pagos-list"></div>
@@ -476,10 +262,8 @@
       </div>
       <div id="mixto-progress"></div>
     </div>
-
     <button class="btn-blue mt8" style="width:100%" id="btn-add-f" onclick="addFactura()">+ Agregar factura</button>
   </div>
-
   <div class="card">
     <div class="card-title">
       Lista del día
@@ -494,7 +278,7 @@
 
 <!-- ═══ PAGE 1: GASTOS ═══ -->
 <div class="page" id="page-1">
-  <div class="locked-banner" id="lock-g">🔒 Día guardado — no se puede modificar la información</div>
+  <div class="locked-banner" id="lock-g">🔒 Día guardado — no se puede modificar</div>
   <div class="card">
     <div class="card-title">💸 Nuevo gasto</div>
     <div class="form-row">
@@ -509,7 +293,6 @@
     </div>
     <button class="btn-green mt8" style="width:100%" id="btn-add-g" onclick="addGasto()">+ Agregar gasto</button>
   </div>
-
   <div class="card">
     <div class="card-title">
       Lista de gastos
@@ -524,7 +307,7 @@
 
 <!-- ═══ PAGE 2: EMPLEADOS ═══ -->
 <div class="page" id="page-2">
-  <div class="locked-banner" id="lock-e">🔒 Día guardado — no se puede modificar la información</div>
+  <div class="locked-banner" id="lock-e">🔒 Día guardado — no se puede modificar</div>
   <div class="card">
     <div class="card-title">👷 Nuevo empleado</div>
     <div class="form-row">
@@ -540,17 +323,12 @@
     <div style="margin-top:8px">
       <label style="font-size:0.8rem;color:var(--gray);display:block;margin-bottom:6px">¿De dónde sale el pago?</label>
       <div style="display:flex;gap:8px">
-        <button id="btn-etipo-ef" onclick="setEmpleadoTipo('efectivo')" style="flex:1;padding:10px;border-radius:10px;border:2px solid #48bb78;background:#f0fff4;color:#276749;font-weight:700;cursor:pointer;font-size:0.88rem">
-          💵 Efectivo
-        </button>
-        <button id="btn-etipo-tr" onclick="setEmpleadoTipo('transferencia')" style="flex:1;padding:10px;border-radius:10px;border:2px solid #e2e8f0;background:#fff;color:#4a5568;font-weight:700;cursor:pointer;font-size:0.88rem">
-          🏦 Transferencia
-        </button>
+        <button id="btn-etipo-ef" onclick="setEmpleadoTipo('efectivo')" style="flex:1;padding:10px;border-radius:10px;border:2px solid #48bb78;background:#f0fff4;color:#276749;font-weight:700;cursor:pointer;font-size:0.88rem">💵 Efectivo</button>
+        <button id="btn-etipo-tr" onclick="setEmpleadoTipo('transferencia')" style="flex:1;padding:10px;border-radius:10px;border:2px solid #e2e8f0;background:#fff;color:#4a5568;font-weight:700;cursor:pointer;font-size:0.88rem">🏦 Transferencia</button>
       </div>
     </div>
     <button class="btn-orange mt8" style="width:100%" id="btn-add-e" onclick="addEmpleado()">+ Agregar empleado</button>
   </div>
-
   <div class="card">
     <div class="card-title">
       Lista de empleados
@@ -565,9 +343,7 @@
 
 <!-- ═══ PAGE 3: CAJA ═══ -->
 <div class="page" id="page-3">
-  <div class="locked-banner" id="lock-c">🔒 Día guardado — no se puede modificar la información</div>
-
-  <!-- Bases -->
+  <div class="locked-banner" id="lock-c">🔒 Día guardado — no se puede modificar</div>
   <div class="card">
     <div class="card-title">💰 Base inicial de caja</div>
     <div class="form-row">
@@ -581,8 +357,6 @@
       </div>
     </div>
   </div>
-
-  <!-- Saldos -->
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
     <div class="caja-saldo" style="margin:0">
       <div class="saldo-label">💵 Saldo efectivo</div>
@@ -599,8 +373,6 @@
     <div class="saldo-label">🏧 Total saldo caja</div>
     <div class="saldo-value" id="caja-saldo-total">$ 0</div>
   </div>
-
-  <!-- Agregar compra -->
   <div class="card">
     <div class="card-title">🛒 Agregar compra</div>
     <div class="form-row">
@@ -616,17 +388,12 @@
     <div style="margin-top:8px">
       <label style="font-size:0.8rem;color:var(--gray);display:block;margin-bottom:6px">¿De dónde sale el pago?</label>
       <div style="display:flex;gap:8px">
-        <button id="btn-tipo-ef" class="btn-tipo active-ef" onclick="setCompraTipo('efectivo')" style="flex:1;padding:10px;border-radius:10px;border:2px solid #48bb78;background:#f0fff4;color:#276749;font-weight:700;cursor:pointer;font-size:0.88rem">
-          💵 Efectivo
-        </button>
-        <button id="btn-tipo-tr" class="btn-tipo" onclick="setCompraTipo('transferencia')" style="flex:1;padding:10px;border-radius:10px;border:2px solid #e2e8f0;background:#fff;color:#4a5568;font-weight:700;cursor:pointer;font-size:0.88rem">
-          🏦 Transferencia
-        </button>
+        <button id="btn-tipo-ef" onclick="setCompraTipo('efectivo')" style="flex:1;padding:10px;border-radius:10px;border:2px solid #48bb78;background:#f0fff4;color:#276749;font-weight:700;cursor:pointer;font-size:0.88rem">💵 Efectivo</button>
+        <button id="btn-tipo-tr" onclick="setCompraTipo('transferencia')" style="flex:1;padding:10px;border-radius:10px;border:2px solid #e2e8f0;background:#fff;color:#4a5568;font-weight:700;cursor:pointer;font-size:0.88rem">🏦 Transferencia</button>
       </div>
     </div>
     <button class="btn-purple mt8" style="width:100%" id="btn-add-c" onclick="addCompra()">+ Agregar compra</button>
   </div>
-
   <div class="card">
     <div class="card-title">
       Lista de compras
@@ -641,8 +408,6 @@
 
 <!-- ═══ PAGE 4: RESUMEN ═══ -->
 <div class="page" id="page-4">
-
-  <!-- Facturas: conteo rápido -->
   <div class="card">
     <div class="card-title">🧾 Facturas del día</div>
     <div class="stat-grid">
@@ -652,122 +417,56 @@
       <div class="stat-box"><div class="stat-label">Total bruto</div><div class="stat-value c-gray" id="r-bruto">$ 0</div></div>
     </div>
   </div>
-
-  <!-- Venta del día -->
-  <div class="card">
+  <div class="card" id="resumen-admin-section">
     <div class="card-title">🏪 Venta del día</div>
-    <div style="font-size:0.82rem;color:var(--gray);margin-bottom:8px">Ingresos totales por facturas antes de descuentos</div>
-    <div style="display:flex;justify-content:space-between;font-size:0.85rem;margin-bottom:4px">
-      <span>💵 Efectivo ingresado</span><span id="r2-ef" style="color:#276749;font-weight:700">$ 0</span>
-    </div>
-    <div style="display:flex;justify-content:space-between;font-size:0.85rem;margin-bottom:6px">
-      <span>🏦 Transferencias ingresadas</span><span id="r2-tr" style="color:#2b6cb0;font-weight:700">$ 0</span>
-    </div>
-    <div class="neto-box neto-pos" id="venta-dia-box" style="margin:0">
-      <span class="neto-label">🏪 Venta del día</span>
-      <span class="neto-value" id="r-venta-dia">$ 0</span>
-    </div>
+    <div style="font-size:0.82rem;color:var(--gray);margin-bottom:8px">Ingresos totales antes de descuentos</div>
+    <div style="display:flex;justify-content:space-between;font-size:0.85rem;margin-bottom:4px"><span>💵 Efectivo ingresado</span><span id="r2-ef" style="color:#276749;font-weight:700">$ 0</span></div>
+    <div style="display:flex;justify-content:space-between;font-size:0.85rem;margin-bottom:6px"><span>🏦 Transferencias ingresadas</span><span id="r2-tr" style="color:#2b6cb0;font-weight:700">$ 0</span></div>
+    <div class="neto-box neto-pos" id="venta-dia-box" style="margin:0"><span class="neto-label">🏪 Venta del día</span><span class="neto-value" id="r-venta-dia">$ 0</span></div>
   </div>
-
-  <!-- Neto del día -->
-  <div class="card">
+  <div class="card" id="resumen-neto-section">
     <div class="card-title">📊 Neto del día</div>
     <div style="font-size:0.82rem;color:var(--gray);margin-bottom:8px">Después de gastos y pagos a empleados</div>
-    <!-- Efectivo -->
-    <div style="display:flex;justify-content:space-between;font-size:0.85rem;margin-bottom:3px">
-      <span>💵 Efectivo ingresado</span><span style="color:#276749;font-weight:700" id="r3-ef">$ 0</span>
-    </div>
-    <div style="display:flex;justify-content:space-between;font-size:0.83rem;margin-bottom:3px;color:var(--red)">
-      <span>&nbsp;&nbsp;(−) Gastos del día</span><span id="r2-gastos">$ 0</span>
-    </div>
-    <div style="display:flex;justify-content:space-between;font-size:0.83rem;margin-bottom:3px;color:#c05621">
-      <span>&nbsp;&nbsp;(−) Empleados (ef)</span><span id="r2-emp-ef">$ 0</span>
-    </div>
-    <div style="display:flex;justify-content:space-between;font-size:0.85rem;font-weight:700;border-top:1px dashed #c6f6d5;padding-top:5px;margin-bottom:10px">
-      <span>= Efectivo neto</span><span id="r2-efneto" style="color:#276749">$ 0</span>
-    </div>
-    <!-- Transferencias -->
-    <div style="display:flex;justify-content:space-between;font-size:0.85rem;margin-bottom:3px">
-      <span>🏦 Transferencias ingresadas</span><span style="color:#2b6cb0;font-weight:700" id="r3-tr">$ 0</span>
-    </div>
-    <div style="display:flex;justify-content:space-between;font-size:0.83rem;margin-bottom:3px;color:#c05621">
-      <span>&nbsp;&nbsp;(−) Empleados (tr)</span><span id="r2-emp-tr">$ 0</span>
-    </div>
-    <div style="display:flex;justify-content:space-between;font-size:0.85rem;font-weight:700;border-top:1px dashed #bee3f8;padding-top:5px;margin-bottom:10px">
-      <span>= Transferencias netas</span><span id="r2-trneto" style="color:#2b6cb0">$ 0</span>
-    </div>
-    <div class="neto-box neto-pos" id="neto-dia-box" style="margin:0">
-      <span class="neto-label">📊 Neto del día</span>
-      <span class="neto-value" id="r-neto-dia">$ 0</span>
-    </div>
+    <div style="display:flex;justify-content:space-between;font-size:0.85rem;margin-bottom:3px"><span>💵 Efectivo ingresado</span><span style="color:#276749;font-weight:700" id="r3-ef">$ 0</span></div>
+    <div style="display:flex;justify-content:space-between;font-size:0.83rem;margin-bottom:3px;color:var(--red)"><span>&nbsp;&nbsp;(−) Gastos del día</span><span id="r2-gastos">$ 0</span></div>
+    <div style="display:flex;justify-content:space-between;font-size:0.83rem;margin-bottom:3px;color:#c05621"><span>&nbsp;&nbsp;(−) Empleados (ef)</span><span id="r2-emp-ef">$ 0</span></div>
+    <div style="display:flex;justify-content:space-between;font-size:0.85rem;font-weight:700;border-top:1px dashed #c6f6d5;padding-top:5px;margin-bottom:10px"><span>= Efectivo neto</span><span id="r2-efneto" style="color:#276749">$ 0</span></div>
+    <div style="display:flex;justify-content:space-between;font-size:0.85rem;margin-bottom:3px"><span>🏦 Transferencias ingresadas</span><span style="color:#2b6cb0;font-weight:700" id="r3-tr">$ 0</span></div>
+    <div style="display:flex;justify-content:space-between;font-size:0.83rem;margin-bottom:3px;color:#c05621"><span>&nbsp;&nbsp;(−) Empleados (tr)</span><span id="r2-emp-tr">$ 0</span></div>
+    <div style="display:flex;justify-content:space-between;font-size:0.85rem;font-weight:700;border-top:1px dashed #bee3f8;padding-top:5px;margin-bottom:10px"><span>= Transferencias netas</span><span id="r2-trneto" style="color:#2b6cb0">$ 0</span></div>
+    <div class="neto-box neto-pos" id="neto-dia-box" style="margin:0"><span class="neto-label">📊 Neto del día</span><span class="neto-value" id="r-neto-dia">$ 0</span></div>
   </div>
-
-  <!-- Caja -->
-  <div class="card">
+  <div class="card" id="resumen-caja-section">
     <div class="card-title">🏧 Caja</div>
     <div style="font-size:0.83rem">
-      <!-- encabezado columnas -->
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;margin-bottom:6px;font-weight:700;color:var(--gray);font-size:0.75rem;text-transform:uppercase">
-        <span></span><span style="text-align:right">💵 Efectivo</span><span style="text-align:right">🏦 Transf.</span>
-      </div>
-      <!-- Base inicial -->
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;margin-bottom:5px;padding-bottom:5px;border-bottom:1px solid #f0f4f8">
-        <span style="color:var(--gray)">Base inicial</span>
-        <span style="text-align:right;font-weight:700;color:#276749" id="r-base-ef">$ 0</span>
-        <span style="text-align:right;font-weight:700;color:#2b6cb0" id="r-base-tr">$ 0</span>
-      </div>
-      <!-- Compras -->
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;margin-bottom:5px;padding-bottom:5px;border-bottom:1px solid #f0f4f8">
-        <span style="color:var(--red)">Compras</span>
-        <span style="text-align:right;font-weight:700;color:var(--red)" id="r-compras-ef">$ 0</span>
-        <span style="text-align:right;font-weight:700;color:var(--red)" id="r-compras-tr">$ 0</span>
-      </div>
-      <!-- Saldo -->
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;margin-bottom:8px">
-        <span style="font-weight:700">Saldo caja</span>
-        <span style="text-align:right;font-weight:700;color:#276749" id="r-saldo-ef">$ 0</span>
-        <span style="text-align:right;font-weight:700;color:#2b6cb0" id="r-saldo-tr">$ 0</span>
-      </div>
-      <!-- Total caja -->
-      <div style="display:flex;justify-content:space-between;font-weight:800;font-size:0.9rem;background:#faf5ff;padding:8px 10px;border-radius:8px;color:#553c9a">
-        <span>🏧 Total caja</span><span id="r-saldo-caja-total">$ 0</span>
-      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;margin-bottom:6px;font-weight:700;color:var(--gray);font-size:0.75rem;text-transform:uppercase"><span></span><span style="text-align:right">💵 Efectivo</span><span style="text-align:right">🏦 Transf.</span></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;margin-bottom:5px;padding-bottom:5px;border-bottom:1px solid #f0f4f8"><span style="color:var(--gray)">Base inicial</span><span style="text-align:right;font-weight:700;color:#276749" id="r-base-ef">$ 0</span><span style="text-align:right;font-weight:700;color:#2b6cb0" id="r-base-tr">$ 0</span></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;margin-bottom:5px;padding-bottom:5px;border-bottom:1px solid #f0f4f8"><span style="color:var(--red)">Compras</span><span style="text-align:right;font-weight:700;color:var(--red)" id="r-compras-ef">$ 0</span><span style="text-align:right;font-weight:700;color:var(--red)" id="r-compras-tr">$ 0</span></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;margin-bottom:8px"><span style="font-weight:700">Saldo caja</span><span style="text-align:right;font-weight:700;color:#276749" id="r-saldo-ef">$ 0</span><span style="text-align:right;font-weight:700;color:#2b6cb0" id="r-saldo-tr">$ 0</span></div>
+      <div style="display:flex;justify-content:space-between;font-weight:800;font-size:0.9rem;background:#faf5ff;padding:8px 10px;border-radius:8px;color:#553c9a"><span>🏧 Total caja</span><span id="r-saldo-caja-total">$ 0</span></div>
     </div>
   </div>
-
-  <!-- Total disponible -->
-  <div class="card">
+  <div class="card" id="resumen-total-section">
     <div class="card-title">💼 Total disponible</div>
-    <div style="display:flex;justify-content:space-between;font-size:0.85rem;margin-bottom:3px;color:#276749">
-      <span>💵 Efectivo neto</span><span id="r4-efneto" style="font-weight:700">$ 0</span>
-    </div>
-    <div style="display:flex;justify-content:space-between;font-size:0.85rem;margin-bottom:3px;color:#276749">
-      <span>&nbsp;&nbsp;(+) Saldo caja efectivo</span><span id="r4-saldo-ef" style="font-weight:700">$ 0</span>
-    </div>
-    <div style="display:flex;justify-content:space-between;font-size:0.88rem;font-weight:800;background:#f0fff4;padding:7px 10px;border-radius:8px;margin-bottom:10px;color:#276749">
-      <span>💵 Disponible efectivo</span><span id="r4-disp-ef">$ 0</span>
-    </div>
-    <div style="display:flex;justify-content:space-between;font-size:0.85rem;margin-bottom:3px;color:#2b6cb0">
-      <span>🏦 Transferencias netas</span><span id="r4-trneto" style="font-weight:700">$ 0</span>
-    </div>
-    <div style="display:flex;justify-content:space-between;font-size:0.85rem;margin-bottom:3px;color:#2b6cb0">
-      <span>&nbsp;&nbsp;(+) Saldo caja transferencias</span><span id="r4-saldo-tr" style="font-weight:700">$ 0</span>
-    </div>
-    <div style="display:flex;justify-content:space-between;font-size:0.88rem;font-weight:800;background:#ebf8ff;padding:7px 10px;border-radius:8px;margin-bottom:10px;color:#2b6cb0">
-      <span>🏦 Disponible transferencias</span><span id="r4-disp-tr">$ 0</span>
-    </div>
+    <div style="display:flex;justify-content:space-between;font-size:0.85rem;margin-bottom:3px;color:#276749"><span>💵 Efectivo neto</span><span id="r4-efneto" style="font-weight:700">$ 0</span></div>
+    <div style="display:flex;justify-content:space-between;font-size:0.85rem;margin-bottom:3px;color:#276749"><span>&nbsp;&nbsp;(+) Saldo caja efectivo</span><span id="r4-saldo-ef" style="font-weight:700">$ 0</span></div>
+    <div style="display:flex;justify-content:space-between;font-size:0.88rem;font-weight:800;background:#f0fff4;padding:7px 10px;border-radius:8px;margin-bottom:10px;color:#276749"><span>💵 Disponible efectivo</span><span id="r4-disp-ef">$ 0</span></div>
+    <div style="display:flex;justify-content:space-between;font-size:0.85rem;margin-bottom:3px;color:#2b6cb0"><span>🏦 Transferencias netas</span><span id="r4-trneto" style="font-weight:700">$ 0</span></div>
+    <div style="display:flex;justify-content:space-between;font-size:0.85rem;margin-bottom:3px;color:#2b6cb0"><span>&nbsp;&nbsp;(+) Saldo caja transferencias</span><span id="r4-saldo-tr" style="font-weight:700">$ 0</span></div>
+    <div style="display:flex;justify-content:space-between;font-size:0.88rem;font-weight:800;background:#ebf8ff;padding:7px 10px;border-radius:8px;margin-bottom:10px;color:#2b6cb0"><span>🏦 Disponible transferencias</span><span id="r4-disp-tr">$ 0</span></div>
     <div class="divider"></div>
-    <div class="neto-box neto-pos" id="neto-total-box" style="margin:0">
-      <span class="neto-label">💼 Total disponible</span>
-      <span class="neto-value" id="r-total">$ 0</span>
-    </div>
+    <div class="neto-box neto-pos" id="neto-total-box" style="margin:0"><span class="neto-label">💼 Total disponible</span><span class="neto-value" id="r-total">$ 0</span></div>
   </div>
-
-  <button class="btn-export" onclick="exportExcel()">📥 Exportar a Excel</button>
+  <div id="resumen-export-section">
+    <button class="btn-export" onclick="exportExcel()">📥 Exportar a Excel</button>
+    <div style="height:8px"></div>
+    <button class="btn-import" onclick="importExcel()">📂 Importar desde Excel</button>
+    <div style="height:8px"></div>
+    <button class="btn-save" onclick="showSave()">💾 Guardar este día</button>
+    <div style="height:8px"></div>
+    <button class="btn-newday" onclick="newDay()">🔄 Nuevo día</button>
+  </div>
   <div style="height:10px"></div>
-  <button class="btn-import" onclick="importExcel()">📂 Importar desde Excel</button>
-  <div style="height:10px"></div>
-  <button class="btn-save" onclick="showSave()">💾 Guardar este día</button>
 </div>
 
 <input type="file" id="import-file" accept=".xlsx,.xls" style="display:none" onchange="handleImport(event)"/>
@@ -780,13 +479,21 @@
   </div>
 </div>
 
+<!-- ═══ PAGE 6: USUARIOS ═══ -->
+<div class="page" id="page-6">
+  <div class="card">
+    <div class="card-title">
+      👥 Usuarios del sistema
+      <button class="btn-sm btn-blue" onclick="showCreateUser()">+ Nuevo</button>
+    </div>
+    <div id="users-list"><div class="empty-msg">Cargando...</div></div>
+  </div>
+</div>
+
 <!-- ═══ MODAL: Guardar día ═══ -->
 <div class="modal-bg" id="modal-save">
   <div class="modal">
-    <div class="modal-title">
-      💾 Guardar día
-      <button class="btn-sm btn-ghost" onclick="closeModal('modal-save')">✕</button>
-    </div>
+    <div class="modal-title">💾 Guardar día <button class="btn-sm btn-ghost" onclick="closeModal('modal-save')">✕</button></div>
     <div class="fg">
       <label>Nombre del registro</label>
       <input type="text" id="save-nombre" placeholder="Ej: Lunes 21 julio, Turno mañana..."/>
@@ -798,10 +505,7 @@
 <!-- ═══ MODAL: Ver detalle historial ═══ -->
 <div class="modal-bg" id="modal-hist">
   <div class="modal">
-    <div class="modal-title">
-      📅 <span id="hist-modal-fecha">—</span>
-      <button class="btn-sm btn-ghost" onclick="closeModal('modal-hist')">✕</button>
-    </div>
+    <div class="modal-title">📅 <span id="hist-modal-fecha">—</span> <button class="btn-sm btn-ghost" onclick="closeModal('modal-hist')">✕</button></div>
     <div id="hist-modal-body"></div>
     <button class="btn-export mt8" onclick="exportExcelFromRecord()">📥 Exportar a Excel</button>
     <div style="height:8px"></div>
@@ -809,35 +513,70 @@
   </div>
 </div>
 
+<!-- ═══ MODAL: Crear usuario ═══ -->
+<div class="modal-bg" id="modal-create-user">
+  <div class="modal">
+    <div class="modal-title">👤 Nuevo usuario <button class="btn-sm btn-ghost" onclick="closeModal('modal-create-user')">✕</button></div>
+    <div class="fg"><label>Nombre completo</label><input type="text" id="nu-nombre" placeholder="Ej: Juan Pérez"/></div>
+    <div class="fg" style="margin-top:8px"><label>Usuario (sin @salchimonster.app)</label><input type="text" id="nu-user" placeholder="ej: juan.perez" autocapitalize="none"/></div>
+    <div class="fg" style="margin-top:8px"><label>Contraseña</label><input type="password" id="nu-pass" placeholder="Mínimo 6 caracteres"/></div>
+    <div class="fg" style="margin-top:8px">
+      <label>Rol</label>
+      <select id="nu-role"><option value="mesero">Mesero</option><option value="admin">Admin</option></select>
+    </div>
+    <div class="fg" style="margin-top:8px"><label>Código de descuento</label><input type="text" id="nu-codigo" placeholder="Ej: DESC-JUAN (opcional)"/></div>
+    <button onclick="createUser()" class="btn-blue mt8" style="width:100%;padding:12px" id="btn-create-user">Crear usuario</button>
+    <div id="nu-error" style="color:var(--red);font-size:0.82rem;margin-top:8px;text-align:center;min-height:18px"></div>
+  </div>
+</div>
+
+</div><!-- end app-wrapper -->
+
 <script>
 // ══════════════════════════════════════
-//   DATA STATE
+//   FIREBASE INIT
 // ══════════════════════════════════════
-let state = {
-  facturas:    [],
-  gastos:      [],
-  empleados:   [],
-  compras:     [],
-  baseEfectivo: 0,
-  baseTr:       0
+const firebaseConfig = {
+  apiKey: "AIzaSyD0oZ1f7JpoaTrJDzby5W5XlHh1Q-hSGfk",
+  authDomain: "facturas-salchimonster.firebaseapp.com",
+  projectId: "facturas-salchimonster",
+  storageBucket: "facturas-salchimonster.firebasestorage.app",
+  messagingSenderId: "935498177561",
+  appId: "1:935498177561:web:ed721d74018f5577b05e88"
 };
-let ids = { f:1, g:1, e:1, c:1 };
-let currentHistKey = null;
+
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db   = firebase.firestore();
+const TS   = () => firebase.firestore.FieldValue.serverTimestamp();
+
+// ══════════════════════════════════════
+//   STATE
+// ══════════════════════════════════════
+let state = { facturas:[], gastos:[], empleados:[], compras:[], baseEfectivo:0, baseTr:0 };
 let locked = false;
-let currentPagos = [];      // pagos parciales del formulario mixto activo
-let compraTipo    = 'efectivo'; // tipo activo en el form de compra
-let empleadoTipo  = 'efectivo'; // tipo activo en el form de empleado
+let currentPagos  = [];
+let compraTipo    = 'efectivo';
+let empleadoTipo  = 'efectivo';
+let currentHistKey    = null;
+let currentHistRecord = null;
+
+// Auth state
+let currentUser  = null;
+let currentRole  = null;
+let currentUserName  = null;
+let currentDiscountCode = null;
+
+// Firestore listeners
+let unsubs = [];
+let secondaryApp = null;
 
 // ── Helpers ──
 const $ = id => document.getElementById(id);
 const fmt = n => '$ ' + (n||0).toLocaleString('es-CO');
+const fmtRaw = n => (n||0).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
 const today = () => new Date().toISOString().slice(0,10);
-const fmtDate = d => {
-  const [y,m,di] = d.split('-');
-  return `${di}/${m}/${y}`;
-};
 
-// ── Money input formatting ──
 function moneyFmt(el) {
   const raw = el.value.replace(/\D/g, '');
   if (!raw) { el.value = ''; return; }
@@ -847,42 +586,179 @@ function moneyVal(id) {
   return parseInt(($(id).value || '0').replace(/\./g, ''), 10) || 0;
 }
 
-// ── Auto-increment factura number ──
-function nextFacturaNum() {
-  const used = new Set(state.facturas.map(f => parseInt(f.num)));
-  let n = 1;
-  while (used.has(n)) n++;
-  return n;
-}
-function updateFacturaNumField() {
-  $('f-num').value = nextFacturaNum();
+// ══════════════════════════════════════
+//   AUTH
+// ══════════════════════════════════════
+auth.onAuthStateChanged(async user => {
+  if (user) {
+    try {
+      const doc = await db.collection('usuarios').doc(user.uid).get();
+      const data = doc.data() || {};
+      currentRole = data.role || 'mesero';
+      currentUserName = data.nombre || user.email.split('@')[0];
+      currentDiscountCode = data.codigoDescuento || '';
+    } catch(e) {
+      currentRole = 'mesero';
+      currentUserName = user.email.split('@')[0];
+      currentDiscountCode = '';
+    }
+    currentUser = user;
+    showApp();
+    applyRoleUI();
+    setupListeners();
+  } else {
+    currentUser = null;
+    currentRole = null;
+    clearListeners();
+    showLogin();
+  }
+});
+
+async function doLogin() {
+  const username = $('login-user').value.trim();
+  const pass = $('login-pass').value;
+  $('login-error').textContent = '';
+  if (!username || !pass) { $('login-error').textContent = 'Ingresa usuario y contraseña.'; return; }
+  const email = username.includes('@') ? username : username + '@salchimonster.app';
+  try {
+    await auth.signInWithEmailAndPassword(email, pass);
+    $('login-user').value = '';
+    $('login-pass').value = '';
+  } catch(e) {
+    $('login-error').textContent = 'Usuario o contraseña incorrectos.';
+  }
 }
 
-// ── Lock / Unlock ──
+async function doLogout() {
+  if (!confirm('¿Cerrar sesión?')) return;
+  clearListeners();
+  await auth.signOut();
+}
+
+function showLogin() {
+  $('login-overlay').style.display = 'flex';
+  $('app-wrapper').style.display = 'none';
+  state = { facturas:[], gastos:[], empleados:[], compras:[], baseEfectivo:0, baseTr:0 };
+  locked = false;
+}
+
+function showApp() {
+  $('login-overlay').style.display = 'none';
+  $('app-wrapper').style.display = 'block';
+  const d = new Date(); 
+  $('top-date').textContent = 'Hoy: ' + d.toLocaleDateString('es-CO',{weekday:'short',day:'2-digit',month:'short'});
+  $('top-user-badge').textContent = '👤 ' + currentUserName;
+}
+
+function applyRoleUI() {
+  if (currentRole === 'admin') {
+    ['tab-0','tab-1','tab-2','tab-3','tab-4','tab-5','tab-6'].forEach(id => { const el=$(id); if(el) el.style.display=''; });
+    const sb = $('top-save-btn'); if(sb) sb.style.display='';
+  } else {
+    // Mesero: solo facturas, gastos, resumen básico
+    ['tab-2','tab-3','tab-5','tab-6'].forEach(id => { const el=$(id); if(el) el.style.display='none'; });
+    ['resumen-neto-section','resumen-caja-section','resumen-total-section','resumen-export-section'].forEach(id => { const el=$(id); if(el) el.style.display='none'; });
+    const sb = $('top-save-btn'); if(sb) sb.style.display='none';
+  }
+  goTab(0);
+}
+
+// ══════════════════════════════════════
+//   FIRESTORE LISTENERS
+// ══════════════════════════════════════
+function setupListeners() {
+  clearListeners();
+  const draftRef = db.collection('draft').doc('current');
+
+  unsubs.push(draftRef.collection('facturas').orderBy('createdAt').onSnapshot(snap => {
+    state.facturas = snap.docs.map(d => ({...d.data(), _docId: d.id}));
+    renderFacturas();
+    updateFacturaNumField();
+  }, e => console.error(e)));
+
+  unsubs.push(draftRef.collection('gastos').orderBy('createdAt').onSnapshot(snap => {
+    state.gastos = snap.docs.map(d => ({...d.data(), _docId: d.id}));
+    renderGastos();
+  }, e => console.error(e)));
+
+  unsubs.push(draftRef.collection('empleados').orderBy('createdAt').onSnapshot(snap => {
+    state.empleados = snap.docs.map(d => ({...d.data(), _docId: d.id}));
+    renderEmpleados();
+  }, e => console.error(e)));
+
+  unsubs.push(draftRef.collection('compras').orderBy('createdAt').onSnapshot(snap => {
+    state.compras = snap.docs.map(d => ({...d.data(), _docId: d.id}));
+    renderCaja();
+  }, e => console.error(e)));
+
+  unsubs.push(draftRef.onSnapshot(snap => {
+    const data = snap.data() || {};
+    const prevLocked = locked;
+    state.baseEfectivo = data.baseEfectivo || 0;
+    state.baseTr       = data.baseTr       || 0;
+    locked = data.locked || false;
+    if (state.baseEfectivo > 0) $('base-efectivo').value = fmtRaw(state.baseEfectivo);
+    if (state.baseTr > 0)       $('base-tr').value       = fmtRaw(state.baseTr);
+    if (locked && !prevLocked) applyLock();
+    renderCaja();
+  }, e => console.error(e)));
+}
+
+function clearListeners() {
+  unsubs.forEach(u => u());
+  unsubs = [];
+}
+
+// ══════════════════════════════════════
+//   TABS
+// ══════════════════════════════════════
+function goTab(i) {
+  document.querySelectorAll('.tab').forEach((t,j) => t.classList.toggle('active', i===j));
+  document.querySelectorAll('.page').forEach((p,j) => p.classList.toggle('active', i===j));
+  if (i===4) renderResumen();
+  if (i===5) renderHistorial();
+  if (i===6) loadUsers();
+}
+
+// ══════════════════════════════════════
+//   LOCK
+// ══════════════════════════════════════
 function applyLock() {
   const inputs = ['f-desc','f-monto','f-tipo','g-desc','g-monto','e-nombre','e-pago','c-desc','c-monto','base-efectivo','base-tr'];
-  inputs.forEach(id => { const el = $(id); if(el){ el.disabled = true; el.style.opacity='0.6'; }});
+  inputs.forEach(id => { const el=$(id); if(el){ el.disabled=true; el.style.opacity='0.6'; }});
   ['btn-add-f','btn-add-g','btn-add-e','btn-add-c','btn-tipo-ef','btn-tipo-tr','btn-etipo-ef','btn-etipo-tr'].forEach(id => {
-    const el = $(id); if(el){ el.disabled=true; el.style.opacity='0.4'; el.style.cursor='not-allowed'; }
+    const el=$(id); if(el){ el.disabled=true; el.style.opacity='0.4'; el.style.cursor='not-allowed'; }
   });
   document.querySelectorAll('.btn-danger').forEach(b => { b.disabled=true; b.style.opacity='0.4'; b.style.cursor='not-allowed'; });
-  ['lock-f','lock-g','lock-e','lock-c'].forEach(id => $(id).classList.add('show'));
-  $('top-save-btn').textContent = '✅ Guardado';
-  $('top-save-btn').disabled = true;
-  $('top-save-btn').style.opacity = '0.6';
+  ['lock-f','lock-g','lock-e','lock-c'].forEach(id => { const el=$(id); if(el) el.classList.add('show'); });
+  const sb = $('top-save-btn');
+  if(sb){ sb.textContent='✅ Guardado'; sb.disabled=true; sb.style.opacity='0.6'; }
 }
 
-// ── Mixto: UI functions ──
+function unlockUI() {
+  const inputs = ['f-desc','f-monto','f-tipo','g-desc','g-monto','e-nombre','e-pago','c-desc','c-monto','base-efectivo','base-tr'];
+  inputs.forEach(id => { const el=$(id); if(el){ el.disabled=false; el.style.opacity='1'; }});
+  ['btn-add-f','btn-add-g','btn-add-e','btn-add-c','btn-tipo-ef','btn-tipo-tr','btn-etipo-ef','btn-etipo-tr'].forEach(id => {
+    const el=$(id); if(el){ el.disabled=false; el.style.opacity='1'; el.style.cursor='pointer'; }
+  });
+  document.querySelectorAll('.btn-danger').forEach(b => { b.disabled=false; b.style.opacity='1'; b.style.cursor='pointer'; });
+  ['lock-f','lock-g','lock-e','lock-c'].forEach(id => { const el=$(id); if(el) el.classList.remove('show'); });
+  const sb = $('top-save-btn');
+  if(sb && currentRole==='admin'){ sb.textContent='💾 Guardar'; sb.disabled=false; sb.style.opacity='1'; }
+}
+
+// ══════════════════════════════════════
+//   MIXTO UI
+// ══════════════════════════════════════
 function toggleMixto() {
   const on = $('f-mixto').checked;
   $('f-tipo-wrap').style.display = on ? 'none' : '';
-  $('f-monto-label').textContent  = on ? 'Total factura' : 'Monto';
+  $('f-monto-label').textContent = on ? 'Total factura' : 'Monto';
   $('mixto-section').style.display = on ? 'block' : 'none';
   currentPagos = [];
   renderMixtoPagos();
   updateMixtoProgress();
 }
-
 function addPago() {
   if(locked) return;
   const monto = moneyVal('p-monto');
@@ -890,226 +766,137 @@ function addPago() {
   if(monto <= 0) { alert('Ingresa un monto válido.'); return; }
   currentPagos.push({monto, tipo});
   $('p-monto').value = '';
-  renderMixtoPagos();
-  updateMixtoProgress();
+  renderMixtoPagos(); updateMixtoProgress();
   $('p-monto').focus();
 }
-
-function removePago(i) {
-  currentPagos.splice(i, 1);
-  renderMixtoPagos();
-  updateMixtoProgress();
-}
-
+function removePago(i) { currentPagos.splice(i,1); renderMixtoPagos(); updateMixtoProgress(); }
 function renderMixtoPagos() {
   const div = $('mixto-pagos-list');
-  if(!currentPagos.length) {
-    div.innerHTML = '<p style="color:#a0aec0;font-size:0.8rem;text-align:center;padding:6px 0">Sin pagos agregados aún</p>';
-    return;
-  }
-  div.innerHTML = currentPagos.map((p,i) => `
+  if(!currentPagos.length){ div.innerHTML='<p style="color:#a0aec0;font-size:0.8rem;text-align:center;padding:6px 0">Sin pagos agregados aún</p>'; return; }
+  div.innerHTML = currentPagos.map((p,i)=>`
     <div class="pago-row">
       <span>${p.tipo==='efectivo'?'💵 Efectivo':'🏦 Transferencia'} — ${fmt(p.monto)}</span>
       <button class="btn-sm btn-danger" onclick="removePago(${i})">✕</button>
     </div>`).join('');
 }
-
 function updateMixtoProgress() {
-  if(!$('f-mixto') || !$('f-mixto').checked) return;
-  const total  = moneyVal('f-monto');
-  const pagado = currentPagos.reduce((s,p)=>s+p.monto, 0);
-  const prog   = $('mixto-progress');
-  if(total <= 0) {
-    prog.innerHTML = '<span style="color:#a0aec0">Ingresa el total de la factura arriba</span>';
-    prog.style.borderColor = '#e2e8f0'; prog.style.background = '#f7fafc';
-    return;
-  }
-  const diff = total - pagado;
-  if(diff > 0) {
-    prog.style.borderColor='#f6e05e'; prog.style.background='#fffbeb';
-    prog.innerHTML=`Pagado: <strong>${fmt(pagado)}</strong> / ${fmt(total)} — <span style="color:#c05621">Falta: <strong>${fmt(diff)}</strong></span>`;
-  } else if(diff < 0) {
-    prog.style.borderColor='#feb2b2'; prog.style.background='#fff5f5';
-    prog.innerHTML=`<strong style="color:#c53030">⚠️ Excede el total por ${fmt(Math.abs(diff))}</strong>`;
-  } else {
-    prog.style.borderColor='#9ae6b4'; prog.style.background='#f0fff4';
-    prog.innerHTML=`<strong style="color:#276749">✅ Total cuadra — ${fmt(total)}</strong>`;
-  }
+  if(!$('f-mixto')||!$('f-mixto').checked) return;
+  const total=moneyVal('f-monto'), pagado=currentPagos.reduce((s,p)=>s+p.monto,0), diff=total-pagado;
+  const prog=$('mixto-progress');
+  if(total<=0){ prog.innerHTML='<span style="color:#a0aec0">Ingresa el total arriba</span>'; prog.style.borderColor='#e2e8f0'; prog.style.background='#f7fafc'; return; }
+  if(diff>0){ prog.style.borderColor='#f6e05e'; prog.style.background='#fffbeb'; prog.innerHTML=`Pagado: <strong>${fmt(pagado)}</strong> / ${fmt(total)} — <span style="color:#c05621">Falta: <strong>${fmt(diff)}</strong></span>`; }
+  else if(diff<0){ prog.style.borderColor='#feb2b2'; prog.style.background='#fff5f5'; prog.innerHTML=`<strong style="color:#c53030">⚠️ Excede el total por ${fmt(Math.abs(diff))}</strong>`; }
+  else{ prog.style.borderColor='#9ae6b4'; prog.style.background='#f0fff4'; prog.innerHTML=`<strong style="color:#276749">✅ Total cuadra — ${fmt(total)}</strong>`; }
 }
 
-// ── Totals ──
+// ══════════════════════════════════════
+//   TOTALS
+// ══════════════════════════════════════
 function totals() {
-  let ef = 0, tr = 0;
+  let ef=0, tr=0;
   state.facturas.forEach(f => {
-    if(f.mixto) {
-      f.pagos.forEach(p => { if(p.tipo==='efectivo') ef+=p.monto; else tr+=p.monto; });
-    } else {
-      if(f.tipo==='efectivo') ef+=f.monto; else tr+=f.monto;
-    }
+    if(f.mixto){ f.pagos.forEach(p=>{ if(p.tipo==='efectivo') ef+=p.monto; else tr+=p.monto; }); }
+    else { if(f.tipo==='efectivo') ef+=f.monto; else tr+=f.monto; }
   });
-  const bruto     = ef + tr;
-  const tg        = state.gastos.reduce((s,g)=>s+g.monto,0);
-  const teEf      = state.empleados.filter(e=>e.tipo!=='transferencia').reduce((s,e)=>s+e.pago,0);
-  const teTr      = state.empleados.filter(e=>e.tipo==='transferencia').reduce((s,e)=>s+e.pago,0);
-  const te        = teEf + teTr;
-  const tcEf      = state.compras.filter(c=>c.tipo==='efectivo').reduce((s,c)=>s+c.monto,0);
-  const tcTr      = state.compras.filter(c=>c.tipo==='transferencia').reduce((s,c)=>s+c.monto,0);
-  const tc        = tcEf + tcTr;
-  const baseEf    = state.baseEfectivo||0;
-  const baseTr    = state.baseTr||0;
-  const saldoCajaEf  = Math.max(0, baseEf - tcEf);
-  const saldoCajaTr  = Math.max(0, baseTr - tcTr);
-  const saldoCaja    = saldoCajaEf + saldoCajaTr;
-  const ventaDia  = ef + tr;                     // venta del día: ingresos brutos
-  const efNeto    = ef - tg - teEf;              // efectivo neto: ingresos ef - gastos - pagos ef
-  const trNeto    = tr - teTr;                   // transferencias netas: ingresos tr - pagos tr
-  const netoDia   = efNeto + trNeto;             // neto del día: suma de ambos netos
-  const dispEf    = efNeto + saldoCajaEf;        // disponible efectivo: neto ef + saldo caja ef
-  const dispTr    = trNeto + saldoCajaTr;        // disponible transferencias: neto tr + saldo caja tr
-  const total     = dispEf + dispTr;             // total disponible
-  return {ef, tr, bruto, ventaDia, tg, te, teEf, teTr, tc, tcEf, tcTr,
-          baseEf, baseTr, saldoCajaEf, saldoCajaTr, saldoCaja,
-          efNeto, trNeto, netoDia, dispEf, dispTr, total, cnt:state.facturas.length};
-}
-
-// ══════════════════════════════════════
-//   TABS
-// ══════════════════════════════════════
-function goTab(i) {
-  document.querySelectorAll('.tab').forEach((t,j)=>t.classList.toggle('active',i===j));
-  document.querySelectorAll('.page').forEach((p,j)=>p.classList.toggle('active',i===j));
-  if(i===4) renderResumen();
-  if(i===5) renderHistorial();
+  const bruto=ef+tr;
+  const tg=state.gastos.reduce((s,g)=>s+g.monto,0);
+  const teEf=state.empleados.filter(e=>e.tipo!=='transferencia').reduce((s,e)=>s+e.pago,0);
+  const teTr=state.empleados.filter(e=>e.tipo==='transferencia').reduce((s,e)=>s+e.pago,0);
+  const te=teEf+teTr;
+  const tcEf=state.compras.filter(c=>c.tipo==='efectivo').reduce((s,c)=>s+c.monto,0);
+  const tcTr=state.compras.filter(c=>c.tipo==='transferencia').reduce((s,c)=>s+c.monto,0);
+  const tc=tcEf+tcTr;
+  const baseEf=state.baseEfectivo||0, baseTr=state.baseTr||0;
+  const saldoCajaEf=Math.max(0,baseEf-tcEf), saldoCajaTr=Math.max(0,baseTr-tcTr), saldoCaja=saldoCajaEf+saldoCajaTr;
+  const ventaDia=ef+tr;
+  const efNeto=ef-tg-teEf, trNeto=tr-teTr, netoDia=efNeto+trNeto;
+  const dispEf=efNeto+saldoCajaEf, dispTr=trNeto+saldoCajaTr, total=dispEf+dispTr;
+  return {ef,tr,bruto,ventaDia,tg,te,teEf,teTr,tc,tcEf,tcTr,baseEf,baseTr,saldoCajaEf,saldoCajaTr,saldoCaja,efNeto,trNeto,netoDia,dispEf,dispTr,total,cnt:state.facturas.length};
 }
 
 // ══════════════════════════════════════
 //   FACTURAS
 // ══════════════════════════════════════
-function addFactura() {
+function nextFacturaNum() {
+  const used=new Set(state.facturas.map(f=>parseInt(f.num)));
+  let n=1; while(used.has(n)) n++; return n;
+}
+function updateFacturaNumField() { $('f-num').value=nextFacturaNum(); }
+
+async function addFactura() {
   if(locked) return;
-  const num   = String(nextFacturaNum());
-  const desc  = $('f-desc').value.trim();
-  const monto = moneyVal('f-monto');
-  const mixto = $('f-mixto').checked;
-
-  if(monto <= 0) { alert('Ingresa un monto válido.'); return; }
-
-  if(mixto) {
-    if(!currentPagos.length) { alert('Agrega al menos un pago parcial.'); return; }
-    const pagado = currentPagos.reduce((s,p)=>s+p.monto, 0);
-    if(pagado !== monto) {
-      alert(`Los pagos (${fmt(pagado)}) no cuadran con el total de la factura (${fmt(monto)}).`);
-      return;
-    }
-    state.facturas.push({id:ids.f++, num, desc, total:monto, mixto:true, pagos:[...currentPagos]});
-    currentPagos = [];
-    renderMixtoPagos();
-    updateMixtoProgress();
+  const num=String(nextFacturaNum()), desc=$('f-desc').value.trim(), monto=moneyVal('f-monto'), mixto=$('f-mixto').checked;
+  if(monto<=0){ alert('Ingresa un monto válido.'); return; }
+  let data;
+  if(mixto){
+    if(!currentPagos.length){ alert('Agrega al menos un pago parcial.'); return; }
+    const pagado=currentPagos.reduce((s,p)=>s+p.monto,0);
+    if(pagado!==monto){ alert(`Los pagos (${fmt(pagado)}) no cuadran con el total (${fmt(monto)}).`); return; }
+    data={num,desc,total:monto,mixto:true,pagos:[...currentPagos]};
+    currentPagos=[]; renderMixtoPagos(); updateMixtoProgress();
   } else {
-    const tipo = $('f-tipo').value;
-    state.facturas.push({id:ids.f++, num, desc, monto, tipo, mixto:false});
+    data={num,desc,monto,tipo:$('f-tipo').value,mixto:false};
   }
-
+  data.createdAt=TS(); data.createdBy=currentUser.uid;
   $('f-desc').value=''; $('f-monto').value='';
-  renderFacturas();
-  updateFacturaNumField();
   $('f-desc').focus();
+  try { await db.collection('draft').doc('current').collection('facturas').add(data); }
+  catch(e){ alert('Error al guardar: '+e.message); }
 }
 
-function delFactura(id){
+async function delFactura(docId){
   if(locked) return;
-  state.facturas=state.facturas.filter(f=>f.id!==id);
-  renderFacturas();
-  updateFacturaNumField();
+  try{ await db.collection('draft').doc('current').collection('facturas').doc(docId).delete(); }
+  catch(e){ alert('Error: '+e.message); }
 }
-function clearFacturas(){
+async function clearFacturas(){
   if(locked) return;
-  if(confirm('¿Eliminar todas las facturas?')){ state.facturas=[]; renderFacturas(); updateFacturaNumField(); }
+  if(!confirm('¿Eliminar todas las facturas?')) return;
+  const snap=await db.collection('draft').doc('current').collection('facturas').get();
+  const batch=db.batch(); snap.docs.forEach(d=>batch.delete(d.ref)); await batch.commit();
 }
 
 function renderFacturas(){
-  const tb = $('tb-facturas');
+  const tb=$('tb-facturas');
   if(!state.facturas.length){ tb.innerHTML='<tr><td colspan="5" class="empty-msg">Sin facturas</td></tr>'; return; }
-
-  // Expand facturas (mixto → múltiples filas)
-  let htmlRows = '';
-  state.facturas.forEach((f, idx) => {
-    const seq = idx + 1;
-    if(!f.mixto) {
-      const badge = f.tipo==='efectivo'
-        ? '<span class="badge badge-ef">Ef</span>'
-        : '<span class="badge badge-tr">Tr</span>';
-      htmlRows += `<tr>
-        <td style="color:#a0aec0;font-size:0.75rem">${seq}</td>
-        <td><strong>${f.num}</strong>${f.desc?`<br><span style="font-size:0.7rem;color:var(--gray)">${f.desc}</span>`:''}</td>
-        <td><strong>${fmt(f.monto)}</strong></td>
-        <td>${badge}</td>
-        <td><button class="btn-sm btn-danger" onclick="delFactura(${f.id})">✕</button></td>
-      </tr>`;
+  let html='';
+  state.facturas.forEach((f,idx)=>{
+    const seq=idx+1, did=f._docId;
+    if(!f.mixto){
+      const badge=f.tipo==='efectivo'?'<span class="badge badge-ef">Ef</span>':'<span class="badge badge-tr">Tr</span>';
+      html+=`<tr><td style="color:#a0aec0;font-size:0.75rem">${seq}</td><td><strong>${f.num}</strong>${f.desc?`<br><span style="font-size:0.7rem;color:var(--gray)">${f.desc}</span>`:''}</td><td><strong>${fmt(f.monto)}</strong></td><td>${badge}</td><td><button class="btn-sm btn-danger" onclick="delFactura('${did}')">✕</button></td></tr>`;
     } else {
-      // Efectivo consolidado
-      const efTotal = f.pagos.filter(p=>p.tipo==='efectivo').reduce((s,p)=>s+p.monto,0);
-      const transfers = f.pagos.filter(p=>p.tipo==='transferencia');
-      let first = true;
-      if(efTotal > 0) {
-        htmlRows += `<tr>
-          <td style="color:#a0aec0;font-size:0.75rem">${seq}</td>
-          <td><strong>${f.num}</strong>${f.desc?`<br><span style="font-size:0.7rem;color:var(--gray)">${f.desc}</span>`:''}</td>
-          <td><strong>${fmt(efTotal)}</strong></td>
-          <td><span class="badge badge-ef">Ef</span></td>
-          <td>${first?`<button class="btn-sm btn-danger" onclick="delFactura(${f.id})">✕</button>`:''}</td>
-        </tr>`;
-        first = false;
-      }
-      transfers.forEach((p,ti) => {
-        htmlRows += `<tr>
-          <td></td>
-          <td><strong>${f.num}-${ti+1}</strong>${f.desc?`<br><span style="font-size:0.7rem;color:var(--gray)">${f.desc}</span>`:''}</td>
-          <td><strong>${fmt(p.monto)}</strong></td>
-          <td><span class="badge badge-tr">Tr</span></td>
-          <td>${first?`<button class="btn-sm btn-danger" onclick="delFactura(${f.id})">✕</button>`:''}</td>
-        </tr>`;
-        first = false;
-      });
+      const efTotal=f.pagos.filter(p=>p.tipo==='efectivo').reduce((s,p)=>s+p.monto,0);
+      const transfers=f.pagos.filter(p=>p.tipo==='transferencia');
+      let first=true;
+      if(efTotal>0){ html+=`<tr><td style="color:#a0aec0;font-size:0.75rem">${seq}</td><td><strong>${f.num}</strong>${f.desc?`<br><span style="font-size:0.7rem;color:var(--gray)">${f.desc}</span>`:''}</td><td><strong>${fmt(efTotal)}</strong></td><td><span class="badge badge-ef">Ef</span></td><td>${first?`<button class="btn-sm btn-danger" onclick="delFactura('${did}')">✕</button>`:''}</td></tr>`; first=false; }
+      transfers.forEach((p,ti)=>{ html+=`<tr><td></td><td><strong>${f.num}-${ti+1}</strong>${f.desc?`<br><span style="font-size:0.7rem;color:var(--gray)">${f.desc}</span>`:''}</td><td><strong>${fmt(p.monto)}</strong></td><td><span class="badge badge-tr">Tr</span></td><td>${first?`<button class="btn-sm btn-danger" onclick="delFactura('${did}')">✕</button>`:''}</td></tr>`; first=false; });
     }
   });
-
-  const t = totals();
-  tb.innerHTML = htmlRows + `
-    <tr class="total-row">
-      <td colspan="2">TOTAL (${state.facturas.length})</td>
-      <td>${fmt(t.bruto)}</td>
-      <td colspan="2" style="font-size:0.7rem;color:var(--gray)">💵${fmt(t.ef)} 🏦${fmt(t.tr)}</td>
-    </tr>`;
+  const t=totals();
+  tb.innerHTML=html+`<tr class="total-row"><td colspan="2">TOTAL (${state.facturas.length})</td><td>${fmt(t.bruto)}</td><td colspan="2" style="font-size:0.7rem;color:var(--gray)">💵${fmt(t.ef)} 🏦${fmt(t.tr)}</td></tr>`;
 }
 
 // ══════════════════════════════════════
 //   GASTOS
 // ══════════════════════════════════════
-function addGasto(){
+async function addGasto(){
   if(locked) return;
-  const desc  = $('g-desc').value.trim();
-  const monto = moneyVal('g-monto');
-  if(!desc)       { alert('Ingresa el concepto.'); return; }
-  if(monto<=0)    { alert('Ingresa un monto válido.'); return; }
-  state.gastos.push({id:ids.g++,desc,monto});
-  $('g-desc').value=''; $('g-monto').value='';
-  renderGastos(); $('g-desc').focus();
+  const desc=$('g-desc').value.trim(), monto=moneyVal('g-monto');
+  if(!desc){ alert('Ingresa el concepto.'); return; }
+  if(monto<=0){ alert('Ingresa un monto válido.'); return; }
+  $('g-desc').value=''; $('g-monto').value=''; $('g-desc').focus();
+  try{ await db.collection('draft').doc('current').collection('gastos').add({desc,monto,createdAt:TS(),createdBy:currentUser.uid}); }
+  catch(e){ alert('Error: '+e.message); }
 }
-
-function delGasto(id){ if(locked) return; state.gastos=state.gastos.filter(g=>g.id!==id); renderGastos(); }
-function clearGastos(){ if(locked) return; if(confirm('¿Eliminar todos los gastos?')){ state.gastos=[]; renderGastos(); }}
+async function delGasto(docId){ if(locked) return; try{ await db.collection('draft').doc('current').collection('gastos').doc(docId).delete(); }catch(e){ alert('Error: '+e.message); } }
+async function clearGastos(){ if(locked) return; if(!confirm('¿Eliminar todos los gastos?')) return; const snap=await db.collection('draft').doc('current').collection('gastos').get(); const batch=db.batch(); snap.docs.forEach(d=>batch.delete(d.ref)); await batch.commit(); }
 
 function renderGastos(){
-  const tb = $('tb-gastos');
+  const tb=$('tb-gastos');
   if(!state.gastos.length){ tb.innerHTML='<tr><td colspan="4" class="empty-msg">Sin gastos</td></tr>'; return; }
   const total=state.gastos.reduce((s,g)=>s+g.monto,0);
-  tb.innerHTML=state.gastos.map((g,i)=>`
-    <tr>
-      <td>${i+1}</td><td>${g.desc}</td><td><strong>${fmt(g.monto)}</strong></td>
-      <td><button class="btn-sm btn-danger" onclick="delGasto(${g.id})">✕</button></td>
-    </tr>`).join('')+`
-    <tr class="total-row"><td colspan="2">TOTAL</td><td>${fmt(total)}</td><td></td></tr>`;
+  tb.innerHTML=state.gastos.map((g,i)=>`<tr><td>${i+1}</td><td>${g.desc}</td><td><strong>${fmt(g.monto)}</strong></td><td><button class="btn-sm btn-danger" onclick="delGasto('${g._docId}')">✕</button></td></tr>`).join('')+`<tr class="total-row"><td colspan="2">TOTAL</td><td>${fmt(total)}</td><td></td></tr>`;
 }
 
 // ══════════════════════════════════════
@@ -1117,50 +904,32 @@ function renderGastos(){
 // ══════════════════════════════════════
 function setEmpleadoTipo(tipo){
   if(locked) return;
-  empleadoTipo = tipo;
-  const btnEf = $('btn-etipo-ef');
-  const btnTr = $('btn-etipo-tr');
-  if(tipo === 'efectivo'){
-    btnEf.style.cssText='flex:1;padding:10px;border-radius:10px;border:2px solid #48bb78;background:#f0fff4;color:#276749;font-weight:700;cursor:pointer;font-size:0.88rem';
-    btnTr.style.cssText='flex:1;padding:10px;border-radius:10px;border:2px solid #e2e8f0;background:#fff;color:#4a5568;font-weight:700;cursor:pointer;font-size:0.88rem';
-  } else {
-    btnEf.style.cssText='flex:1;padding:10px;border-radius:10px;border:2px solid #e2e8f0;background:#fff;color:#4a5568;font-weight:700;cursor:pointer;font-size:0.88rem';
-    btnTr.style.cssText='flex:1;padding:10px;border-radius:10px;border:2px solid #2b6cb0;background:#ebf8ff;color:#2b6cb0;font-weight:700;cursor:pointer;font-size:0.88rem';
-  }
+  empleadoTipo=tipo;
+  const ef=$('btn-etipo-ef'), tr=$('btn-etipo-tr');
+  if(tipo==='efectivo'){ ef.style.cssText='flex:1;padding:10px;border-radius:10px;border:2px solid #48bb78;background:#f0fff4;color:#276749;font-weight:700;cursor:pointer;font-size:0.88rem'; tr.style.cssText='flex:1;padding:10px;border-radius:10px;border:2px solid #e2e8f0;background:#fff;color:#4a5568;font-weight:700;cursor:pointer;font-size:0.88rem'; }
+  else{ ef.style.cssText='flex:1;padding:10px;border-radius:10px;border:2px solid #e2e8f0;background:#fff;color:#4a5568;font-weight:700;cursor:pointer;font-size:0.88rem'; tr.style.cssText='flex:1;padding:10px;border-radius:10px;border:2px solid #2b6cb0;background:#ebf8ff;color:#2b6cb0;font-weight:700;cursor:pointer;font-size:0.88rem'; }
 }
-
-function addEmpleado(){
+async function addEmpleado(){
   if(locked) return;
-  const nombre = $('e-nombre').value.trim();
-  const pago   = moneyVal('e-pago');
-  if(!nombre)    { alert('Ingresa el nombre.'); return; }
-  if(pago<=0)    { alert('Ingresa un pago válido.'); return; }
-  state.empleados.push({id:ids.e++, nombre, pago, tipo: empleadoTipo});
-  $('e-nombre').value=''; $('e-pago').value='';
-  renderEmpleados(); $('e-nombre').focus();
+  const nombre=$('e-nombre').value.trim(), pago=moneyVal('e-pago');
+  if(!nombre){ alert('Ingresa el nombre.'); return; }
+  if(pago<=0){ alert('Ingresa un pago válido.'); return; }
+  $('e-nombre').value=''; $('e-pago').value=''; $('e-nombre').focus();
+  try{ await db.collection('draft').doc('current').collection('empleados').add({nombre,pago,tipo:empleadoTipo,createdAt:TS(),createdBy:currentUser.uid}); }
+  catch(e){ alert('Error: '+e.message); }
 }
-
-function delEmpleado(id){ if(locked) return; state.empleados=state.empleados.filter(e=>e.id!==id); renderEmpleados(); }
-function clearEmpleados(){ if(locked) return; if(confirm('¿Eliminar todos los empleados?')){ state.empleados=[]; renderEmpleados(); }}
+async function delEmpleado(docId){ if(locked) return; try{ await db.collection('draft').doc('current').collection('empleados').doc(docId).delete(); }catch(e){ alert('Error: '+e.message); } }
+async function clearEmpleados(){ if(locked) return; if(!confirm('¿Eliminar todos los empleados?')) return; const snap=await db.collection('draft').doc('current').collection('empleados').get(); const batch=db.batch(); snap.docs.forEach(d=>batch.delete(d.ref)); await batch.commit(); }
 
 function renderEmpleados(){
   const tb=$('tb-empleados');
   if(!state.empleados.length){ tb.innerHTML='<tr><td colspan="5" class="empty-msg">Sin empleados</td></tr>'; return; }
-  const totalEf = state.empleados.filter(e=>e.tipo!=='transferencia').reduce((s,e)=>s+e.pago,0);
-  const totalTr = state.empleados.filter(e=>e.tipo==='transferencia').reduce((s,e)=>s+e.pago,0);
-  const total   = totalEf + totalTr;
+  const totalEf=state.empleados.filter(e=>e.tipo!=='transferencia').reduce((s,e)=>s+e.pago,0);
+  const totalTr=state.empleados.filter(e=>e.tipo==='transferencia').reduce((s,e)=>s+e.pago,0);
   tb.innerHTML=state.empleados.map((e,i)=>{
-    const badge = e.tipo==='transferencia'
-      ? '<span class="badge badge-tr">🏦</span>'
-      : '<span class="badge badge-ef">💵</span>';
-    return `<tr>
-      <td>${i+1}</td><td>${e.nombre}</td><td><strong>${fmt(e.pago)}</strong></td>
-      <td>${badge}</td>
-      <td><button class="btn-sm btn-danger" onclick="delEmpleado(${e.id})">✕</button></td>
-    </tr>`;
-  }).join('')+`
-    <tr class="total-row"><td colspan="2">TOTAL</td><td>${fmt(total)}</td><td colspan="2" style="font-size:0.7rem;color:var(--gray)">💵${fmt(totalEf)} 🏦${fmt(totalTr)}</td></tr>`;
-  saveDraft();
+    const badge=e.tipo==='transferencia'?'<span class="badge badge-tr">🏦</span>':'<span class="badge badge-ef">💵</span>';
+    return `<tr><td>${i+1}</td><td>${e.nombre}</td><td><strong>${fmt(e.pago)}</strong></td><td>${badge}</td><td><button class="btn-sm btn-danger" onclick="delEmpleado('${e._docId}')">✕</button></td></tr>`;
+  }).join('')+`<tr class="total-row"><td colspan="2">TOTAL</td><td>${fmt(totalEf+totalTr)}</td><td colspan="2" style="font-size:0.7rem;color:var(--gray)">💵${fmt(totalEf)} 🏦${fmt(totalTr)}</td></tr>`;
 }
 
 // ══════════════════════════════════════
@@ -1168,74 +937,53 @@ function renderEmpleados(){
 // ══════════════════════════════════════
 function setCompraTipo(tipo){
   if(locked) return;
-  compraTipo = tipo;
-  const btnEf = $('btn-tipo-ef');
-  const btnTr = $('btn-tipo-tr');
-  if(tipo === 'efectivo'){
-    btnEf.style.cssText='flex:1;padding:10px;border-radius:10px;border:2px solid #48bb78;background:#f0fff4;color:#276749;font-weight:700;cursor:pointer;font-size:0.88rem';
-    btnTr.style.cssText='flex:1;padding:10px;border-radius:10px;border:2px solid #e2e8f0;background:#fff;color:#4a5568;font-weight:700;cursor:pointer;font-size:0.88rem';
-  } else {
-    btnEf.style.cssText='flex:1;padding:10px;border-radius:10px;border:2px solid #e2e8f0;background:#fff;color:#4a5568;font-weight:700;cursor:pointer;font-size:0.88rem';
-    btnTr.style.cssText='flex:1;padding:10px;border-radius:10px;border:2px solid #2b6cb0;background:#ebf8ff;color:#2b6cb0;font-weight:700;cursor:pointer;font-size:0.88rem';
-  }
+  compraTipo=tipo;
+  const ef=$('btn-tipo-ef'), tr=$('btn-tipo-tr');
+  if(tipo==='efectivo'){ ef.style.cssText='flex:1;padding:10px;border-radius:10px;border:2px solid #48bb78;background:#f0fff4;color:#276749;font-weight:700;cursor:pointer;font-size:0.88rem'; tr.style.cssText='flex:1;padding:10px;border-radius:10px;border:2px solid #e2e8f0;background:#fff;color:#4a5568;font-weight:700;cursor:pointer;font-size:0.88rem'; }
+  else{ ef.style.cssText='flex:1;padding:10px;border-radius:10px;border:2px solid #e2e8f0;background:#fff;color:#4a5568;font-weight:700;cursor:pointer;font-size:0.88rem'; tr.style.cssText='flex:1;padding:10px;border-radius:10px;border:2px solid #2b6cb0;background:#ebf8ff;color:#2b6cb0;font-weight:700;cursor:pointer;font-size:0.88rem'; }
 }
 
+let cajaUpdateTimer = null;
 function updateCaja(){
   if(locked) return;
-  state.baseEfectivo = moneyVal('base-efectivo');
-  state.baseTr       = moneyVal('base-tr');
+  state.baseEfectivo=moneyVal('base-efectivo');
+  state.baseTr=moneyVal('base-tr');
   renderCaja();
+  clearTimeout(cajaUpdateTimer);
+  cajaUpdateTimer=setTimeout(async()=>{
+    try{ await db.collection('draft').doc('current').set({baseEfectivo:state.baseEfectivo,baseTr:state.baseTr},{merge:true}); }
+    catch(e){ console.error(e); }
+  }, 800);
 }
 
-function addCompra(){
+async function addCompra(){
   if(locked) return;
-  const desc  = $('c-desc').value.trim();
-  const monto = moneyVal('c-monto');
-  if(!desc)     { alert('Ingresa el ítem.'); return; }
-  if(monto<=0)  { alert('Ingresa un valor válido.'); return; }
-  state.compras.push({id:ids.c++, desc, monto, tipo: compraTipo});
-  $('c-desc').value=''; $('c-monto').value='';
-  renderCaja(); $('c-desc').focus();
+  const desc=$('c-desc').value.trim(), monto=moneyVal('c-monto');
+  if(!desc){ alert('Ingresa el ítem.'); return; }
+  if(monto<=0){ alert('Ingresa un valor válido.'); return; }
+  $('c-desc').value=''; $('c-monto').value=''; $('c-desc').focus();
+  try{ await db.collection('draft').doc('current').collection('compras').add({desc,monto,tipo:compraTipo,createdAt:TS(),createdBy:currentUser.uid}); }
+  catch(e){ alert('Error: '+e.message); }
 }
-
-function delCompra(id){ if(locked) return; state.compras=state.compras.filter(c=>c.id!==id); renderCaja(); }
-function clearCompras(){ if(locked) return; if(confirm('¿Eliminar todas las compras?')){ state.compras=[]; renderCaja(); }}
+async function delCompra(docId){ if(locked) return; try{ await db.collection('draft').doc('current').collection('compras').doc(docId).delete(); }catch(e){ alert('Error: '+e.message); } }
+async function clearCompras(){ if(locked) return; if(!confirm('¿Eliminar todas las compras?')) return; const snap=await db.collection('draft').doc('current').collection('compras').get(); const batch=db.batch(); snap.docs.forEach(d=>batch.delete(d.ref)); await batch.commit(); }
 
 function renderCaja(){
-  const baseEf = state.baseEfectivo||0;
-  const baseTr = state.baseTr||0;
-  const tcEf   = state.compras.filter(c=>c.tipo==='efectivo').reduce((s,c)=>s+c.monto,0);
-  const tcTr   = state.compras.filter(c=>c.tipo==='transferencia').reduce((s,c)=>s+c.monto,0);
-  const saldoEf = Math.max(0, baseEf - tcEf);
-  const saldoTr = Math.max(0, baseTr - tcTr);
-  const total   = saldoEf + saldoTr;
-
-  $('caja-saldo-ef').textContent   = fmt(saldoEf);
-  $('caja-sub-ef').textContent     = `Base: ${fmt(baseEf)} — Compras: ${fmt(tcEf)}`;
-  $('caja-saldo-ef').style.color   = (tcEf>baseEf&&baseEf>0) ? '#fed7d7' : '#fff';
-
-  $('caja-saldo-tr').textContent   = fmt(saldoTr);
-  $('caja-sub-tr').textContent     = `Base: ${fmt(baseTr)} — Compras: ${fmt(tcTr)}`;
-  $('caja-saldo-tr').style.color   = (tcTr>baseTr&&baseTr>0) ? '#fed7d7' : '#fff';
-
-  $('caja-saldo-total').textContent = fmt(total);
-
-  const tb = $('tb-compras');
+  const baseEf=state.baseEfectivo||0, baseTr=state.baseTr||0;
+  const tcEf=state.compras.filter(c=>c.tipo==='efectivo').reduce((s,c)=>s+c.monto,0);
+  const tcTr=state.compras.filter(c=>c.tipo==='transferencia').reduce((s,c)=>s+c.monto,0);
+  const saldoEf=Math.max(0,baseEf-tcEf), saldoTr=Math.max(0,baseTr-tcTr);
+  $('caja-saldo-ef').textContent=fmt(saldoEf);
+  $('caja-sub-ef').textContent=`Base: ${fmt(baseEf)} — Compras: ${fmt(tcEf)}`;
+  $('caja-saldo-tr').textContent=fmt(saldoTr);
+  $('caja-sub-tr').textContent=`Base: ${fmt(baseTr)} — Compras: ${fmt(tcTr)}`;
+  $('caja-saldo-total').textContent=fmt(saldoEf+saldoTr);
+  const tb=$('tb-compras');
   if(!state.compras.length){ tb.innerHTML='<tr><td colspan="5" class="empty-msg">Sin compras</td></tr>'; return; }
-  const tcTotal = tcEf + tcTr;
-  tb.innerHTML = state.compras.map((c,i) => {
-    const badge = c.tipo==='efectivo'
-      ? '<span class="badge badge-ef">💵</span>'
-      : '<span class="badge badge-tr">🏦</span>';
-    return `<tr>
-      <td>${i+1}</td><td>${c.desc}</td><td><strong>${fmt(c.monto)}</strong></td>
-      <td>${badge}</td>
-      <td><button class="btn-sm btn-danger" onclick="delCompra(${c.id})">✕</button></td>
-    </tr>`;
-  }).join('') + `
-    <tr class="total-row"><td colspan="2">TOTAL</td><td>${fmt(tcTotal)}</td><td colspan="2"></td></tr>`;
-
-  saveDraft();
+  tb.innerHTML=state.compras.map((c,i)=>{
+    const badge=c.tipo==='efectivo'?'<span class="badge badge-ef">💵</span>':'<span class="badge badge-tr">🏦</span>';
+    return `<tr><td>${i+1}</td><td>${c.desc}</td><td><strong>${fmt(c.monto)}</strong></td><td>${badge}</td><td><button class="btn-sm btn-danger" onclick="delCompra('${c._docId}')">✕</button></td></tr>`;
+  }).join('')+`<tr class="total-row"><td colspan="2">TOTAL</td><td>${fmt(tcEf+tcTr)}</td><td colspan="2"></td></tr>`;
 }
 
 // ══════════════════════════════════════
@@ -1243,547 +991,322 @@ function renderCaja(){
 // ══════════════════════════════════════
 function renderResumen(){
   const t=totals();
-  // Facturas
-  $('r-ef').textContent=fmt(t.ef);
-  $('r-tr').textContent=fmt(t.tr);
-  $('r-cnt').textContent=t.cnt;
-  $('r-bruto').textContent=fmt(t.bruto);
-  // Venta del día
-  $('r2-ef').textContent=fmt(t.ef);
-  $('r2-tr').textContent=fmt(t.tr);
-  $('r-venta-dia').textContent=fmt(t.ventaDia);
+  $('r-ef').textContent=fmt(t.ef); $('r-tr').textContent=fmt(t.tr); $('r-cnt').textContent=t.cnt; $('r-bruto').textContent=fmt(t.bruto);
+  if(currentRole!=='admin') return;
+  $('r2-ef').textContent=fmt(t.ef); $('r2-tr').textContent=fmt(t.tr); $('r-venta-dia').textContent=fmt(t.ventaDia);
   $('venta-dia-box').className='neto-box '+(t.ventaDia>=0?'neto-pos':'neto-neg');
-  // Neto del día
-  $('r3-ef').textContent=fmt(t.ef);
-  $('r2-gastos').textContent=fmt(t.tg);
-  $('r2-emp-ef').textContent=fmt(t.teEf);
-  $('r2-efneto').textContent=fmt(t.efNeto);
-  $('r3-tr').textContent=fmt(t.tr);
-  $('r2-emp-tr').textContent=fmt(t.teTr);
-  $('r2-trneto').textContent=fmt(t.trNeto);
-  $('r-neto-dia').textContent=fmt(t.netoDia);
+  $('r3-ef').textContent=fmt(t.ef); $('r2-gastos').textContent=fmt(t.tg); $('r2-emp-ef').textContent=fmt(t.teEf); $('r2-efneto').textContent=fmt(t.efNeto);
+  $('r3-tr').textContent=fmt(t.tr); $('r2-emp-tr').textContent=fmt(t.teTr); $('r2-trneto').textContent=fmt(t.trNeto); $('r-neto-dia').textContent=fmt(t.netoDia);
   $('neto-dia-box').className='neto-box '+(t.netoDia>=0?'neto-pos':'neto-neg');
-  // Caja
-  $('r-base-ef').textContent=fmt(t.baseEf);
-  $('r-base-tr').textContent=fmt(t.baseTr);
-  $('r-compras-ef').textContent=fmt(t.tcEf);
-  $('r-compras-tr').textContent=fmt(t.tcTr);
-  $('r-saldo-ef').textContent=fmt(t.saldoCajaEf);
-  $('r-saldo-tr').textContent=fmt(t.saldoCajaTr);
-  $('r-saldo-caja-total').textContent=fmt(t.saldoCaja);
-  // Total disponible
-  $('r4-efneto').textContent=fmt(t.efNeto);
-  $('r4-saldo-ef').textContent=fmt(t.saldoCajaEf);
-  $('r4-disp-ef').textContent=fmt(t.dispEf);
-  $('r4-trneto').textContent=fmt(t.trNeto);
-  $('r4-saldo-tr').textContent=fmt(t.saldoCajaTr);
-  $('r4-disp-tr').textContent=fmt(t.dispTr);
-  $('r-total').textContent=fmt(t.total);
-  $('neto-total-box').className='neto-box '+(t.total>=0?'neto-pos':'neto-neg');
+  $('r-base-ef').textContent=fmt(t.baseEf); $('r-base-tr').textContent=fmt(t.baseTr);
+  $('r-compras-ef').textContent=fmt(t.tcEf); $('r-compras-tr').textContent=fmt(t.tcTr);
+  $('r-saldo-ef').textContent=fmt(t.saldoCajaEf); $('r-saldo-tr').textContent=fmt(t.saldoCajaTr); $('r-saldo-caja-total').textContent=fmt(t.saldoCaja);
+  $('r4-efneto').textContent=fmt(t.efNeto); $('r4-saldo-ef').textContent=fmt(t.saldoCajaEf); $('r4-disp-ef').textContent=fmt(t.dispEf);
+  $('r4-trneto').textContent=fmt(t.trNeto); $('r4-saldo-tr').textContent=fmt(t.saldoCajaTr); $('r4-disp-tr').textContent=fmt(t.dispTr);
+  $('r-total').textContent=fmt(t.total); $('neto-total-box').className='neto-box '+(t.total>=0?'neto-pos':'neto-neg');
 }
 
 // ══════════════════════════════════════
-//   GUARDAR / CARGAR
+//   GUARDAR DÍA
 // ══════════════════════════════════════
-function showSave(){
-  $('save-nombre').value = '';
-  openModal('modal-save');
-}
+function showSave(){ $('save-nombre').value=''; openModal('modal-save'); }
 
-function saveDay(){
-  const nombre = $('save-nombre').value.trim();
+async function saveDay(){
+  const nombre=$('save-nombre').value.trim();
   if(!nombre){ alert('Escribe un nombre para este registro.'); return; }
-  // Usar el nombre como clave (limpiando caracteres problemáticos)
-  const key = 'cf_' + nombre.replace(/[^a-zA-Z0-9áéíóúÁÉÍÓÚñÑ \-_()\/]/g, '');
-  const record={
-    fecha: nombre,          // ahora "fecha" es el nombre libre
-    state: JSON.parse(JSON.stringify(state)),
-    totals: totals(),
-    savedAt: new Date().toISOString()
-  };
-  localStorage.setItem(key, JSON.stringify(record));
-  localStorage.removeItem(DRAFT_KEY);
-  locked = true;
-  applyLock();
-  closeModal('modal-save');
-  alert('✅ Registro guardado como "'+nombre+'"\n\nEl día ha sido bloqueado. Ya no se puede modificar ni eliminar la información.');
+  const key=nombre.replace(/[^a-zA-Z0-9áéíóúÁÉÍÓÚñÑ \-_()\/.]/g,'').trim().replace(/ /g,'_');
+  const record={fecha:nombre, state:JSON.parse(JSON.stringify(state)), totals:totals(), savedAt:new Date().toISOString(), savedBy:currentUser.uid, savedByName:currentUserName};
+  try{
+    await db.collection('historial').doc(key).set(record);
+    await db.collection('draft').doc('current').set({locked:true},{merge:true});
+    closeModal('modal-save');
+    alert('✅ Registro guardado como "'+nombre+'"\n\nEl día ha sido bloqueado.');
+  } catch(e){ alert('Error al guardar: '+e.message); }
+}
+
+// ══════════════════════════════════════
+//   NUEVO DÍA
+// ══════════════════════════════════════
+async function newDay(){
+  if(!confirm('¿Iniciar un nuevo día?\n\nEsto eliminará todos los datos actuales del día.\n\nAsegúrate de haber guardado primero.')) return;
+  try{
+    const draftRef=db.collection('draft').doc('current');
+    const [fS,gS,eS,cS]=await Promise.all([
+      draftRef.collection('facturas').get(),
+      draftRef.collection('gastos').get(),
+      draftRef.collection('empleados').get(),
+      draftRef.collection('compras').get()
+    ]);
+    const batch=db.batch();
+    [...fS.docs,...gS.docs,...eS.docs,...cS.docs].forEach(d=>batch.delete(d.ref));
+    batch.set(draftRef,{baseEfectivo:0,baseTr:0,locked:false});
+    await batch.commit();
+    $('base-efectivo').value=''; $('base-tr').value='';
+    unlockUI();
+    locked=false;
+    goTab(0);
+  } catch(e){ alert('Error: '+e.message); }
 }
 
 // ══════════════════════════════════════
 //   HISTORIAL
 // ══════════════════════════════════════
-function renderHistorial(){
-  const keys=Object.keys(localStorage).filter(k=>k.startsWith('cf_')).sort().reverse();
+async function renderHistorial(){
   const div=$('hist-list');
-  if(!keys.length){ div.innerHTML='<div class="empty-msg">No hay registros guardados aún.</div>'; return; }
-  div.innerHTML=keys.map(k=>{
-    const r=JSON.parse(localStorage.getItem(k));
+  div.innerHTML='<div class="empty-msg">Cargando...</div>';
+  try{
+    const snap=await db.collection('historial').orderBy('savedAt','desc').get();
+    if(snap.empty){ div.innerHTML='<div class="empty-msg">No hay registros guardados aún.</div>'; return; }
+    div.innerHTML=snap.docs.map(d=>{
+      const r=d.data(), t=r.totals, col=t.total>=0?'c-green':'c-red';
+      return `<div class="hist-item" onclick="showRecord('${d.id}')">
+        <div class="hist-fecha">📅 ${r.fecha}</div>
+        <div class="hist-info"><span>🧾 ${t.cnt} facturas</span><span>💵 ${fmt(t.ef)}</span><span>🏦 ${fmt(t.tr)}</span><span>💸 Gastos: ${fmt(t.tg)}</span></div>
+        <div class="hist-neto ${col}">Total disponible: ${fmt(t.total)}</div>
+      </div>`;
+    }).join('');
+  } catch(e){ div.innerHTML='<div class="empty-msg">Error al cargar historial.</div>'; }
+}
+
+async function showRecord(docId){
+  currentHistKey=docId;
+  try{
+    const doc=await db.collection('historial').doc(docId).get();
+    if(!doc.exists) return;
+    const r=doc.data();
+    currentHistRecord=r;
     const t=r.totals;
-    const col=t.total>=0?'c-green':'c-red';
-    return `<div class="hist-item" onclick="showRecord('${k}')">
-      <div class="hist-fecha">📅 ${r.fecha}</div>
-      <div class="hist-info">
-        <span>🧾 ${t.cnt} facturas</span>
-        <span>💵 ${fmt(t.ef)}</span>
-        <span>🏦 ${fmt(t.tr)}</span>
-        <span>💸 Gastos: ${fmt(t.tg)}</span>
-      </div>
-      <div class="hist-neto ${col}">Total disponible: ${fmt(t.total)}</div>
-    </div>`;
-  }).join('');
+    $('hist-modal-fecha').textContent=r.fecha;
+    const rows=(items,cols)=>items.length
+      ?`<table style="width:100%;font-size:0.82rem;border-collapse:collapse"><thead><tr>${cols.map(c=>`<th style="padding:4px 6px;text-align:left;color:var(--gray);font-size:0.7rem;text-transform:uppercase">${c}</th>`).join('')}</tr></thead><tbody>${items.map(row=>`<tr>${row.map(c=>`<td style="padding:5px 6px;border-bottom:1px solid #f0f4f8">${c}</td>`).join('')}</tr>`).join('')}</tbody></table>`
+      :'<p style="color:var(--gray);font-size:0.82rem">Sin datos</p>';
+
+    // Facturas render
+    let factRows=[];
+    (r.state.facturas||[]).forEach(f=>{
+      if(!f.mixto){ factRows.push([f.num,f.desc||'—',fmt(f.monto||0),f.tipo==='efectivo'?'Ef':'Tr']); }
+      else{
+        const efT=f.pagos.filter(p=>p.tipo==='efectivo').reduce((s,p)=>s+p.monto,0);
+        const trs=f.pagos.filter(p=>p.tipo==='transferencia');
+        if(efT>0) factRows.push([f.num,f.desc||'—',fmt(efT),'Ef']);
+        trs.forEach((p,ti)=>factRows.push([`${f.num}-${ti+1}`,f.desc||'—',fmt(p.monto),'Tr']));
+      }
+    });
+
+    $('hist-modal-body').innerHTML=`
+      <p style="font-size:0.78rem;color:var(--gray);margin-bottom:12px">Guardado el: ${new Date(r.savedAt).toLocaleString('es-CO')}${r.savedByName?' por '+r.savedByName:''}</p>
+      <div style="font-weight:700;margin-bottom:6px;font-size:0.82rem">🧾 Facturas</div>
+      ${rows(factRows,['#Fact','Desc','Monto','Tipo'])}
+      <div style="font-weight:700;margin:12px 0 6px;font-size:0.82rem">💸 Gastos</div>
+      ${rows((r.state.gastos||[]).map(g=>[g.desc,fmt(g.monto)]),['Concepto','Monto'])}
+      <div style="font-weight:700;margin:12px 0 6px;font-size:0.82rem">👷 Empleados</div>
+      ${rows((r.state.empleados||[]).map(e=>[e.nombre,fmt(e.pago),e.tipo==='transferencia'?'🏦 Transferencia':'💵 Efectivo']),['Nombre','Pago','Tipo'])}
+      <div style="font-weight:700;margin:12px 0 6px;font-size:0.82rem">🛒 Compras de caja</div>
+      ${rows((r.state.compras||[]).map(c=>[c.desc,fmt(c.monto),c.tipo==='efectivo'?'💵 Efectivo':'🏦 Transferencia']),['Ítem','Valor','Tipo'])}
+      <hr class="divider"/>
+      <div style="font-size:0.84rem;display:flex;flex-direction:column;gap:4px">
+        <div style="font-weight:700;color:#4a5568;margin-bottom:2px">🏪 Venta del día</div>
+        <div style="display:flex;justify-content:space-between"><span style="color:#276749">💵 Efectivo ingresado</span><strong style="color:#276749">${fmt(t.ef)}</strong></div>
+        <div style="display:flex;justify-content:space-between"><span style="color:#2b6cb0">🏦 Transferencias</span><strong style="color:#2b6cb0">${fmt(t.tr)}</strong></div>
+        <div style="display:flex;justify-content:space-between;font-weight:800;font-size:0.92rem;background:#f0fff4;padding:7px 10px;border-radius:8px;margin-top:2px"><span>🏪 Venta del día</span><span style="color:#276749">${fmt(t.ventaDia||t.bruto)}</span></div>
+        <div style="font-weight:700;color:#4a5568;margin-top:10px;margin-bottom:2px">📊 Neto del día</div>
+        <div style="display:flex;justify-content:space-between"><span>💵 Efectivo ingresado</span><span>${fmt(t.ef)}</span></div>
+        <div style="display:flex;justify-content:space-between;color:var(--red)"><span>&nbsp;&nbsp;(−) Gastos</span><span>${fmt(t.tg)}</span></div>
+        <div style="display:flex;justify-content:space-between;color:#c05621"><span>&nbsp;&nbsp;(−) Empleados (ef)</span><span>${fmt(t.teEf||0)}</span></div>
+        <div style="display:flex;justify-content:space-between;font-weight:700;border-top:1px dashed #c6f6d5;padding-top:4px;color:#276749"><span>= Efectivo neto</span><span>${fmt(t.efNeto)}</span></div>
+        <div style="display:flex;justify-content:space-between;margin-top:6px"><span style="color:#2b6cb0">🏦 Transferencias</span><span>${fmt(t.tr)}</span></div>
+        <div style="display:flex;justify-content:space-between;color:#c05621"><span>&nbsp;&nbsp;(−) Empleados (tr)</span><span>${fmt(t.teTr||0)}</span></div>
+        <div style="display:flex;justify-content:space-between;font-weight:700;border-top:1px dashed #bee3f8;padding-top:4px;color:#2b6cb0"><span>= Transferencias netas</span><span>${fmt(t.trNeto||0)}</span></div>
+        <div style="display:flex;justify-content:space-between;font-weight:800;font-size:0.92rem;background:#ebf8ff;padding:7px 10px;border-radius:8px;margin-top:2px"><span>📊 Neto del día</span><span style="color:#2b6cb0">${fmt(t.netoDia||0)}</span></div>
+        <div style="font-weight:700;color:#4a5568;margin-top:10px;margin-bottom:4px">🏧 Caja</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:3px;font-size:0.78rem;margin-bottom:2px"><span></span><span style="text-align:right;font-weight:700;color:var(--gray)">💵 Ef.</span><span style="text-align:right;font-weight:700;color:var(--gray)">🏦 Tr.</span></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:3px;padding-bottom:4px;border-bottom:1px solid #f0f4f8"><span style="color:var(--gray)">Base inicial</span><span style="text-align:right;color:#276749;font-weight:700">${fmt(t.baseEf||0)}</span><span style="text-align:right;color:#2b6cb0;font-weight:700">${fmt(t.baseTr||0)}</span></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:3px;padding-bottom:4px;border-bottom:1px solid #f0f4f8"><span style="color:var(--red)">Compras</span><span style="text-align:right;color:var(--red);font-weight:700">${fmt(t.tcEf||0)}</span><span style="text-align:right;color:var(--red);font-weight:700">${fmt(t.tcTr||0)}</span></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:3px;margin-bottom:4px"><span style="font-weight:700">Saldo caja</span><span style="text-align:right;color:#276749;font-weight:700">${fmt(t.saldoCajaEf||0)}</span><span style="text-align:right;color:#2b6cb0;font-weight:700">${fmt(t.saldoCajaTr||0)}</span></div>
+        <div style="display:flex;justify-content:space-between;font-weight:800;font-size:0.9rem;background:#faf5ff;padding:7px 10px;border-radius:8px;color:#553c9a"><span>🏧 Total caja</span><span>${fmt(t.saldoCaja||0)}</span></div>
+        <div style="display:flex;justify-content:space-between;margin-top:8px;color:#276749"><span>💵 Ef. neto</span><span>${fmt(t.efNeto||0)}</span></div>
+        <div style="display:flex;justify-content:space-between;color:#276749"><span>&nbsp;&nbsp;(+) Saldo caja ef.</span><span>${fmt(t.saldoCajaEf||0)}</span></div>
+        <div style="display:flex;justify-content:space-between;font-weight:800;background:#f0fff4;padding:6px 10px;border-radius:8px;margin-bottom:6px;color:#276749"><span>💵 Disponible efectivo</span><span>${fmt(t.dispEf||0)}</span></div>
+        <div style="display:flex;justify-content:space-between;color:#2b6cb0"><span>🏦 Tr. netas</span><span>${fmt(t.trNeto||0)}</span></div>
+        <div style="display:flex;justify-content:space-between;color:#2b6cb0"><span>&nbsp;&nbsp;(+) Saldo caja tr.</span><span>${fmt(t.saldoCajaTr||0)}</span></div>
+        <div style="display:flex;justify-content:space-between;font-weight:800;background:#ebf8ff;padding:6px 10px;border-radius:8px;margin-bottom:8px;color:#2b6cb0"><span>🏦 Disponible transferencias</span><span>${fmt(t.dispTr||0)}</span></div>
+        <div style="display:flex;justify-content:space-between;font-size:1rem;font-weight:800;border-top:2px solid var(--border);padding-top:8px;color:${t.total>=0?'#276749':'var(--red)'}"><span>💼 Total disponible</span><span>${fmt(t.total)}</span></div>
+      </div>`;
+    openModal('modal-hist');
+  } catch(e){ alert('Error al cargar el registro: '+e.message); }
 }
 
-function showRecord(key){
-  currentHistKey=key;
-  const r=JSON.parse(localStorage.getItem(key));
-  const t=r.totals;
-  $('hist-modal-fecha').textContent=r.fecha;
-
-  const rows = (items, cols) => items.length
-    ? `<table style="width:100%;font-size:0.82rem;border-collapse:collapse">
-        <thead><tr>${cols.map(c=>`<th style="padding:4px 6px;text-align:left;color:var(--gray);font-size:0.7rem;text-transform:uppercase">${c}</th>`).join('')}</tr></thead>
-        <tbody>${items.map(row=>`<tr>${row.map(c=>`<td style="padding:5px 6px;border-bottom:1px solid #f0f4f8">${c}</td>`).join('')}</tr>`).join('')}</tbody>
-       </table>`
-    : '<p style="color:var(--gray);font-size:0.82rem">Sin datos</p>';
-
-  $('hist-modal-body').innerHTML=`
-    <p style="font-size:0.78rem;color:var(--gray);margin-bottom:12px">Guardado el: ${new Date(r.savedAt).toLocaleString('es-CO')}</p>
-
-    <div style="font-weight:700;margin-bottom:6px;font-size:0.82rem">🧾 Facturas</div>
-    ${rows(r.state.facturas.map(f=>[f.num,f.desc||'—',fmt(f.monto),f.tipo==='efectivo'?'Ef':'Tr']),['#Fact','Desc','Monto','Tipo'])}
-
-    <div style="font-weight:700;margin:12px 0 6px;font-size:0.82rem">💸 Gastos</div>
-    ${rows(r.state.gastos.map(g=>[g.desc,fmt(g.monto)]),['Concepto','Monto'])}
-
-    <div style="font-weight:700;margin:12px 0 6px;font-size:0.82rem">👷 Empleados</div>
-    ${rows(r.state.empleados.map(e=>[e.nombre,fmt(e.pago),e.tipo==='transferencia'?'🏦 Transferencia':'💵 Efectivo']),['Nombre','Pago','Tipo'])}
-
-    <div style="font-weight:700;margin:12px 0 6px;font-size:0.82rem">🛒 Compras de caja</div>
-    ${rows(r.state.compras.map(c=>[c.desc,fmt(c.monto),c.tipo==='efectivo'?'💵 Efectivo':'🏦 Transferencia']),['Ítem','Valor','Tipo'])}
-
-    <hr class="divider"/>
-    <div style="font-size:0.84rem;display:flex;flex-direction:column;gap:4px">
-
-      <!-- Venta del día -->
-      <div style="font-weight:700;color:#4a5568;margin-bottom:2px">🏪 Venta del día</div>
-      <div style="display:flex;justify-content:space-between"><span style="color:#276749">💵 Efectivo ingresado</span><strong style="color:#276749">${fmt(t.ef)}</strong></div>
-      <div style="display:flex;justify-content:space-between"><span style="color:#2b6cb0">🏦 Transferencias ingresadas</span><strong style="color:#2b6cb0">${fmt(t.tr)}</strong></div>
-      <div style="display:flex;justify-content:space-between;font-weight:800;font-size:0.92rem;background:#f0fff4;padding:7px 10px;border-radius:8px;margin-top:2px">
-        <span>🏪 Venta del día</span><span style="color:#276749">${fmt(t.ventaDia||t.bruto)}</span>
-      </div>
-
-      <!-- Neto del día -->
-      <div style="font-weight:700;color:#4a5568;margin-top:10px;margin-bottom:2px">📊 Neto del día</div>
-      <div style="display:flex;justify-content:space-between"><span style="color:#276749">💵 Efectivo ingresado</span><span>${fmt(t.ef)}</span></div>
-      <div style="display:flex;justify-content:space-between;color:var(--red)"><span>&nbsp;&nbsp;(−) Gastos</span><span>${fmt(t.tg)}</span></div>
-      <div style="display:flex;justify-content:space-between;color:#c05621"><span>&nbsp;&nbsp;(−) Empleados (ef)</span><span>${fmt(t.teEf!==undefined?t.teEf:t.te)}</span></div>
-      <div style="display:flex;justify-content:space-between;font-weight:700;border-top:1px dashed #c6f6d5;padding-top:4px;color:#276749"><span>= Efectivo neto</span><span>${fmt(t.efNeto)}</span></div>
-      <div style="display:flex;justify-content:space-between;margin-top:6px"><span style="color:#2b6cb0">🏦 Transferencias ingresadas</span><span>${fmt(t.tr)}</span></div>
-      <div style="display:flex;justify-content:space-between;color:#c05621"><span>&nbsp;&nbsp;(−) Empleados (tr)</span><span>${fmt(t.teTr||0)}</span></div>
-      <div style="display:flex;justify-content:space-between;font-weight:700;border-top:1px dashed #bee3f8;padding-top:4px;color:#2b6cb0"><span>= Transferencias netas</span><span>${fmt(t.trNeto!==undefined?t.trNeto:t.tr)}</span></div>
-      <div style="display:flex;justify-content:space-between;font-weight:800;font-size:0.92rem;background:#ebf8ff;padding:7px 10px;border-radius:8px;margin-top:2px">
-        <span>📊 Neto del día</span><span style="color:#2b6cb0">${fmt(t.netoDia!==undefined?t.netoDia:(t.efNeto+(t.trNeto||t.tr)))}</span>
-      </div>
-
-      <!-- Caja -->
-      <div style="font-weight:700;color:#4a5568;margin-top:10px;margin-bottom:4px">🏧 Caja</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:3px;font-size:0.78rem;margin-bottom:2px">
-        <span style="color:var(--gray)"></span>
-        <span style="text-align:right;font-weight:700;color:var(--gray)">💵 Ef.</span>
-        <span style="text-align:right;font-weight:700;color:var(--gray)">🏦 Tr.</span>
-      </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:3px;padding-bottom:4px;border-bottom:1px solid #f0f4f8">
-        <span style="color:var(--gray)">Base inicial</span>
-        <span style="text-align:right;color:#276749;font-weight:700">${fmt(t.baseEf||0)}</span>
-        <span style="text-align:right;color:#2b6cb0;font-weight:700">${fmt(t.baseTr||0)}</span>
-      </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:3px;padding-bottom:4px;border-bottom:1px solid #f0f4f8">
-        <span style="color:var(--red)">Compras</span>
-        <span style="text-align:right;color:var(--red);font-weight:700">${fmt(t.tcEf||0)}</span>
-        <span style="text-align:right;color:var(--red);font-weight:700">${fmt(t.tcTr||0)}</span>
-      </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:3px;margin-bottom:4px">
-        <span style="font-weight:700">Saldo caja</span>
-        <span style="text-align:right;color:#276749;font-weight:700">${fmt(t.saldoCajaEf!==undefined?t.saldoCajaEf:t.saldoCaja)}</span>
-        <span style="text-align:right;color:#2b6cb0;font-weight:700">${fmt(t.saldoCajaTr||0)}</span>
-      </div>
-      <div style="display:flex;justify-content:space-between;font-weight:800;font-size:0.9rem;background:#faf5ff;padding:7px 10px;border-radius:8px;color:#553c9a">
-        <span>🏧 Total caja</span><span>${fmt(t.saldoCaja)}</span>
-      </div>
-
-      <!-- Disponible por flujo -->
-      <div style="display:flex;justify-content:space-between;margin-bottom:3px;color:#276749"><span>💵 Ef. neto</span><span>${fmt(t.efNeto)}</span></div>
-      <div style="display:flex;justify-content:space-between;margin-bottom:3px;color:#276749"><span>&nbsp;&nbsp;(+) Saldo caja ef.</span><span>${fmt(t.saldoCajaEf!==undefined?t.saldoCajaEf:0)}</span></div>
-      <div style="display:flex;justify-content:space-between;font-weight:800;background:#f0fff4;padding:6px 10px;border-radius:8px;margin-bottom:6px;color:#276749">
-        <span>💵 Disponible efectivo</span><span>${fmt(t.dispEf!==undefined?t.dispEf:(t.efNeto+(t.saldoCajaEf||0)))}</span>
-      </div>
-      <div style="display:flex;justify-content:space-between;margin-bottom:3px;color:#2b6cb0"><span>🏦 Tr. netas</span><span>${fmt(t.trNeto!==undefined?t.trNeto:t.tr)}</span></div>
-      <div style="display:flex;justify-content:space-between;margin-bottom:3px;color:#2b6cb0"><span>&nbsp;&nbsp;(+) Saldo caja tr.</span><span>${fmt(t.saldoCajaTr||0)}</span></div>
-      <div style="display:flex;justify-content:space-between;font-weight:800;background:#ebf8ff;padding:6px 10px;border-radius:8px;margin-bottom:8px;color:#2b6cb0">
-        <span>🏦 Disponible transferencias</span><span>${fmt(t.dispTr!==undefined?t.dispTr:((t.trNeto||t.tr)+(t.saldoCajaTr||0)))}</span>
-      </div>
-      <!-- Total disponible -->
-      <div style="display:flex;justify-content:space-between;font-size:1rem;font-weight:800;border-top:2px solid var(--border);padding-top:8px;margin-top:4px;color:${t.total>=0?'#276749':'var(--red)'}">
-        <span>💼 Total disponible</span><span>${fmt(t.total)}</span>
-      </div>
-    </div>`;
-  openModal('modal-hist');
-}
-
-function deleteRecord(){
+async function deleteRecord(){
   if(!confirm('¿Eliminar este registro?')) return;
-  localStorage.removeItem(currentHistKey);
-  closeModal('modal-hist');
-  renderHistorial();
+  try{ await db.collection('historial').doc(currentHistKey).delete(); closeModal('modal-hist'); renderHistorial(); }
+  catch(e){ alert('Error: '+e.message); }
 }
 
 // ══════════════════════════════════════
-//   HELPER: construir datos Excel
+//   EXCEL EXPORT / IMPORT
 // ══════════════════════════════════════
 function buildExcelData(st, t, fecha) {
-  const data = [];
-  data.push(['CONTROL DE FACTURAS — ' + fmtDate(fecha)]);
+  const data=[];
+  data.push(['CONTROL DE FACTURAS — '+fecha]);
   data.push([]);
-
-  // ── FACTURAS ──
   data.push(['FACTURAS']);
   data.push(['N° Factura','Descripción','Monto','Tipo']);
-  st.facturas.forEach(f => {
-    if(!f.mixto) {
-      data.push([f.num, f.desc||'', f.monto, f.tipo==='efectivo'?'Efectivo':'Transferencia']);
-    } else {
-      const efTotal = f.pagos.filter(p=>p.tipo==='efectivo').reduce((a,p)=>a+p.monto,0);
-      const transfers = f.pagos.filter(p=>p.tipo==='transferencia');
-      if(efTotal > 0) data.push([f.num, f.desc||'', efTotal, 'Efectivo']);
-      transfers.forEach((p,ti) => data.push([`${f.num}-${ti+1}`, f.desc||'', p.monto, 'Transferencia']));
+  st.facturas.forEach(f=>{
+    if(!f.mixto){ data.push([f.num,f.desc||'',f.monto,f.tipo==='efectivo'?'Efectivo':'Transferencia']); }
+    else{
+      const efTotal=f.pagos.filter(p=>p.tipo==='efectivo').reduce((a,p)=>a+p.monto,0);
+      const transfers=f.pagos.filter(p=>p.tipo==='transferencia');
+      if(efTotal>0) data.push([f.num,f.desc||'',efTotal,'Efectivo']);
+      transfers.forEach((p,ti)=>data.push([`${f.num}-${ti+1}`,f.desc||'',p.monto,'Transferencia']));
     }
   });
-  data.push(['','Total Efectivo', t.ef]);
-  data.push(['','Total Transferencias', t.tr]);
-  data.push(['','TOTAL BRUTO', t.bruto]);
-  data.push([]);
-
-  // ── GASTOS ──
-  data.push(['GASTOS DEL DÍA']);
-  data.push(['Concepto','Monto']);
-  st.gastos.forEach(g => data.push([g.desc, g.monto]));
-  data.push(['TOTAL GASTOS', t.tg]);
-  data.push([]);
-
-  // ── EMPLEADOS ──
-  data.push(['PAGO A EMPLEADOS']);
-  data.push(['Empleado','Pago','Tipo']);
-  st.empleados.forEach(e => data.push([e.nombre, e.pago, e.tipo==='transferencia'?'Transferencia':'Efectivo']));
-  data.push(['TOTAL EMPLEADOS EFECTIVO', t.teEf]);
-  data.push(['TOTAL EMPLEADOS TRANSFERENCIAS', t.teTr]);
-  data.push([]);
-
-  // ── CAJA ──
-  data.push(['CAJA / COMPRAS']);
-  data.push(['Base efectivo', t.baseEf]);
-  data.push(['Base transferencias', t.baseTr]);
+  data.push(['','Total Efectivo',t.ef]); data.push(['','Total Transferencias',t.tr]); data.push(['','TOTAL BRUTO',t.bruto]); data.push([]);
+  data.push(['GASTOS DEL DÍA']); data.push(['Concepto','Monto']);
+  st.gastos.forEach(g=>data.push([g.desc,g.monto]));
+  data.push(['TOTAL GASTOS',t.tg]); data.push([]);
+  data.push(['PAGO A EMPLEADOS']); data.push(['Empleado','Pago','Tipo']);
+  st.empleados.forEach(e=>data.push([e.nombre,e.pago,e.tipo==='transferencia'?'Transferencia':'Efectivo']));
+  data.push(['TOTAL EMPLEADOS EFECTIVO',t.teEf]); data.push(['TOTAL EMPLEADOS TRANSFERENCIAS',t.teTr]); data.push([]);
+  data.push(['CAJA / COMPRAS']); data.push(['Base efectivo',t.baseEf]); data.push(['Base transferencias',t.baseTr]);
   data.push(['Ítem','Valor','Tipo']);
-  st.compras.forEach(c => data.push([c.desc, c.monto, c.tipo==='efectivo'?'Efectivo':'Transferencia']));
-  data.push(['TOTAL COMPRAS EFECTIVO', t.tcEf]);
-  data.push(['TOTAL COMPRAS TRANSFERENCIAS', t.tcTr]);
-  data.push(['SALDO CAJA EFECTIVO', t.saldoCajaEf]);
-  data.push(['SALDO CAJA TRANSFERENCIAS', t.saldoCajaTr]);
-  data.push(['SALDO CAJA TOTAL', t.saldoCaja]);
-  data.push([]);
-
-  // ── RESUMEN FINAL ──
-  data.push(['RESUMEN FINAL']);
-  data.push([]);
-  data.push(['--- Venta del día ---']);
-  data.push(['Efectivo ingresado', t.ef]);
-  data.push(['Transferencias ingresadas', t.tr]);
-  data.push(['VENTA DEL DÍA', t.ventaDia]);
-  data.push([]);
-  data.push(['--- Neto del día ---']);
-  data.push(['Efectivo ingresado', t.ef]);
-  data.push(['(−) Gastos del día', t.tg]);
-  data.push(['(−) Empleados efectivo', t.teEf]);
-  data.push(['= Efectivo neto', t.efNeto]);
-  data.push(['Transferencias ingresadas', t.tr]);
-  data.push(['(−) Empleados transferencias', t.teTr]);
-  data.push(['= Transferencias netas', t.trNeto]);
-  data.push(['NETO DEL DÍA', t.netoDia]);
-  data.push([]);
-  data.push(['--- Total disponible ---']);
-  data.push(['Efectivo neto', t.efNeto]);
-  data.push(['(+) Saldo caja efectivo', t.saldoCajaEf]);
-  data.push(['= Disponible efectivo', t.dispEf]);
-  data.push(['Transferencias netas', t.trNeto]);
-  data.push(['(+) Saldo caja transferencias', t.saldoCajaTr]);
-  data.push(['= Disponible transferencias', t.dispTr]);
-  data.push(['TOTAL DISPONIBLE', t.total]);
-
+  st.compras.forEach(c=>data.push([c.desc,c.monto,c.tipo==='efectivo'?'Efectivo':'Transferencia']));
+  data.push(['TOTAL COMPRAS EFECTIVO',t.tcEf]); data.push(['TOTAL COMPRAS TRANSFERENCIAS',t.tcTr]);
+  data.push(['SALDO CAJA EFECTIVO',t.saldoCajaEf]); data.push(['SALDO CAJA TRANSFERENCIAS',t.saldoCajaTr]); data.push(['SALDO CAJA TOTAL',t.saldoCaja]); data.push([]);
+  data.push(['RESUMEN FINAL']); data.push([]);
+  data.push(['--- Venta del día ---']); data.push(['Efectivo ingresado',t.ef]); data.push(['Transferencias ingresadas',t.tr]); data.push(['VENTA DEL DÍA',t.ventaDia]); data.push([]);
+  data.push(['--- Neto del día ---']); data.push(['Efectivo ingresado',t.ef]); data.push(['(−) Gastos del día',t.tg]); data.push(['(−) Empleados efectivo',t.teEf]); data.push(['= Efectivo neto',t.efNeto]);
+  data.push(['Transferencias ingresadas',t.tr]); data.push(['(−) Empleados transferencias',t.teTr]); data.push(['= Transferencias netas',t.trNeto]); data.push(['NETO DEL DÍA',t.netoDia]); data.push([]);
+  data.push(['--- Total disponible ---']); data.push(['Efectivo neto',t.efNeto]); data.push(['(+) Saldo caja efectivo',t.saldoCajaEf]); data.push(['= Disponible efectivo',t.dispEf]);
+  data.push(['Transferencias netas',t.trNeto]); data.push(['(+) Saldo caja transferencias',t.saldoCajaTr]); data.push(['= Disponible transferencias',t.dispTr]); data.push(['TOTAL DISPONIBLE',t.total]);
   return data;
 }
 
+function exportExcel(){
+  const nombre=prompt('¿Con qué nombre quieres guardar el archivo Excel?','facturas_'+today());
+  if(!nombre) return;
+  const t=totals(), data=buildExcelData(state,t,nombre);
+  const wb=XLSX.utils.book_new(), ws=XLSX.utils.aoa_to_sheet(data);
+  ws['!cols']=[{wch:32},{wch:18},{wch:14},{wch:14}];
+  XLSX.utils.book_append_sheet(wb,ws,'Resumen');
+  XLSX.writeFile(wb,nombre+'.xlsx');
+}
+
 function exportExcelFromRecord(){
-  if(!currentHistKey) return;
-  const r = JSON.parse(localStorage.getItem(currentHistKey));
-  if(!r) return;
-  // Recalcular totals desde el state guardado para garantizar campos nuevos
-  const savedState = r.state;
-  // Normalizar campos que podrían faltar en registros viejos
-  savedState.compras.forEach(c => { if(!c.tipo) c.tipo='efectivo'; });
-  savedState.empleados.forEach(e => { if(!e.tipo) e.tipo='efectivo'; });
-  if(!savedState.baseEfectivo && savedState.baseDinero) { savedState.baseEfectivo=savedState.baseDinero; savedState.baseTr=0; }
+  if(!currentHistRecord) return;
+  const r=currentHistRecord;
+  const savedState=r.state;
+  savedState.compras.forEach(c=>{if(!c.tipo)c.tipo='efectivo';});
+  savedState.empleados.forEach(e=>{if(!e.tipo)e.tipo='efectivo';});
   if(!savedState.baseEfectivo) savedState.baseEfectivo=0;
   if(!savedState.baseTr) savedState.baseTr=0;
-  // Calcular totals frescos desde el state
-  const origState = state;
-  state = savedState;
-  const t = totals();
-  state = origState;
-
-  const nombreDefault = r.fecha.replace(/[\/\\:*?"<>|]/g,'_');
-  const nombre = prompt('¿Con qué nombre quieres guardar el archivo Excel?', nombreDefault);
+  const origState=state; state=savedState; const t=totals(); state=origState;
+  const nombre=prompt('¿Con qué nombre quieres guardar el Excel?', r.fecha.replace(/[\/\\:*?"<>|]/g,'_'));
   if(!nombre) return;
-  const data = buildExcelData(savedState, t, r.fecha);
-  const wb = XLSX.utils.book_new();
-  const ws = XLSX.utils.aoa_to_sheet(data);
-  ws['!cols'] = [{wch:32},{wch:18},{wch:14},{wch:14}];
-  XLSX.utils.book_append_sheet(wb, ws, 'Resumen');
-  XLSX.writeFile(wb, nombre+'.xlsx');
+  const data=buildExcelData(savedState,t,r.fecha);
+  const wb=XLSX.utils.book_new(), ws=XLSX.utils.aoa_to_sheet(data);
+  ws['!cols']=[{wch:32},{wch:18},{wch:14},{wch:14}];
+  XLSX.utils.book_append_sheet(wb,ws,'Resumen');
+  XLSX.writeFile(wb,nombre+'.xlsx');
 }
 
-// ══════════════════════════════════════
-//   EXPORT EXCEL
-// ══════════════════════════════════════
-function exportExcel(){
-  const nombre = prompt('¿Con qué nombre quieres guardar el archivo Excel?', 'facturas_'+today());
-  if(!nombre) return;
-  const t = totals();
-  const data = buildExcelData(state, t, nombre);
-  const wb = XLSX.utils.book_new();
-  const ws = XLSX.utils.aoa_to_sheet(data);
-  ws['!cols'] = [{wch:32},{wch:18},{wch:14},{wch:14}];
-  XLSX.utils.book_append_sheet(wb, ws, 'Resumen');
-  XLSX.writeFile(wb, nombre+'.xlsx');
-}
-
-// ══════════════════════════════════════
-//   IMPORT EXCEL
-// ══════════════════════════════════════
-function importExcel(){
-  if(locked){ alert('El día está bloqueado. No se puede importar.'); return; }
-  $('import-file').click();
-}
+function importExcel(){ if(locked){alert('El día está bloqueado. No se puede importar.');return;} $('import-file').click(); }
 
 function handleImport(e){
-  const file = e.target.files[0];
-  if(!file) return;
-  const reader = new FileReader();
-  reader.onload = evt => {
-    try {
-      const wb   = XLSX.read(evt.target.result, {type:'array'});
-      const ws   = wb.Sheets[wb.SheetNames[0]];
-      const rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:''});
-      parseImport(rows);
-    } catch(err) { alert('Error al leer el archivo: '+err.message); }
-    e.target.value = '';
+  const file=e.target.files[0]; if(!file) return;
+  const reader=new FileReader();
+  reader.onload=evt=>{
+    try{ const wb=XLSX.read(evt.target.result,{type:'array'}); const ws=wb.Sheets[wb.SheetNames[0]]; const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''}); parseImport(rows); }
+    catch(err){ alert('Error al leer el archivo: '+err.message); }
+    e.target.value='';
   };
   reader.readAsArrayBuffer(file);
 }
 
-function parseImport(rows){
-  const parseVal = v => parseFloat(String(v||'0').replace(/\./g,'').replace(',','.')) || 0;
-  const findSec  = name => rows.findIndex(r => String(r[0]||'').trim().toUpperCase() === name.toUpperCase());
-
-  const iF = findSec('FACTURAS');
-  const iG = findSec('GASTOS DEL DÍA');
-  const iE = findSec('PAGO A EMPLEADOS');
-  const iC = findSec('CAJA / COMPRAS');
-  const iR = findSec('RESUMEN FINAL');
-
-  // Devuelve filas de datos entre start+2 y end, saltando vacías
-  const getRows = (start, end) => {
-    if(start < 0) return [];
-    const res = [];
-    for(let i = start+2; i < (end>0?end:rows.length); i++){
-      const c0 = String(rows[i][0]||'').trim();
-      const c1 = String(rows[i][1]||'').trim();
-      if(!c0 && !c1) continue;
-      res.push(rows[i]);
-    }
-    return res;
-  };
-
-  // ── FACTURAS ──
-  const fRows  = getRows(iF, iG>0?iG:iE>0?iE:iC>0?iC:iR>0?iR:rows.length);
-  const baseMap = {}, order = [];
-  fRows.forEach(r => {
-    const num  = String(r[0]||'').trim();
-    const desc = String(r[1]||'').trim();
-    const monto = parseVal(r[2]);
-    const tipo  = String(r[3]||'').toLowerCase().includes('trans') ? 'transferencia' : 'efectivo';
-    if(!num || monto <= 0) return;
-    // ignorar filas de totales
-    if(num==='' || desc.toUpperCase().startsWith('TOTAL')) return;
-    const dashIdx = num.lastIndexOf('-');
-    const isSub   = dashIdx > 0 && !isNaN(num.slice(dashIdx+1));
-    const baseNum = isSub ? num.slice(0, dashIdx) : num;
-    if(!baseMap[baseNum]){ baseMap[baseNum]={desc,ef:[],tr:[]}; order.push(baseNum); }
-    if(tipo==='efectivo') baseMap[baseNum].ef.push(monto);
-    else                  baseMap[baseNum].tr.push(monto);
-  });
-  const newFacturas = [];
-  order.forEach(baseNum => {
-    const g = baseMap[baseNum];
-    const isMixto = (g.ef.length > 0 && g.tr.length > 0) || g.tr.length > 1;
-    if(!isMixto && g.ef.length >= 1 && g.tr.length === 0) {
-      newFacturas.push({id:ids.f++, num:baseNum, desc:g.desc, monto:g.ef.reduce((a,b)=>a+b,0), tipo:'efectivo', mixto:false});
-    } else if(!isMixto && g.tr.length === 1 && g.ef.length === 0) {
-      newFacturas.push({id:ids.f++, num:baseNum, desc:g.desc, monto:g.tr[0], tipo:'transferencia', mixto:false});
-    } else {
-      const pagos = [];
-      g.ef.forEach(m => pagos.push({tipo:'efectivo', monto:m}));
-      g.tr.forEach(m => pagos.push({tipo:'transferencia', monto:m}));
-      newFacturas.push({id:ids.f++, num:baseNum, desc:g.desc, total:pagos.reduce((s,p)=>s+p.monto,0), mixto:true, pagos});
-    }
-  });
-
-  // ── GASTOS ──
-  const newGastos = [];
-  getRows(iG, iE>0?iE:iC>0?iC:iR>0?iR:rows.length).forEach(r => {
-    const desc  = String(r[0]||'').trim();
-    const monto = parseVal(r[1]);
-    const up = desc.toUpperCase();
-    if(!desc || monto<=0 || up.startsWith('TOTAL')) return;
-    newGastos.push({id:ids.g++, desc, monto});
-  });
-
-  // ── EMPLEADOS ──
-  const newEmpleados = [];
-  getRows(iE, iC>0?iC:iR>0?iR:rows.length).forEach(r => {
-    const nombre  = String(r[0]||'').trim();
-    const pago    = parseVal(r[1]);
-    const tipoStr = String(r[2]||'').toLowerCase();
-    if(!nombre || pago<=0 || nombre.toUpperCase().startsWith('TOTAL')) return;
-    newEmpleados.push({id:ids.e++, nombre, pago, tipo: tipoStr.includes('trans')?'transferencia':'efectivo'});
-  });
-
-  // ── CAJA ──
-  let newBaseEf = 0, newBaseTr = 0;
-  const newCompras = [];
-  if(iC >= 0){
-    const r1 = rows[iC+1]||[], r2 = rows[iC+2]||[];
-    if(String(r1[0]||'').toLowerCase().includes('efectivo'))  newBaseEf = parseVal(r1[1]);
-    if(String(r2[0]||'').toLowerCase().includes('transfer'))  newBaseTr = parseVal(r2[1]);
-    // iC+3 = header de ítems, datos desde iC+4
-    const end = iR>0?iR:rows.length;
-    const skip = ['total compras','saldo caja','--- saldo'];
-    for(let i=iC+4; i<end; i++){
-      const r    = rows[i];
-      const desc = String(r[0]||'').trim();
-      const monto = parseVal(r[1]);
-      const tipoStr = String(r[2]||'').toLowerCase();
-      if(!desc || monto<=0) continue;
-      if(skip.some(s=>desc.toLowerCase().startsWith(s))) continue;
-      newCompras.push({id:ids.c++, desc, monto, tipo: tipoStr.includes('trans')?'transferencia':'efectivo'});
-    }
-  }
-
-  // ── Aplicar al estado ──
-  if(!newFacturas.length && !newGastos.length && !newEmpleados.length){
-    alert('No se encontraron datos en el archivo. Verifica que sea un Excel exportado desde esta app.');
-    return;
-  }
-
-  state.facturas     = newFacturas;
-  state.gastos       = newGastos;
-  state.empleados    = newEmpleados;
-  state.compras      = newCompras;
-  state.baseEfectivo = newBaseEf;
-  state.baseTr       = newBaseTr;
-
-  if(newBaseEf > 0)
-    $('base-efectivo').value = newBaseEf.toString().replace(/\B(?=(\d{3})+(?!\d))/g,'.');
-  if(newBaseTr > 0)
-    $('base-tr').value = newBaseTr.toString().replace(/\B(?=(\d{3})+(?!\d))/g,'.');
-
-  renderFacturas(); updateFacturaNumField();
-  renderGastos();
-  renderEmpleados();
-  renderCaja();
-  saveDraft();   // guardar el estado importado como nuevo borrador
-
-  alert(`✅ Importado correctamente:\n• ${newFacturas.length} facturas\n• ${newGastos.length} gastos\n• ${newEmpleados.length} empleados\n• ${newCompras.length} compras de caja`);
+async function parseImport(rows){
+  const parseVal=v=>parseFloat(String(v||'0').replace(/\./g,'').replace(',','.'))||0;
+  const findSec=name=>rows.findIndex(r=>String(r[0]||'').trim().toUpperCase()===name.toUpperCase());
+  const iF=findSec('FACTURAS'), iG=findSec('GASTOS DEL DÍA'), iE=findSec('PAGO A EMPLEADOS'), iC=findSec('CAJA / COMPRAS'), iR=findSec('RESUMEN FINAL');
+  const getRows=(start,end)=>{ if(start<0) return []; const res=[]; for(let i=start+2;i<(end>0?end:rows.length);i++){ const c0=String(rows[i][0]||'').trim(),c1=String(rows[i][1]||'').trim(); if(!c0&&!c1) continue; res.push(rows[i]); } return res; };
+  const fRows=getRows(iF,iG>0?iG:iE>0?iE:iC>0?iC:iR>0?iR:rows.length);
+  const baseMap={},order=[];
+  fRows.forEach(r=>{ const num=String(r[0]||'').trim(),desc=String(r[1]||'').trim(),monto=parseVal(r[2]),tipo=String(r[3]||'').toLowerCase().includes('trans')?'transferencia':'efectivo'; if(!num||monto<=0) return; if(desc.toUpperCase().startsWith('TOTAL')) return; const dashIdx=num.lastIndexOf('-'),isSub=dashIdx>0&&!isNaN(num.slice(dashIdx+1)),baseNum=isSub?num.slice(0,dashIdx):num; if(!baseMap[baseNum]){baseMap[baseNum]={desc,ef:[],tr:[]};order.push(baseNum);} if(tipo==='efectivo') baseMap[baseNum].ef.push(monto); else baseMap[baseNum].tr.push(monto); });
+  const newFacturas=[]; order.forEach(bn=>{ const g=baseMap[bn],isMixto=(g.ef.length>0&&g.tr.length>0)||g.tr.length>1; if(!isMixto&&g.ef.length>=1&&g.tr.length===0){ newFacturas.push({num:bn,desc:g.desc,monto:g.ef.reduce((a,b)=>a+b,0),tipo:'efectivo',mixto:false}); } else if(!isMixto&&g.tr.length===1&&g.ef.length===0){ newFacturas.push({num:bn,desc:g.desc,monto:g.tr[0],tipo:'transferencia',mixto:false}); } else{ const pagos=[]; g.ef.forEach(m=>pagos.push({tipo:'efectivo',monto:m})); g.tr.forEach(m=>pagos.push({tipo:'transferencia',monto:m})); newFacturas.push({num:bn,desc:g.desc,total:pagos.reduce((s,p)=>s+p.monto,0),mixto:true,pagos}); } });
+  const newGastos=[]; getRows(iG,iE>0?iE:iC>0?iC:iR>0?iR:rows.length).forEach(r=>{ const desc=String(r[0]||'').trim(),monto=parseVal(r[1]); if(!desc||monto<=0||desc.toUpperCase().startsWith('TOTAL')) return; newGastos.push({desc,monto}); });
+  const newEmpleados=[]; getRows(iE,iC>0?iC:iR>0?iR:rows.length).forEach(r=>{ const nombre=String(r[0]||'').trim(),pago=parseVal(r[1]),tipoStr=String(r[2]||'').toLowerCase(); if(!nombre||pago<=0||nombre.toUpperCase().startsWith('TOTAL')) return; newEmpleados.push({nombre,pago,tipo:tipoStr.includes('trans')?'transferencia':'efectivo'}); });
+  let newBaseEf=0,newBaseTr=0; const newCompras=[];
+  if(iC>=0){ const r1=rows[iC+1]||[],r2=rows[iC+2]||[]; if(String(r1[0]||'').toLowerCase().includes('efectivo')) newBaseEf=parseVal(r1[1]); if(String(r2[0]||'').toLowerCase().includes('transfer')) newBaseTr=parseVal(r2[1]); const end=iR>0?iR:rows.length; const skip=['total compras','saldo caja','--- saldo']; for(let i=iC+4;i<end;i++){ const r=rows[i],desc=String(r[0]||'').trim(),monto=parseVal(r[1]),tipoStr=String(r[2]||'').toLowerCase(); if(!desc||monto<=0) continue; if(skip.some(s=>desc.toLowerCase().startsWith(s))) continue; newCompras.push({desc,monto,tipo:tipoStr.includes('trans')?'transferencia':'efectivo'}); } }
+  if(!newFacturas.length&&!newGastos.length&&!newEmpleados.length){ alert('No se encontraron datos en el archivo.'); return; }
+  try{
+    const draftRef=db.collection('draft').doc('current');
+    const [fS,gS,eS,cS]=await Promise.all([draftRef.collection('facturas').get(),draftRef.collection('gastos').get(),draftRef.collection('empleados').get(),draftRef.collection('compras').get()]);
+    const batch=db.batch();
+    [...fS.docs,...gS.docs,...eS.docs,...cS.docs].forEach(d=>batch.delete(d.ref));
+    batch.set(draftRef,{baseEfectivo:newBaseEf,baseTr:newBaseTr,locked:false},{merge:true});
+    newFacturas.forEach(f=>batch.set(draftRef.collection('facturas').doc(),{...f,createdAt:TS(),createdBy:currentUser.uid}));
+    newGastos.forEach(g=>batch.set(draftRef.collection('gastos').doc(),{...g,createdAt:TS(),createdBy:currentUser.uid}));
+    newEmpleados.forEach(e=>batch.set(draftRef.collection('empleados').doc(),{...e,createdAt:TS(),createdBy:currentUser.uid}));
+    newCompras.forEach(c=>batch.set(draftRef.collection('compras').doc(),{...c,createdAt:TS(),createdBy:currentUser.uid}));
+    await batch.commit();
+    alert(`✅ Importado:\n• ${newFacturas.length} facturas\n• ${newGastos.length} gastos\n• ${newEmpleados.length} empleados\n• ${newCompras.length} compras`);
+  } catch(e){ alert('Error al importar: '+e.message); }
 }
 
 // ══════════════════════════════════════
-//   AUTO-GUARDADO DE BORRADOR
+//   USER MANAGEMENT
 // ══════════════════════════════════════
-const DRAFT_KEY = 'cf_draft';
-
-function saveDraft() {
-  if(locked) return;
-  try {
-    localStorage.setItem(DRAFT_KEY, JSON.stringify({
-      state,
-      ids,
-      savedAt: Date.now()
-    }));
-  } catch(e) { /* localStorage lleno, ignorar */ }
+async function loadUsers(){
+  const div=$('users-list'); if(!div) return;
+  div.innerHTML='<div class="empty-msg">Cargando...</div>';
+  try{
+    const snap=await db.collection('usuarios').get();
+    if(snap.empty){ div.innerHTML='<div class="empty-msg">No hay usuarios registrados.</div>'; return; }
+    div.innerHTML=snap.docs.map(d=>{
+      const u=d.data();
+      const roleBadge=u.role==='admin'?'<span class="role-badge role-admin">Admin</span>':'<span class="role-badge role-mesero">Mesero</span>';
+      return `<div class="user-item">
+        <div class="user-item-info">
+          <div class="user-item-name">${u.nombre||u.username} ${roleBadge}</div>
+          <div class="user-item-sub">@${u.username||u.email}${u.codigoDescuento?' · 🏷️ '+u.codigoDescuento:''}</div>
+        </div>
+        <button class="btn-sm btn-danger" onclick="deleteUserDoc('${d.id}')">✕</button>
+      </div>`;
+    }).join('');
+  } catch(e){ div.innerHTML='<div class="empty-msg">Error al cargar usuarios.</div>'; }
 }
 
-function loadDraft() {
-  try {
-    const raw = localStorage.getItem(DRAFT_KEY);
-    if(!raw) return false;
-    const draft = JSON.parse(raw);
-    if(!draft.state) return false;
-
-    state = draft.state;
-    // migrar datos viejos que usen baseDinero
-    if(state.baseDinero !== undefined && !state.baseEfectivo){
-      state.baseEfectivo = state.baseDinero;
-      state.baseTr = 0;
-      delete state.baseDinero;
-    }
-    if(!state.baseEfectivo) state.baseEfectivo = 0;
-    if(!state.baseTr)       state.baseTr = 0;
-    // migrar compras y empleados viejos sin tipo
-    state.compras.forEach(c => { if(!c.tipo) c.tipo='efectivo'; });
-    state.empleados.forEach(e => { if(!e.tipo) e.tipo='efectivo'; });
-    ids = draft.ids || ids;
-
-    // Restaurar campos base
-    if(state.baseEfectivo > 0)
-      $('base-efectivo').value = state.baseEfectivo.toString().replace(/\B(?=(\d{3})+(?!\d))/g,'.');
-    if(state.baseTr > 0)
-      $('base-tr').value = state.baseTr.toString().replace(/\B(?=(\d{3})+(?!\d))/g,'.');
-
-    renderFacturas(); updateFacturaNumField();
-    renderGastos();
-    renderEmpleados();
-    renderCaja();
-
-    // Mostrar aviso discreto
-    const banner = document.createElement('div');
-    banner.style.cssText = 'position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:#2d3748;color:#fff;padding:8px 16px;border-radius:20px;font-size:0.78rem;z-index:999;box-shadow:0 2px 8px rgba(0,0,0,0.3)';
-    banner.textContent = '📋 Borrador restaurado automáticamente';
-    document.body.appendChild(banner);
-    setTimeout(() => banner.remove(), 3000);
-    return true;
-  } catch(e) { return false; }
+function showCreateUser(){
+  ['nu-nombre','nu-user','nu-pass','nu-codigo'].forEach(id=>$(id).value='');
+  $('nu-role').value='mesero'; $('nu-error').textContent='';
+  openModal('modal-create-user');
 }
 
-// Guardar borrador cada vez que cambia el estado
-function afterChange() { saveDraft(); }
+async function createUser(){
+  const nombre=$('nu-nombre').value.trim(), username=$('nu-user').value.trim().toLowerCase(), pass=$('nu-pass').value, role=$('nu-role').value, codigo=$('nu-codigo').value.trim();
+  $('nu-error').textContent='';
+  if(!nombre||!username||!pass){ $('nu-error').textContent='Completa todos los campos requeridos.'; return; }
+  if(pass.length<6){ $('nu-error').textContent='La contraseña debe tener al menos 6 caracteres.'; return; }
+  const email=username+'@salchimonster.app';
+  const btn=$('btn-create-user'); btn.disabled=true; btn.textContent='Creando...';
+  try{
+    if(!secondaryApp) secondaryApp=firebase.initializeApp(firebaseConfig,'secondary');
+    const secAuth=secondaryApp.auth();
+    const cred=await secAuth.createUserWithEmailAndPassword(email,pass);
+    const uid=cred.user.uid;
+    await secAuth.signOut();
+    await db.collection('usuarios').doc(uid).set({nombre,username,email,role,codigoDescuento:codigo,createdAt:TS()});
+    closeModal('modal-create-user');
+    loadUsers();
+    alert('✅ Usuario "'+nombre+'" creado correctamente.\nPodrá ingresar con:\nUsuario: '+username+'\nContraseña: la que ingresaste');
+  } catch(e){
+    $('nu-error').textContent=e.code==='auth/email-already-in-use'?'Ese usuario ya existe.':'Error: '+e.message;
+  } finally{ btn.disabled=false; btn.textContent='Crear usuario'; }
+}
 
-// Parchar todas las funciones de mutación para auto-guardar
-const _renderF = renderFacturas;
-renderFacturas = function(){ _renderF(); saveDraft(); };
-const _renderG = renderGastos;
-renderGastos = function(){ _renderG(); saveDraft(); };
-const _renderE = renderEmpleados;
-renderEmpleados = function(){ _renderE(); saveDraft(); };
-const _renderC = renderCaja;
-renderCaja = function(){ _renderC(); saveDraft(); };
+async function deleteUserDoc(uid){
+  if(!confirm('¿Eliminar este usuario del sistema?\n\nNota: el usuario no podrá volver a ingresar, pero para eliminarlo completamente de la autenticación debes hacerlo desde Firebase Console.')) return;
+  try{ await db.collection('usuarios').doc(uid).delete(); loadUsers(); }
+  catch(e){ alert('Error: '+e.message); }
+}
 
 // ══════════════════════════════════════
 //   MODALS
@@ -1794,13 +1317,6 @@ document.querySelectorAll('.modal-bg').forEach(bg=>{
   bg.addEventListener('click',e=>{ if(e.target===bg) bg.classList.remove('open'); });
 });
 
-// ══════════════════════════════════════
-//   INIT
-// ══════════════════════════════════════
-$('top-date').textContent='Hoy: '+fmtDate(today());
-// Intentar restaurar borrador del día
-loadDraft();
-updateFacturaNumField();
 </script>
 </body>
 </html>
