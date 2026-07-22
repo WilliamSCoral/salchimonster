@@ -537,6 +537,17 @@
         <input type="text" inputmode="numeric" id="e-pago" placeholder="0" oninput="moneyFmt(this)"/>
       </div>
     </div>
+    <div style="margin-top:8px">
+      <label style="font-size:0.8rem;color:var(--gray);display:block;margin-bottom:6px">¿De dónde sale el pago?</label>
+      <div style="display:flex;gap:8px">
+        <button id="btn-etipo-ef" onclick="setEmpleadoTipo('efectivo')" style="flex:1;padding:10px;border-radius:10px;border:2px solid #48bb78;background:#f0fff4;color:#276749;font-weight:700;cursor:pointer;font-size:0.88rem">
+          💵 Efectivo
+        </button>
+        <button id="btn-etipo-tr" onclick="setEmpleadoTipo('transferencia')" style="flex:1;padding:10px;border-radius:10px;border:2px solid #e2e8f0;background:#fff;color:#4a5568;font-weight:700;cursor:pointer;font-size:0.88rem">
+          🏦 Transferencia
+        </button>
+      </div>
+    </div>
     <button class="btn-orange mt8" style="width:100%" id="btn-add-e" onclick="addEmpleado()">+ Agregar empleado</button>
   </div>
 
@@ -546,8 +557,8 @@
       <button class="btn-sm btn-danger" onclick="clearEmpleados()">🗑 Limpiar</button>
     </div>
     <table>
-      <thead><tr><th>#</th><th>Empleado</th><th>Pago</th><th></th></tr></thead>
-      <tbody id="tb-empleados"><tr><td colspan="4" class="empty-msg">Sin empleados</td></tr></tbody>
+      <thead><tr><th>#</th><th>Empleado</th><th>Pago</th><th>Tipo</th><th></th></tr></thead>
+      <tbody id="tb-empleados"><tr><td colspan="5" class="empty-msg">Sin empleados</td></tr></tbody>
     </table>
   </div>
 </div>
@@ -555,25 +566,41 @@
 <!-- ═══ PAGE 3: CAJA ═══ -->
 <div class="page" id="page-3">
   <div class="locked-banner" id="lock-c">🔒 Día guardado — no se puede modificar la información</div>
+
+  <!-- Bases -->
   <div class="card">
-    <div class="card-title">🏦 Base de dinero</div>
+    <div class="card-title">💰 Base inicial de caja</div>
     <div class="form-row">
       <div class="fg">
-        <label>Dinero disponible al inicio del día</label>
-        <input type="text" inputmode="numeric" id="base-dinero" placeholder="0" oninput="moneyFmt(this);updateCaja()"/>
+        <label>💵 Base Efectivo</label>
+        <input type="text" inputmode="numeric" id="base-efectivo" placeholder="0" oninput="moneyFmt(this);updateCaja()"/>
+      </div>
+      <div class="fg">
+        <label>🏦 Base Transferencias</label>
+        <input type="text" inputmode="numeric" id="base-tr" placeholder="0" oninput="moneyFmt(this);updateCaja()"/>
       </div>
     </div>
-    <p style="font-size:0.75rem;color:var(--gray);margin-top:6px;">
-      Este valor se irá reduciendo con cada compra que agregues abajo, y el saldo restante se sumará al valor neto del día.
-    </p>
   </div>
 
-  <div class="caja-saldo">
-    <div class="saldo-label">💰 Saldo disponible en caja</div>
-    <div class="saldo-value" id="caja-saldo">$ 0</div>
-    <div class="saldo-sub" id="caja-sub">Base: $0 — Compras: $0</div>
+  <!-- Saldos -->
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+    <div class="caja-saldo" style="margin:0">
+      <div class="saldo-label">💵 Saldo efectivo</div>
+      <div class="saldo-value" id="caja-saldo-ef">$ 0</div>
+      <div class="saldo-sub" id="caja-sub-ef">Base: $0 — Compras: $0</div>
+    </div>
+    <div class="caja-saldo" style="margin:0;background:linear-gradient(135deg,#2b6cb0,#2c5282)">
+      <div class="saldo-label">🏦 Saldo transferencias</div>
+      <div class="saldo-value" id="caja-saldo-tr">$ 0</div>
+      <div class="saldo-sub" id="caja-sub-tr">Base: $0 — Compras: $0</div>
+    </div>
+  </div>
+  <div class="caja-saldo" style="background:linear-gradient(135deg,#553c9a,#44337a);margin-bottom:10px">
+    <div class="saldo-label">🏧 Total saldo caja</div>
+    <div class="saldo-value" id="caja-saldo-total">$ 0</div>
   </div>
 
+  <!-- Agregar compra -->
   <div class="card">
     <div class="card-title">🛒 Agregar compra</div>
     <div class="form-row">
@@ -586,6 +613,17 @@
         <input type="text" inputmode="numeric" id="c-monto" placeholder="0" oninput="moneyFmt(this)"/>
       </div>
     </div>
+    <div style="margin-top:8px">
+      <label style="font-size:0.8rem;color:var(--gray);display:block;margin-bottom:6px">¿De dónde sale el pago?</label>
+      <div style="display:flex;gap:8px">
+        <button id="btn-tipo-ef" class="btn-tipo active-ef" onclick="setCompraTipo('efectivo')" style="flex:1;padding:10px;border-radius:10px;border:2px solid #48bb78;background:#f0fff4;color:#276749;font-weight:700;cursor:pointer;font-size:0.88rem">
+          💵 Efectivo
+        </button>
+        <button id="btn-tipo-tr" class="btn-tipo" onclick="setCompraTipo('transferencia')" style="flex:1;padding:10px;border-radius:10px;border:2px solid #e2e8f0;background:#fff;color:#4a5568;font-weight:700;cursor:pointer;font-size:0.88rem">
+          🏦 Transferencia
+        </button>
+      </div>
+    </div>
     <button class="btn-purple mt8" style="width:100%" id="btn-add-c" onclick="addCompra()">+ Agregar compra</button>
   </div>
 
@@ -595,65 +633,133 @@
       <button class="btn-sm btn-danger" onclick="clearCompras()">🗑 Limpiar</button>
     </div>
     <table>
-      <thead><tr><th>#</th><th>Ítem</th><th>Valor</th><th></th></tr></thead>
-      <tbody id="tb-compras"><tr><td colspan="4" class="empty-msg">Sin compras</td></tr></tbody>
+      <thead><tr><th>#</th><th>Ítem</th><th>Valor</th><th>Tipo</th><th></th></tr></thead>
+      <tbody id="tb-compras"><tr><td colspan="5" class="empty-msg">Sin compras</td></tr></tbody>
     </table>
   </div>
 </div>
 
 <!-- ═══ PAGE 4: RESUMEN ═══ -->
 <div class="page" id="page-4">
+
+  <!-- Facturas: conteo rápido -->
   <div class="card">
-    <div class="card-title">💵 Ingresos por facturas</div>
+    <div class="card-title">🧾 Facturas del día</div>
     <div class="stat-grid">
+      <div class="stat-box"><div class="stat-label">📋 Facturas</div><div class="stat-value c-gray" id="r-cnt">0</div></div>
       <div class="stat-box"><div class="stat-label">💵 Efectivo</div><div class="stat-value c-green" id="r-ef">$ 0</div></div>
       <div class="stat-box"><div class="stat-label">🏦 Transferencias</div><div class="stat-value c-blue" id="r-tr">$ 0</div></div>
-      <div class="stat-box"><div class="stat-label">📋 Facturas</div><div class="stat-value c-gray" id="r-cnt">0</div></div>
-      <div class="stat-box"><div class="stat-label">Total Bruto</div><div class="stat-value c-gray" id="r-bruto">$ 0</div></div>
+      <div class="stat-box"><div class="stat-label">Total bruto</div><div class="stat-value c-gray" id="r-bruto">$ 0</div></div>
     </div>
   </div>
 
+  <!-- Venta del día -->
   <div class="card">
-    <div class="card-title">📊 Resultado del día</div>
-    <div style="display:flex;justify-content:space-between;font-size:0.85rem;margin-bottom:6px;">
-      <span>💵 Efectivo ingresado</span><span id="r2-ef" style="font-weight:700;color:#276749">$ 0</span>
+    <div class="card-title">🏪 Venta del día</div>
+    <div style="font-size:0.82rem;color:var(--gray);margin-bottom:8px">Ingresos totales por facturas antes de descuentos</div>
+    <div style="display:flex;justify-content:space-between;font-size:0.85rem;margin-bottom:4px">
+      <span>💵 Efectivo ingresado</span><span id="r2-ef" style="color:#276749;font-weight:700">$ 0</span>
     </div>
-    <div style="display:flex;justify-content:space-between;font-size:0.85rem;margin-bottom:6px;color:var(--red)">
-      <span>(−) Gastos del día</span><span id="r2-gastos">$ 0</span>
+    <div style="display:flex;justify-content:space-between;font-size:0.85rem;margin-bottom:6px">
+      <span>🏦 Transferencias ingresadas</span><span id="r2-tr" style="color:#2b6cb0;font-weight:700">$ 0</span>
     </div>
-    <div style="display:flex;justify-content:space-between;font-size:0.85rem;margin-bottom:6px;color:#c05621">
-      <span>(−) Pago empleados</span><span id="r2-emp">$ 0</span>
-    </div>
-    <div class="divider"></div>
-    <div style="display:flex;justify-content:space-between;font-size:0.88rem;margin-bottom:8px;font-weight:700;">
-      <span>= Efectivo disponible</span><span id="r2-efneto" style="color:#276749">$ 0</span>
-    </div>
-    <div style="display:flex;justify-content:space-between;font-size:0.85rem;margin-bottom:6px;color:#2b6cb0">
-      <span>(+) Transferencias del día</span><span id="r2-tr">$ 0</span>
-    </div>
-    <div class="divider"></div>
-    <!-- VENTA DEL DÍA -->
-    <div class="neto-box neto-pos" id="venta-dia-box" style="margin-bottom:10px">
+    <div class="neto-box neto-pos" id="venta-dia-box" style="margin:0">
       <span class="neto-label">🏪 Venta del día</span>
       <span class="neto-value" id="r-venta-dia">$ 0</span>
     </div>
-    <div style="display:flex;justify-content:space-between;font-size:0.85rem;margin-bottom:6px;color:#553c9a">
-      <span>(+) Saldo en caja</span><span id="r2-saldo-caja">$ 0</span>
+  </div>
+
+  <!-- Neto del día -->
+  <div class="card">
+    <div class="card-title">📊 Neto del día</div>
+    <div style="font-size:0.82rem;color:var(--gray);margin-bottom:8px">Después de gastos y pagos a empleados</div>
+    <!-- Efectivo -->
+    <div style="display:flex;justify-content:space-between;font-size:0.85rem;margin-bottom:3px">
+      <span>💵 Efectivo ingresado</span><span style="color:#276749;font-weight:700" id="r3-ef">$ 0</span>
     </div>
-    <div class="divider"></div>
-    <!-- TOTAL DISPONIBLE -->
-    <div class="neto-box neto-pos" id="neto-total-box">
-      <span class="neto-label">💼 Total disponible</span>
-      <span class="neto-value" id="r-total">$ 0</span>
+    <div style="display:flex;justify-content:space-between;font-size:0.83rem;margin-bottom:3px;color:var(--red)">
+      <span>&nbsp;&nbsp;(−) Gastos del día</span><span id="r2-gastos">$ 0</span>
+    </div>
+    <div style="display:flex;justify-content:space-between;font-size:0.83rem;margin-bottom:3px;color:#c05621">
+      <span>&nbsp;&nbsp;(−) Empleados (ef)</span><span id="r2-emp-ef">$ 0</span>
+    </div>
+    <div style="display:flex;justify-content:space-between;font-size:0.85rem;font-weight:700;border-top:1px dashed #c6f6d5;padding-top:5px;margin-bottom:10px">
+      <span>= Efectivo neto</span><span id="r2-efneto" style="color:#276749">$ 0</span>
+    </div>
+    <!-- Transferencias -->
+    <div style="display:flex;justify-content:space-between;font-size:0.85rem;margin-bottom:3px">
+      <span>🏦 Transferencias ingresadas</span><span style="color:#2b6cb0;font-weight:700" id="r3-tr">$ 0</span>
+    </div>
+    <div style="display:flex;justify-content:space-between;font-size:0.83rem;margin-bottom:3px;color:#c05621">
+      <span>&nbsp;&nbsp;(−) Empleados (tr)</span><span id="r2-emp-tr">$ 0</span>
+    </div>
+    <div style="display:flex;justify-content:space-between;font-size:0.85rem;font-weight:700;border-top:1px dashed #bee3f8;padding-top:5px;margin-bottom:10px">
+      <span>= Transferencias netas</span><span id="r2-trneto" style="color:#2b6cb0">$ 0</span>
+    </div>
+    <div class="neto-box neto-pos" id="neto-dia-box" style="margin:0">
+      <span class="neto-label">📊 Neto del día</span>
+      <span class="neto-value" id="r-neto-dia">$ 0</span>
     </div>
   </div>
 
+  <!-- Caja -->
   <div class="card">
-    <div class="card-title">🏦 Caja</div>
-    <div class="stat-grid">
-      <div class="stat-box"><div class="stat-label">Base inicial</div><div class="stat-value c-purple" id="r-base">$ 0</div></div>
-      <div class="stat-box"><div class="stat-label">Compras</div><div class="stat-value c-red" id="r-compras">$ 0</div></div>
-      <div class="stat-box"><div class="stat-label">Saldo caja</div><div class="stat-value c-purple" id="r-saldo-caja">$ 0</div></div>
+    <div class="card-title">🏧 Caja</div>
+    <div style="font-size:0.83rem">
+      <!-- encabezado columnas -->
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;margin-bottom:6px;font-weight:700;color:var(--gray);font-size:0.75rem;text-transform:uppercase">
+        <span></span><span style="text-align:right">💵 Efectivo</span><span style="text-align:right">🏦 Transf.</span>
+      </div>
+      <!-- Base inicial -->
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;margin-bottom:5px;padding-bottom:5px;border-bottom:1px solid #f0f4f8">
+        <span style="color:var(--gray)">Base inicial</span>
+        <span style="text-align:right;font-weight:700;color:#276749" id="r-base-ef">$ 0</span>
+        <span style="text-align:right;font-weight:700;color:#2b6cb0" id="r-base-tr">$ 0</span>
+      </div>
+      <!-- Compras -->
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;margin-bottom:5px;padding-bottom:5px;border-bottom:1px solid #f0f4f8">
+        <span style="color:var(--red)">Compras</span>
+        <span style="text-align:right;font-weight:700;color:var(--red)" id="r-compras-ef">$ 0</span>
+        <span style="text-align:right;font-weight:700;color:var(--red)" id="r-compras-tr">$ 0</span>
+      </div>
+      <!-- Saldo -->
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;margin-bottom:8px">
+        <span style="font-weight:700">Saldo caja</span>
+        <span style="text-align:right;font-weight:700;color:#276749" id="r-saldo-ef">$ 0</span>
+        <span style="text-align:right;font-weight:700;color:#2b6cb0" id="r-saldo-tr">$ 0</span>
+      </div>
+      <!-- Total caja -->
+      <div style="display:flex;justify-content:space-between;font-weight:800;font-size:0.9rem;background:#faf5ff;padding:8px 10px;border-radius:8px;color:#553c9a">
+        <span>🏧 Total caja</span><span id="r-saldo-caja-total">$ 0</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Total disponible -->
+  <div class="card">
+    <div class="card-title">💼 Total disponible</div>
+    <div style="display:flex;justify-content:space-between;font-size:0.85rem;margin-bottom:3px;color:#276749">
+      <span>💵 Efectivo neto</span><span id="r4-efneto" style="font-weight:700">$ 0</span>
+    </div>
+    <div style="display:flex;justify-content:space-between;font-size:0.85rem;margin-bottom:3px;color:#276749">
+      <span>&nbsp;&nbsp;(+) Saldo caja efectivo</span><span id="r4-saldo-ef" style="font-weight:700">$ 0</span>
+    </div>
+    <div style="display:flex;justify-content:space-between;font-size:0.88rem;font-weight:800;background:#f0fff4;padding:7px 10px;border-radius:8px;margin-bottom:10px;color:#276749">
+      <span>💵 Disponible efectivo</span><span id="r4-disp-ef">$ 0</span>
+    </div>
+    <div style="display:flex;justify-content:space-between;font-size:0.85rem;margin-bottom:3px;color:#2b6cb0">
+      <span>🏦 Transferencias netas</span><span id="r4-trneto" style="font-weight:700">$ 0</span>
+    </div>
+    <div style="display:flex;justify-content:space-between;font-size:0.85rem;margin-bottom:3px;color:#2b6cb0">
+      <span>&nbsp;&nbsp;(+) Saldo caja transferencias</span><span id="r4-saldo-tr" style="font-weight:700">$ 0</span>
+    </div>
+    <div style="display:flex;justify-content:space-between;font-size:0.88rem;font-weight:800;background:#ebf8ff;padding:7px 10px;border-radius:8px;margin-bottom:10px;color:#2b6cb0">
+      <span>🏦 Disponible transferencias</span><span id="r4-disp-tr">$ 0</span>
+    </div>
+    <div class="divider"></div>
+    <div class="neto-box neto-pos" id="neto-total-box" style="margin:0">
+      <span class="neto-label">💼 Total disponible</span>
+      <span class="neto-value" id="r-total">$ 0</span>
     </div>
   </div>
 
@@ -708,16 +814,19 @@
 //   DATA STATE
 // ══════════════════════════════════════
 let state = {
-  facturas:  [],
-  gastos:    [],
-  empleados: [],
-  compras:   [],
-  baseDinero: 0
+  facturas:    [],
+  gastos:      [],
+  empleados:   [],
+  compras:     [],
+  baseEfectivo: 0,
+  baseTr:       0
 };
 let ids = { f:1, g:1, e:1, c:1 };
 let currentHistKey = null;
 let locked = false;
-let currentPagos = [];   // pagos parciales del formulario mixto activo
+let currentPagos = [];      // pagos parciales del formulario mixto activo
+let compraTipo    = 'efectivo'; // tipo activo en el form de compra
+let empleadoTipo  = 'efectivo'; // tipo activo en el form de empleado
 
 // ── Helpers ──
 const $ = id => document.getElementById(id);
@@ -751,9 +860,9 @@ function updateFacturaNumField() {
 
 // ── Lock / Unlock ──
 function applyLock() {
-  const inputs = ['f-desc','f-monto','f-tipo','g-desc','g-monto','e-nombre','e-pago','c-desc','c-monto','base-dinero'];
+  const inputs = ['f-desc','f-monto','f-tipo','g-desc','g-monto','e-nombre','e-pago','c-desc','c-monto','base-efectivo','base-tr'];
   inputs.forEach(id => { const el = $(id); if(el){ el.disabled = true; el.style.opacity='0.6'; }});
-  ['btn-add-f','btn-add-g','btn-add-e','btn-add-c'].forEach(id => {
+  ['btn-add-f','btn-add-g','btn-add-e','btn-add-c','btn-tipo-ef','btn-tipo-tr','btn-etipo-ef','btn-etipo-tr'].forEach(id => {
     const el = $(id); if(el){ el.disabled=true; el.style.opacity='0.4'; el.style.cursor='not-allowed'; }
   });
   document.querySelectorAll('.btn-danger').forEach(b => { b.disabled=true; b.style.opacity='0.4'; b.style.cursor='not-allowed'; });
@@ -840,14 +949,27 @@ function totals() {
   });
   const bruto     = ef + tr;
   const tg        = state.gastos.reduce((s,g)=>s+g.monto,0);
-  const te        = state.empleados.reduce((s,e)=>s+e.pago,0);
-  const tc        = state.compras.reduce((s,c)=>s+c.monto,0);
-  const base      = state.baseDinero||0;
-  const saldoCaja = Math.max(0, base - tc);
-  const efNeto    = ef - tg - te;
-  const ventaDia  = efNeto + tr;          // venta neta del día (sin caja)
-  const total     = ventaDia + saldoCaja; // total disponible (con saldo de caja)
-  return {ef, tr, bruto, tg, te, tc, base, saldoCaja, efNeto, ventaDia, total, cnt:state.facturas.length};
+  const teEf      = state.empleados.filter(e=>e.tipo!=='transferencia').reduce((s,e)=>s+e.pago,0);
+  const teTr      = state.empleados.filter(e=>e.tipo==='transferencia').reduce((s,e)=>s+e.pago,0);
+  const te        = teEf + teTr;
+  const tcEf      = state.compras.filter(c=>c.tipo==='efectivo').reduce((s,c)=>s+c.monto,0);
+  const tcTr      = state.compras.filter(c=>c.tipo==='transferencia').reduce((s,c)=>s+c.monto,0);
+  const tc        = tcEf + tcTr;
+  const baseEf    = state.baseEfectivo||0;
+  const baseTr    = state.baseTr||0;
+  const saldoCajaEf  = Math.max(0, baseEf - tcEf);
+  const saldoCajaTr  = Math.max(0, baseTr - tcTr);
+  const saldoCaja    = saldoCajaEf + saldoCajaTr;
+  const ventaDia  = ef + tr;                     // venta del día: ingresos brutos
+  const efNeto    = ef - tg - teEf;              // efectivo neto: ingresos ef - gastos - pagos ef
+  const trNeto    = tr - teTr;                   // transferencias netas: ingresos tr - pagos tr
+  const netoDia   = efNeto + trNeto;             // neto del día: suma de ambos netos
+  const dispEf    = efNeto + saldoCajaEf;        // disponible efectivo: neto ef + saldo caja ef
+  const dispTr    = trNeto + saldoCajaTr;        // disponible transferencias: neto tr + saldo caja tr
+  const total     = dispEf + dispTr;             // total disponible
+  return {ef, tr, bruto, ventaDia, tg, te, teEf, teTr, tc, tcEf, tcTr,
+          baseEf, baseTr, saldoCajaEf, saldoCajaTr, saldoCaja,
+          efNeto, trNeto, netoDia, dispEf, dispTr, total, cnt:state.facturas.length};
 }
 
 // ══════════════════════════════════════
@@ -993,13 +1115,27 @@ function renderGastos(){
 // ══════════════════════════════════════
 //   EMPLEADOS
 // ══════════════════════════════════════
+function setEmpleadoTipo(tipo){
+  if(locked) return;
+  empleadoTipo = tipo;
+  const btnEf = $('btn-etipo-ef');
+  const btnTr = $('btn-etipo-tr');
+  if(tipo === 'efectivo'){
+    btnEf.style.cssText='flex:1;padding:10px;border-radius:10px;border:2px solid #48bb78;background:#f0fff4;color:#276749;font-weight:700;cursor:pointer;font-size:0.88rem';
+    btnTr.style.cssText='flex:1;padding:10px;border-radius:10px;border:2px solid #e2e8f0;background:#fff;color:#4a5568;font-weight:700;cursor:pointer;font-size:0.88rem';
+  } else {
+    btnEf.style.cssText='flex:1;padding:10px;border-radius:10px;border:2px solid #e2e8f0;background:#fff;color:#4a5568;font-weight:700;cursor:pointer;font-size:0.88rem';
+    btnTr.style.cssText='flex:1;padding:10px;border-radius:10px;border:2px solid #2b6cb0;background:#ebf8ff;color:#2b6cb0;font-weight:700;cursor:pointer;font-size:0.88rem';
+  }
+}
+
 function addEmpleado(){
   if(locked) return;
   const nombre = $('e-nombre').value.trim();
   const pago   = moneyVal('e-pago');
   if(!nombre)    { alert('Ingresa el nombre.'); return; }
   if(pago<=0)    { alert('Ingresa un pago válido.'); return; }
-  state.empleados.push({id:ids.e++,nombre,pago});
+  state.empleados.push({id:ids.e++, nombre, pago, tipo: empleadoTipo});
   $('e-nombre').value=''; $('e-pago').value='';
   renderEmpleados(); $('e-nombre').focus();
 }
@@ -1009,22 +1145,45 @@ function clearEmpleados(){ if(locked) return; if(confirm('¿Eliminar todos los e
 
 function renderEmpleados(){
   const tb=$('tb-empleados');
-  if(!state.empleados.length){ tb.innerHTML='<tr><td colspan="4" class="empty-msg">Sin empleados</td></tr>'; return; }
-  const total=state.empleados.reduce((s,e)=>s+e.pago,0);
-  tb.innerHTML=state.empleados.map((e,i)=>`
-    <tr>
+  if(!state.empleados.length){ tb.innerHTML='<tr><td colspan="5" class="empty-msg">Sin empleados</td></tr>'; return; }
+  const totalEf = state.empleados.filter(e=>e.tipo!=='transferencia').reduce((s,e)=>s+e.pago,0);
+  const totalTr = state.empleados.filter(e=>e.tipo==='transferencia').reduce((s,e)=>s+e.pago,0);
+  const total   = totalEf + totalTr;
+  tb.innerHTML=state.empleados.map((e,i)=>{
+    const badge = e.tipo==='transferencia'
+      ? '<span class="badge badge-tr">🏦</span>'
+      : '<span class="badge badge-ef">💵</span>';
+    return `<tr>
       <td>${i+1}</td><td>${e.nombre}</td><td><strong>${fmt(e.pago)}</strong></td>
+      <td>${badge}</td>
       <td><button class="btn-sm btn-danger" onclick="delEmpleado(${e.id})">✕</button></td>
-    </tr>`).join('')+`
-    <tr class="total-row"><td colspan="2">TOTAL</td><td>${fmt(total)}</td><td></td></tr>`;
+    </tr>`;
+  }).join('')+`
+    <tr class="total-row"><td colspan="2">TOTAL</td><td>${fmt(total)}</td><td colspan="2" style="font-size:0.7rem;color:var(--gray)">💵${fmt(totalEf)} 🏦${fmt(totalTr)}</td></tr>`;
+  saveDraft();
 }
 
 // ══════════════════════════════════════
 //   CAJA / COMPRAS
 // ══════════════════════════════════════
+function setCompraTipo(tipo){
+  if(locked) return;
+  compraTipo = tipo;
+  const btnEf = $('btn-tipo-ef');
+  const btnTr = $('btn-tipo-tr');
+  if(tipo === 'efectivo'){
+    btnEf.style.cssText='flex:1;padding:10px;border-radius:10px;border:2px solid #48bb78;background:#f0fff4;color:#276749;font-weight:700;cursor:pointer;font-size:0.88rem';
+    btnTr.style.cssText='flex:1;padding:10px;border-radius:10px;border:2px solid #e2e8f0;background:#fff;color:#4a5568;font-weight:700;cursor:pointer;font-size:0.88rem';
+  } else {
+    btnEf.style.cssText='flex:1;padding:10px;border-radius:10px;border:2px solid #e2e8f0;background:#fff;color:#4a5568;font-weight:700;cursor:pointer;font-size:0.88rem';
+    btnTr.style.cssText='flex:1;padding:10px;border-radius:10px;border:2px solid #2b6cb0;background:#ebf8ff;color:#2b6cb0;font-weight:700;cursor:pointer;font-size:0.88rem';
+  }
+}
+
 function updateCaja(){
   if(locked) return;
-  state.baseDinero = moneyVal('base-dinero');
+  state.baseEfectivo = moneyVal('base-efectivo');
+  state.baseTr       = moneyVal('base-tr');
   renderCaja();
 }
 
@@ -1034,7 +1193,7 @@ function addCompra(){
   const monto = moneyVal('c-monto');
   if(!desc)     { alert('Ingresa el ítem.'); return; }
   if(monto<=0)  { alert('Ingresa un valor válido.'); return; }
-  state.compras.push({id:ids.c++,desc,monto});
+  state.compras.push({id:ids.c++, desc, monto, tipo: compraTipo});
   $('c-desc').value=''; $('c-monto').value='';
   renderCaja(); $('c-desc').focus();
 }
@@ -1043,22 +1202,40 @@ function delCompra(id){ if(locked) return; state.compras=state.compras.filter(c=
 function clearCompras(){ if(locked) return; if(confirm('¿Eliminar todas las compras?')){ state.compras=[]; renderCaja(); }}
 
 function renderCaja(){
-  const base=state.baseDinero||0;
-  const tc=state.compras.reduce((s,c)=>s+c.monto,0);
-  const saldo=Math.max(0,base-tc);
-  $('caja-saldo').textContent=fmt(saldo);
-  $('caja-sub').textContent=`Base: ${fmt(base)} — Compras: ${fmt(tc)}`;
-  if(tc>base&&base>0) $('caja-saldo').style.color='#fed7d7';
-  else $('caja-saldo').style.color='#fff';
+  const baseEf = state.baseEfectivo||0;
+  const baseTr = state.baseTr||0;
+  const tcEf   = state.compras.filter(c=>c.tipo==='efectivo').reduce((s,c)=>s+c.monto,0);
+  const tcTr   = state.compras.filter(c=>c.tipo==='transferencia').reduce((s,c)=>s+c.monto,0);
+  const saldoEf = Math.max(0, baseEf - tcEf);
+  const saldoTr = Math.max(0, baseTr - tcTr);
+  const total   = saldoEf + saldoTr;
 
-  const tb=$('tb-compras');
-  if(!state.compras.length){ tb.innerHTML='<tr><td colspan="4" class="empty-msg">Sin compras</td></tr>'; return; }
-  tb.innerHTML=state.compras.map((c,i)=>`
-    <tr>
+  $('caja-saldo-ef').textContent   = fmt(saldoEf);
+  $('caja-sub-ef').textContent     = `Base: ${fmt(baseEf)} — Compras: ${fmt(tcEf)}`;
+  $('caja-saldo-ef').style.color   = (tcEf>baseEf&&baseEf>0) ? '#fed7d7' : '#fff';
+
+  $('caja-saldo-tr').textContent   = fmt(saldoTr);
+  $('caja-sub-tr').textContent     = `Base: ${fmt(baseTr)} — Compras: ${fmt(tcTr)}`;
+  $('caja-saldo-tr').style.color   = (tcTr>baseTr&&baseTr>0) ? '#fed7d7' : '#fff';
+
+  $('caja-saldo-total').textContent = fmt(total);
+
+  const tb = $('tb-compras');
+  if(!state.compras.length){ tb.innerHTML='<tr><td colspan="5" class="empty-msg">Sin compras</td></tr>'; return; }
+  const tcTotal = tcEf + tcTr;
+  tb.innerHTML = state.compras.map((c,i) => {
+    const badge = c.tipo==='efectivo'
+      ? '<span class="badge badge-ef">💵</span>'
+      : '<span class="badge badge-tr">🏦</span>';
+    return `<tr>
       <td>${i+1}</td><td>${c.desc}</td><td><strong>${fmt(c.monto)}</strong></td>
+      <td>${badge}</td>
       <td><button class="btn-sm btn-danger" onclick="delCompra(${c.id})">✕</button></td>
-    </tr>`).join('')+`
-    <tr class="total-row"><td colspan="2">TOTAL</td><td>${fmt(tc)}</td><td></td></tr>`;
+    </tr>`;
+  }).join('') + `
+    <tr class="total-row"><td colspan="2">TOTAL</td><td>${fmt(tcTotal)}</td><td colspan="2"></td></tr>`;
+
+  saveDraft();
 }
 
 // ══════════════════════════════════════
@@ -1066,22 +1243,42 @@ function renderCaja(){
 // ══════════════════════════════════════
 function renderResumen(){
   const t=totals();
+  // Facturas
   $('r-ef').textContent=fmt(t.ef);
   $('r-tr').textContent=fmt(t.tr);
   $('r-cnt').textContent=t.cnt;
   $('r-bruto').textContent=fmt(t.bruto);
-  $('r-base').textContent=fmt(t.base);
-  $('r-compras').textContent=fmt(t.tc);
-  $('r-saldo-caja').textContent=fmt(t.saldoCaja);
+  // Venta del día
   $('r2-ef').textContent=fmt(t.ef);
-  $('r2-gastos').textContent=fmt(t.tg);
-  $('r2-emp').textContent=fmt(t.te);
-  $('r2-efneto').textContent=fmt(t.efNeto);
   $('r2-tr').textContent=fmt(t.tr);
   $('r-venta-dia').textContent=fmt(t.ventaDia);
-  $('r2-saldo-caja').textContent=fmt(t.saldoCaja);
-  $('r-total').textContent=fmt(t.total);
   $('venta-dia-box').className='neto-box '+(t.ventaDia>=0?'neto-pos':'neto-neg');
+  // Neto del día
+  $('r3-ef').textContent=fmt(t.ef);
+  $('r2-gastos').textContent=fmt(t.tg);
+  $('r2-emp-ef').textContent=fmt(t.teEf);
+  $('r2-efneto').textContent=fmt(t.efNeto);
+  $('r3-tr').textContent=fmt(t.tr);
+  $('r2-emp-tr').textContent=fmt(t.teTr);
+  $('r2-trneto').textContent=fmt(t.trNeto);
+  $('r-neto-dia').textContent=fmt(t.netoDia);
+  $('neto-dia-box').className='neto-box '+(t.netoDia>=0?'neto-pos':'neto-neg');
+  // Caja
+  $('r-base-ef').textContent=fmt(t.baseEf);
+  $('r-base-tr').textContent=fmt(t.baseTr);
+  $('r-compras-ef').textContent=fmt(t.tcEf);
+  $('r-compras-tr').textContent=fmt(t.tcTr);
+  $('r-saldo-ef').textContent=fmt(t.saldoCajaEf);
+  $('r-saldo-tr').textContent=fmt(t.saldoCajaTr);
+  $('r-saldo-caja-total').textContent=fmt(t.saldoCaja);
+  // Total disponible
+  $('r4-efneto').textContent=fmt(t.efNeto);
+  $('r4-saldo-ef').textContent=fmt(t.saldoCajaEf);
+  $('r4-disp-ef').textContent=fmt(t.dispEf);
+  $('r4-trneto').textContent=fmt(t.trNeto);
+  $('r4-saldo-tr').textContent=fmt(t.saldoCajaTr);
+  $('r4-disp-tr').textContent=fmt(t.dispTr);
+  $('r-total').textContent=fmt(t.total);
   $('neto-total-box').className='neto-box '+(t.total>=0?'neto-pos':'neto-neg');
 }
 
@@ -1158,21 +1355,75 @@ function showRecord(key){
     ${rows(r.state.gastos.map(g=>[g.desc,fmt(g.monto)]),['Concepto','Monto'])}
 
     <div style="font-weight:700;margin:12px 0 6px;font-size:0.82rem">👷 Empleados</div>
-    ${rows(r.state.empleados.map(e=>[e.nombre,fmt(e.pago)]),['Nombre','Pago'])}
+    ${rows(r.state.empleados.map(e=>[e.nombre,fmt(e.pago),e.tipo==='transferencia'?'🏦 Transferencia':'💵 Efectivo']),['Nombre','Pago','Tipo'])}
 
     <div style="font-weight:700;margin:12px 0 6px;font-size:0.82rem">🛒 Compras de caja</div>
-    ${rows(r.state.compras.map(c=>[c.desc,fmt(c.monto)]),['Ítem','Valor'])}
+    ${rows(r.state.compras.map(c=>[c.desc,fmt(c.monto),c.tipo==='efectivo'?'💵 Efectivo':'🏦 Transferencia']),['Ítem','Valor','Tipo'])}
 
     <hr class="divider"/>
-    <div style="font-size:0.85rem;display:flex;flex-direction:column;gap:6px">
-      <div style="display:flex;justify-content:space-between;color:#276749"><span>💵 Efectivo ingresado</span><strong>${fmt(t.ef)}</strong></div>
-      <div style="display:flex;justify-content:space-between;color:var(--red)"><span>(−) Gastos</span><span>${fmt(t.tg)}</span></div>
-      <div style="display:flex;justify-content:space-between;color:#c05621"><span>(−) Empleados</span><span>${fmt(t.te)}</span></div>
-      <div style="display:flex;justify-content:space-between;font-weight:700;border-top:1px dashed var(--border);padding-top:6px"><span>= Efectivo disponible</span><span style="color:#276749">${fmt(t.efNeto)}</span></div>
-      <div style="display:flex;justify-content:space-between;color:#2b6cb0"><span>(+) Transferencias</span><span>${fmt(t.tr)}</span></div>
-      <div style="display:flex;justify-content:space-between;color:#553c9a"><span>(+) Saldo caja</span><span>${fmt(t.saldoCaja)}</span></div>
-      <div style="display:flex;justify-content:space-between;font-size:1rem;font-weight:800;border-top:2px solid var(--border);padding-top:8px;color:${t.total>=0?'#276749':'var(--red)'}">
-        <span>Total disponible</span><span>${fmt(t.total)}</span>
+    <div style="font-size:0.84rem;display:flex;flex-direction:column;gap:4px">
+
+      <!-- Venta del día -->
+      <div style="font-weight:700;color:#4a5568;margin-bottom:2px">🏪 Venta del día</div>
+      <div style="display:flex;justify-content:space-between"><span style="color:#276749">💵 Efectivo ingresado</span><strong style="color:#276749">${fmt(t.ef)}</strong></div>
+      <div style="display:flex;justify-content:space-between"><span style="color:#2b6cb0">🏦 Transferencias ingresadas</span><strong style="color:#2b6cb0">${fmt(t.tr)}</strong></div>
+      <div style="display:flex;justify-content:space-between;font-weight:800;font-size:0.92rem;background:#f0fff4;padding:7px 10px;border-radius:8px;margin-top:2px">
+        <span>🏪 Venta del día</span><span style="color:#276749">${fmt(t.ventaDia||t.bruto)}</span>
+      </div>
+
+      <!-- Neto del día -->
+      <div style="font-weight:700;color:#4a5568;margin-top:10px;margin-bottom:2px">📊 Neto del día</div>
+      <div style="display:flex;justify-content:space-between"><span style="color:#276749">💵 Efectivo ingresado</span><span>${fmt(t.ef)}</span></div>
+      <div style="display:flex;justify-content:space-between;color:var(--red)"><span>&nbsp;&nbsp;(−) Gastos</span><span>${fmt(t.tg)}</span></div>
+      <div style="display:flex;justify-content:space-between;color:#c05621"><span>&nbsp;&nbsp;(−) Empleados (ef)</span><span>${fmt(t.teEf!==undefined?t.teEf:t.te)}</span></div>
+      <div style="display:flex;justify-content:space-between;font-weight:700;border-top:1px dashed #c6f6d5;padding-top:4px;color:#276749"><span>= Efectivo neto</span><span>${fmt(t.efNeto)}</span></div>
+      <div style="display:flex;justify-content:space-between;margin-top:6px"><span style="color:#2b6cb0">🏦 Transferencias ingresadas</span><span>${fmt(t.tr)}</span></div>
+      <div style="display:flex;justify-content:space-between;color:#c05621"><span>&nbsp;&nbsp;(−) Empleados (tr)</span><span>${fmt(t.teTr||0)}</span></div>
+      <div style="display:flex;justify-content:space-between;font-weight:700;border-top:1px dashed #bee3f8;padding-top:4px;color:#2b6cb0"><span>= Transferencias netas</span><span>${fmt(t.trNeto!==undefined?t.trNeto:t.tr)}</span></div>
+      <div style="display:flex;justify-content:space-between;font-weight:800;font-size:0.92rem;background:#ebf8ff;padding:7px 10px;border-radius:8px;margin-top:2px">
+        <span>📊 Neto del día</span><span style="color:#2b6cb0">${fmt(t.netoDia!==undefined?t.netoDia:(t.efNeto+(t.trNeto||t.tr)))}</span>
+      </div>
+
+      <!-- Caja -->
+      <div style="font-weight:700;color:#4a5568;margin-top:10px;margin-bottom:4px">🏧 Caja</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:3px;font-size:0.78rem;margin-bottom:2px">
+        <span style="color:var(--gray)"></span>
+        <span style="text-align:right;font-weight:700;color:var(--gray)">💵 Ef.</span>
+        <span style="text-align:right;font-weight:700;color:var(--gray)">🏦 Tr.</span>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:3px;padding-bottom:4px;border-bottom:1px solid #f0f4f8">
+        <span style="color:var(--gray)">Base inicial</span>
+        <span style="text-align:right;color:#276749;font-weight:700">${fmt(t.baseEf||0)}</span>
+        <span style="text-align:right;color:#2b6cb0;font-weight:700">${fmt(t.baseTr||0)}</span>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:3px;padding-bottom:4px;border-bottom:1px solid #f0f4f8">
+        <span style="color:var(--red)">Compras</span>
+        <span style="text-align:right;color:var(--red);font-weight:700">${fmt(t.tcEf||0)}</span>
+        <span style="text-align:right;color:var(--red);font-weight:700">${fmt(t.tcTr||0)}</span>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:3px;margin-bottom:4px">
+        <span style="font-weight:700">Saldo caja</span>
+        <span style="text-align:right;color:#276749;font-weight:700">${fmt(t.saldoCajaEf!==undefined?t.saldoCajaEf:t.saldoCaja)}</span>
+        <span style="text-align:right;color:#2b6cb0;font-weight:700">${fmt(t.saldoCajaTr||0)}</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-weight:800;font-size:0.9rem;background:#faf5ff;padding:7px 10px;border-radius:8px;color:#553c9a">
+        <span>🏧 Total caja</span><span>${fmt(t.saldoCaja)}</span>
+      </div>
+
+      <!-- Disponible por flujo -->
+      <div style="display:flex;justify-content:space-between;margin-bottom:3px;color:#276749"><span>💵 Ef. neto</span><span>${fmt(t.efNeto)}</span></div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:3px;color:#276749"><span>&nbsp;&nbsp;(+) Saldo caja ef.</span><span>${fmt(t.saldoCajaEf!==undefined?t.saldoCajaEf:0)}</span></div>
+      <div style="display:flex;justify-content:space-between;font-weight:800;background:#f0fff4;padding:6px 10px;border-radius:8px;margin-bottom:6px;color:#276749">
+        <span>💵 Disponible efectivo</span><span>${fmt(t.dispEf!==undefined?t.dispEf:(t.efNeto+(t.saldoCajaEf||0)))}</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:3px;color:#2b6cb0"><span>🏦 Tr. netas</span><span>${fmt(t.trNeto!==undefined?t.trNeto:t.tr)}</span></div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:3px;color:#2b6cb0"><span>&nbsp;&nbsp;(+) Saldo caja tr.</span><span>${fmt(t.saldoCajaTr||0)}</span></div>
+      <div style="display:flex;justify-content:space-between;font-weight:800;background:#ebf8ff;padding:6px 10px;border-radius:8px;margin-bottom:8px;color:#2b6cb0">
+        <span>🏦 Disponible transferencias</span><span>${fmt(t.dispTr!==undefined?t.dispTr:((t.trNeto||t.tr)+(t.saldoCajaTr||0)))}</span>
+      </div>
+      <!-- Total disponible -->
+      <div style="display:flex;justify-content:space-between;font-size:1rem;font-weight:800;border-top:2px solid var(--border);padding-top:8px;margin-top:4px;color:${t.total>=0?'#276749':'var(--red)'}">
+        <span>💼 Total disponible</span><span>${fmt(t.total)}</span>
       </div>
     </div>`;
   openModal('modal-hist');
@@ -1225,18 +1476,23 @@ function exportExcelFromRecord(){
 
   // ── Empleados ──
   data.push(['PAGO A EMPLEADOS']);
-  data.push(['Empleado','Pago']);
-  s.empleados.forEach(e => data.push([e.nombre, e.pago]));
-  data.push(['TOTAL EMPLEADOS', t.te]);
+  data.push(['Empleado','Pago','Tipo']);
+  s.empleados.forEach(e => data.push([e.nombre, e.pago, e.tipo==='transferencia'?'Transferencia':'Efectivo']));
+  data.push(['TOTAL EMPLEADOS EFECTIVO', t.teEf!==undefined?t.teEf:t.te]);
+  data.push(['TOTAL EMPLEADOS TRANSFERENCIAS', t.teTr||0]);
   data.push([]);
 
   // ── Caja ──
   data.push(['CAJA / COMPRAS']);
-  data.push(['Base inicial', t.base]);
-  data.push(['Ítem','Valor']);
-  s.compras.forEach(c => data.push([c.desc, c.monto]));
-  data.push(['TOTAL COMPRAS', t.tc]);
-  data.push(['SALDO CAJA', t.saldoCaja]);
+  data.push(['Base efectivo', t.baseEf||s.baseEfectivo||0]);
+  data.push(['Base transferencias', t.baseTr||s.baseTr||0]);
+  data.push(['Ítem','Valor','Tipo']);
+  s.compras.forEach(c => data.push([c.desc, c.monto, c.tipo==='efectivo'?'Efectivo':'Transferencia']));
+  data.push(['TOTAL COMPRAS EFECTIVO', t.tcEf||0]);
+  data.push(['TOTAL COMPRAS TRANSFERENCIAS', t.tcTr||0]);
+  data.push(['SALDO CAJA EFECTIVO', t.saldoCajaEf!==undefined?t.saldoCajaEf:t.saldoCaja]);
+  data.push(['SALDO CAJA TRANSFERENCIAS', t.saldoCajaTr||0]);
+  data.push(['SALDO CAJA TOTAL', t.saldoCaja]);
   data.push([]);
 
   // ── Resumen ──
@@ -1244,11 +1500,17 @@ function exportExcelFromRecord(){
   data.push(['RESUMEN FINAL']);
   data.push(['Efectivo ingresado', t.ef]);
   data.push(['(−) Gastos del día', t.tg]);
-  data.push(['(−) Pago empleados', t.te]);
-  data.push(['= Efectivo disponible', t.efNeto||0]);
-  data.push(['(+) Total transferencias', t.tr]);
-  data.push(['= Venta del día', ventaDia]);
-  data.push(['(+) Saldo en caja', t.saldoCaja]);
+  data.push(['(−) Empleados (efectivo)', t.teEf!==undefined?t.teEf:t.te]);
+  data.push(['= Efectivo neto', t.efNeto||0]);
+  data.push(['(+) Saldo caja efectivo', t.saldoCajaEf!==undefined?t.saldoCajaEf:0]);
+  data.push(['= Disponible efectivo', t.dispEf!==undefined?t.dispEf:t.efNeto||0]);
+  data.push([]);
+  data.push(['Transferencias ingresadas', t.tr]);
+  data.push(['(−) Empleados (transferencias)', t.teTr||0]);
+  data.push(['= Transferencias netas', t.trNeto!==undefined?t.trNeto:t.tr]);
+  data.push(['(+) Saldo caja transferencias', t.saldoCajaTr||0]);
+  data.push(['= Disponible transferencias', t.dispTr!==undefined?t.dispTr:t.tr]);
+  data.push([]);
   data.push(['TOTAL DISPONIBLE', t.total]);
 
   const ws = XLSX.utils.aoa_to_sheet(data);
@@ -1290,260 +1552,4 @@ function exportExcel(){
   // ── Gastos ──
   data.push(['GASTOS DEL DÍA']);
   data.push(['Concepto','Monto']);
-  state.gastos.forEach(g => data.push([g.desc, g.monto]));
-  data.push(['TOTAL GASTOS', t.tg]);
-  data.push([]);
-
-  // ── Empleados ──
-  data.push(['PAGO A EMPLEADOS']);
-  data.push(['Empleado','Pago']);
-  state.empleados.forEach(e => data.push([e.nombre, e.pago]));
-  data.push(['TOTAL EMPLEADOS', t.te]);
-  data.push([]);
-
-  // ── Caja ──
-  data.push(['CAJA / COMPRAS']);
-  data.push(['Base inicial', t.base]);
-  data.push(['Ítem','Valor']);
-  state.compras.forEach(c => data.push([c.desc, c.monto]));
-  data.push(['TOTAL COMPRAS', t.tc]);
-  data.push(['SALDO CAJA', t.saldoCaja]);
-  data.push([]);
-
-  // ── Resumen ──
-  data.push(['RESUMEN FINAL']);
-  data.push(['Efectivo ingresado', t.ef]);
-  data.push(['(−) Gastos del día', t.tg]);
-  data.push(['(−) Pago empleados', t.te]);
-  data.push(['= Efectivo disponible', t.efNeto]);
-  data.push(['(+) Total transferencias', t.tr]);
-  data.push(['(+) Saldo en caja', t.saldoCaja]);
-  data.push(['TOTAL DISPONIBLE', t.total]);
-
-  const ws=XLSX.utils.aoa_to_sheet(data);
-  ws['!cols']=[{wch:14},{wch:26},{wch:16},{wch:16}];
-  XLSX.utils.book_append_sheet(wb,ws,'Resumen');
-  XLSX.writeFile(wb,'facturas_'+fecha+'.xlsx');
-}
-
-// ══════════════════════════════════════
-//   IMPORT EXCEL
-// ══════════════════════════════════════
-function importExcel(){
-  if(locked){ alert('El día está bloqueado. No se puede importar.'); return; }
-  $('import-file').click();
-}
-
-function handleImport(e){
-  const file = e.target.files[0];
-  if(!file) return;
-  const reader = new FileReader();
-  reader.onload = evt => {
-    try {
-      const wb   = XLSX.read(evt.target.result, {type:'array'});
-      const ws   = wb.Sheets[wb.SheetNames[0]];
-      const rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:''});
-      parseImport(rows);
-    } catch(err) { alert('Error al leer el archivo: '+err.message); }
-    e.target.value = '';
-  };
-  reader.readAsArrayBuffer(file);
-}
-
-function parseImport(rows){
-  // Encuentra índice de cada sección por nombre en col 0
-  const findSec = name => rows.findIndex(r => String(r[0]||'').trim().toUpperCase() === name.toUpperCase());
-
-  const iF = findSec('FACTURAS');
-  const iG = findSec('GASTOS DEL DÍA');
-  const iE = findSec('PAGO A EMPLEADOS');
-  const iC = findSec('CAJA / COMPRAS');
-  const iR = findSec('RESUMEN FINAL');
-
-  const getRows = (start, end) => {
-    if(start < 0) return [];
-    const res = [];
-    // skip section header (+1) and column header (+2)
-    for(let i = start+2; i < (end>0?end:rows.length); i++){
-      const r = rows[i];
-      const c0 = String(r[0]||'').trim();
-      const c1 = String(r[1]||'').trim();
-      if(!c0 && !c1) continue;       // fila vacía
-      res.push(r);
-    }
-    return res;
-  };
-
-  // ── FACTURAS ──
-  const fRows = getRows(iF, iG>0?iG:iE>0?iE:iR>0?iR:rows.length);
-  // Agrupar por número base (antes del guion)
-  const baseMap = {};
-  const order   = [];
-  fRows.forEach(r => {
-    const num   = String(r[0]||'').trim();
-    const desc  = String(r[1]||'').trim();
-    const monto = parseFloat(String(r[2]||'0').replace(/\./g,'').replace(',','.')) || 0;
-    const tipo  = String(r[3]||'').toLowerCase().includes('trans') ? 'transferencia' : 'efectivo';
-    if(!num || monto <= 0) return;
-    // ¿es sub-transferencia? (ej: "5-1")
-    const dashIdx = num.lastIndexOf('-');
-    const isSub   = dashIdx > 0 && !isNaN(num.slice(dashIdx+1));
-    const baseNum = isSub ? num.slice(0, dashIdx) : num;
-    if(!baseMap[baseNum]){ baseMap[baseNum]={desc,ef:[],tr:[]}; order.push(baseNum); }
-    if(tipo==='efectivo') baseMap[baseNum].ef.push(monto);
-    else                  baseMap[baseNum].tr.push(monto);
-  });
-
-  const newFacturas = [];
-  order.forEach(baseNum => {
-    const g = baseMap[baseNum];
-    // Determinar si es mixto: tiene transferencias Y efectivo, o más de 1 transferencia
-    const isMixto = (g.ef.length > 0 && g.tr.length > 0) || g.tr.length > 1;
-    if(!isMixto && g.ef.length >= 1 && g.tr.length === 0) {
-      newFacturas.push({id:ids.f++, num:baseNum, desc:g.desc, monto:g.ef.reduce((a,b)=>a+b,0), tipo:'efectivo', mixto:false});
-    } else if(!isMixto && g.tr.length === 1 && g.ef.length === 0) {
-      newFacturas.push({id:ids.f++, num:baseNum, desc:g.desc, monto:g.tr[0], tipo:'transferencia', mixto:false});
-    } else {
-      const pagos = [];
-      g.ef.forEach(m => pagos.push({tipo:'efectivo',   monto:m}));
-      g.tr.forEach(m => pagos.push({tipo:'transferencia', monto:m}));
-      const total = pagos.reduce((s,p)=>s+p.monto,0);
-      newFacturas.push({id:ids.f++, num:baseNum, desc:g.desc, total, mixto:true, pagos});
-    }
-  });
-
-  // ── GASTOS ──
-  const newGastos = [];
-  getRows(iG, iE>0?iE:iC>0?iC:iR>0?iR:rows.length).forEach(r => {
-    const desc  = String(r[0]||'').trim();
-    const monto = parseFloat(String(r[1]||'0').replace(/\./g,'').replace(',','.')) || 0;
-    if(desc && monto>0 && !desc.startsWith('TOTAL')) newGastos.push({id:ids.g++, desc, monto});
-  });
-
-  // ── EMPLEADOS ──
-  const newEmpleados = [];
-  getRows(iE, iC>0?iC:iR>0?iR:rows.length).forEach(r => {
-    const nombre = String(r[0]||'').trim();
-    const pago   = parseFloat(String(r[1]||'0').replace(/\./g,'').replace(',','.')) || 0;
-    if(nombre && pago>0 && !nombre.startsWith('TOTAL')) newEmpleados.push({id:ids.e++, nombre, pago});
-  });
-
-  // ── CAJA ──
-  let newBase = 0;
-  const newCompras = [];
-  if(iC >= 0){
-    // Fila iC+1 tiene "Base inicial | valor"
-    const baseRow = rows[iC+1];
-    newBase = parseFloat(String(baseRow?.[1]||'0').replace(/\./g,'').replace(',','.')) || 0;
-    // Fila iC+2 = header de ítems, datos desde iC+3
-    const end = iR>0?iR:rows.length;
-    for(let i=iC+3; i<end; i++){
-      const r = rows[i];
-      const desc  = String(r[0]||'').trim();
-      const monto = parseFloat(String(r[1]||'0').replace(/\./g,'').replace(',','.')) || 0;
-      if(desc && monto>0 && !desc.startsWith('TOTAL') && desc!=='SALDO CAJA')
-        newCompras.push({id:ids.c++, desc, monto});
-    }
-  }
-
-  // ── Aplicar al estado ──
-  if(!newFacturas.length && !newGastos.length && !newEmpleados.length){
-    alert('No se encontraron datos en el archivo. Verifica que sea un Excel exportado desde esta app.');
-    return;
-  }
-
-  state.facturas   = newFacturas;
-  state.gastos     = newGastos;
-  state.empleados  = newEmpleados;
-  state.compras    = newCompras;
-  state.baseDinero = newBase;
-
-  if(newBase > 0)
-    $('base-dinero').value = newBase.toString().replace(/\B(?=(\d{3})+(?!\d))/g,'.');
-
-  renderFacturas(); updateFacturaNumField();
-  renderGastos();
-  renderEmpleados();
-  renderCaja();
-  saveDraft();   // guardar el estado importado como nuevo borrador
-
-  alert(`✅ Importado correctamente:\n• ${newFacturas.length} facturas\n• ${newGastos.length} gastos\n• ${newEmpleados.length} empleados\n• ${newCompras.length} compras de caja`);
-}
-
-// ══════════════════════════════════════
-//   AUTO-GUARDADO DE BORRADOR
-// ══════════════════════════════════════
-const DRAFT_KEY = 'cf_draft';
-
-function saveDraft() {
-  if(locked) return;
-  try {
-    localStorage.setItem(DRAFT_KEY, JSON.stringify({
-      state,
-      ids,
-      savedAt: Date.now()
-    }));
-  } catch(e) { /* localStorage lleno, ignorar */ }
-}
-
-function loadDraft() {
-  try {
-    const raw = localStorage.getItem(DRAFT_KEY);
-    if(!raw) return false;
-    const draft = JSON.parse(raw);
-    if(!draft.state) return false;
-
-    state = draft.state;
-    ids   = draft.ids || ids;
-
-    // Restaurar campo base-dinero
-    if(state.baseDinero > 0)
-      $('base-dinero').value = state.baseDinero.toString().replace(/\B(?=(\d{3})+(?!\d))/g,'.');
-
-    renderFacturas(); updateFacturaNumField();
-    renderGastos();
-    renderEmpleados();
-    renderCaja();
-
-    // Mostrar aviso discreto
-    const banner = document.createElement('div');
-    banner.style.cssText = 'position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:#2d3748;color:#fff;padding:8px 16px;border-radius:20px;font-size:0.78rem;z-index:999;box-shadow:0 2px 8px rgba(0,0,0,0.3)';
-    banner.textContent = '📋 Borrador restaurado automáticamente';
-    document.body.appendChild(banner);
-    setTimeout(() => banner.remove(), 3000);
-    return true;
-  } catch(e) { return false; }
-}
-
-// Guardar borrador cada vez que cambia el estado
-function afterChange() { saveDraft(); }
-
-// Parchar todas las funciones de mutación para auto-guardar
-const _renderF = renderFacturas;
-renderFacturas = function(){ _renderF(); saveDraft(); };
-const _renderG = renderGastos;
-renderGastos = function(){ _renderG(); saveDraft(); };
-const _renderE = renderEmpleados;
-renderEmpleados = function(){ _renderE(); saveDraft(); };
-const _renderC = renderCaja;
-renderCaja = function(){ _renderC(); saveDraft(); };
-
-// ══════════════════════════════════════
-//   MODALS
-// ══════════════════════════════════════
-function openModal(id){ $(id).classList.add('open'); }
-function closeModal(id){ $(id).classList.remove('open'); }
-document.querySelectorAll('.modal-bg').forEach(bg=>{
-  bg.addEventListener('click',e=>{ if(e.target===bg) bg.classList.remove('open'); });
-});
-
-// ══════════════════════════════════════
-//   INIT
-// ══════════════════════════════════════
-$('top-date').textContent='Hoy: '+fmtDate(today());
-// Intentar restaurar borrador del día
-loadDraft();
-updateFacturaNumField();
-</script>
-</body>
-</html>
+  state.gas
