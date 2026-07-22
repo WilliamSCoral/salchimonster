@@ -1095,24 +1095,28 @@ function setupListeners() {
   clearListeners();
   const draftRef = DRAFT().doc('current');
 
-  unsubs.push(draftRef.collection('facturas').orderBy('createdAt').onSnapshot(snap => {
+  unsubs.push(draftRef.collection('facturas').onSnapshot(snap => {
     state.facturas = snap.docs.map(d => ({...d.data(), _docId: d.id}));
+    state.facturas.sort((a,b)=>(a.createdAt||'').localeCompare(b.createdAt||''));
     renderFacturas();
     updateFacturaNumField();
   }, e => console.error(e)));
 
-  unsubs.push(draftRef.collection('gastos').orderBy('createdAt').onSnapshot(snap => {
+  unsubs.push(draftRef.collection('gastos').onSnapshot(snap => {
     state.gastos = snap.docs.map(d => ({...d.data(), _docId: d.id}));
+    state.gastos.sort((a,b)=>(a.createdAt||'').localeCompare(b.createdAt||''));
     renderGastos();
   }, e => console.error(e)));
 
-  unsubs.push(draftRef.collection('empleados').orderBy('createdAt').onSnapshot(snap => {
+  unsubs.push(draftRef.collection('empleados').onSnapshot(snap => {
     state.empleados = snap.docs.map(d => ({...d.data(), _docId: d.id}));
+    state.empleados.sort((a,b)=>(a.createdAt||'').localeCompare(b.createdAt||''));
     renderEmpleados();
   }, e => console.error(e)));
 
-  unsubs.push(draftRef.collection('compras').orderBy('createdAt').onSnapshot(snap => {
+  unsubs.push(draftRef.collection('compras').onSnapshot(snap => {
     state.compras = snap.docs.map(d => ({...d.data(), _docId: d.id}));
+    state.compras.sort((a,b)=>(a.createdAt||'').localeCompare(b.createdAt||''));
     renderCaja();
   }, e => console.error(e)));
 
@@ -1156,8 +1160,9 @@ function setupListeners() {
     renderGranizados();
   }, e => console.error(e)));
 
-  unsubs.push(granRef.collection('compras').orderBy('createdAt').onSnapshot(snap => {
+  unsubs.push(granRef.collection('compras').onSnapshot(snap => {
     stateGran.compras = snap.docs.map(d => ({...d.data(), _docId: d.id}));
+    stateGran.compras.sort((a,b)=>(a.createdAt||'').localeCompare(b.createdAt||''));
     renderGranizados();
   }, e => console.error(e)));
 
