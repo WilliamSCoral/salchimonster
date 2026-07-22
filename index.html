@@ -1898,19 +1898,24 @@ async function clearDescuento(){
 
 function setGranCompraTipo(tipo){
   granCompraTipo=tipo;
-  $('btn-gran-ef').classList.toggle('active',tipo==='efectivo');
-  $('btn-gran-tr').classList.toggle('active',tipo==='transferencia');
+  const ef=$('gr-btn-tipo-ef'); const tr=$('gr-btn-tipo-tr');
+  if(ef){ ef.style.borderColor=tipo==='efectivo'?'#48bb78':'#e2e8f0'; ef.style.background=tipo==='efectivo'?'#f0fff4':'#fff'; ef.style.color=tipo==='efectivo'?'#276749':'#4a5568'; }
+  if(tr){ tr.style.borderColor=tipo==='transferencia'?'#4299e1':'#e2e8f0'; tr.style.background=tipo==='transferencia'?'#ebf8ff':'#fff'; tr.style.color=tipo==='transferencia'?'#2b6cb0':'#4a5568'; }
 }
 
+function clearComprasGran(){ clearGranCompras(); }
+
 async function addGranCompra(){
-  const desc=$('gc-desc').value.trim();
-  const monto=moneyVal('gc-monto');
+  const desc=$('gr-c-desc').value.trim();
+  const monto=moneyVal('gr-c-monto');
   if(!desc||!monto){ alert('Ingresa descripción y monto.'); return; }
   try{
     await DRAFT().doc('granizados').collection('compras').add({desc,monto,tipo:granCompraTipo,createdAt:TS(),createdBy:currentUser.uid});
-    $('gc-desc').value=''; $('gc-monto').value='';
+    $('gr-c-desc').value=''; $('gr-c-monto').value='';
   } catch(e){ alert('Error: '+e.message); }
 }
+
+function addCompraGran(){ addGranCompra(); }
 
 async function delCompraGran(docId){
   try{ await DRAFT().doc('granizados').collection('compras').doc(docId).delete(); }
