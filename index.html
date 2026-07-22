@@ -202,6 +202,11 @@
   </div>
 </div>
 
+<!-- BANNER MODO PRUEBA -->
+<div id="test-mode-banner" style="display:none;align-items:center;justify-content:center;gap:8px;background:#f6ad55;color:#7b341e;padding:7px 16px;font-size:0.82rem;font-weight:700;letter-spacing:0.03em;border-bottom:2px solid #ed8936;">
+  🧪 MODO PRUEBA — Los datos no afectan el sistema real
+</div>
+
 <!-- TABS -->
 <div class="tabs">
   <div class="tab active" id="tab-0" onclick="goTab(0)"><span class="tab-icon">🧾</span>Facturas</div>
@@ -211,6 +216,8 @@
   <div class="tab" id="tab-4" onclick="goTab(4)"><span class="tab-icon">📈</span>Resumen</div>
   <div class="tab" id="tab-5" onclick="goTab(5)"><span class="tab-icon">📅</span>Historial</div>
   <div class="tab" id="tab-6" onclick="goTab(6)"><span class="tab-icon">👥</span>Usuarios</div>
+  <div class="tab" id="tab-7" onclick="goTab(7)"><span class="tab-icon">🧊</span>Granizados</div>
+  <div class="tab" id="tab-8" onclick="goTab(8)"><span class="tab-icon">🍽️</span>Menú</div>
 </div>
 
 <!-- ═══ PAGE 0: FACTURAS ═══ -->
@@ -490,6 +497,168 @@
   </div>
 </div>
 
+<!-- ═══ PAGE 7: GRANIZADOS ═══ -->
+<div class="page" id="page-7">
+
+  <!-- Ventas -->
+  <div class="card">
+    <div class="card-title">🧊 Ventas del día</div>
+    <div style="font-size:0.78rem;color:var(--gray);margin-bottom:12px;background:var(--light);padding:6px 10px;border-radius:8px">
+      💡 Precio: <strong>9oz = $10.000</strong> · <strong>12oz = $12.000</strong>
+    </div>
+
+    <div style="font-weight:700;font-size:0.82rem;margin-bottom:6px;color:#2b6cb0">🥤 Vasos 9 oz</div>
+    <div class="form-row">
+      <div class="fg">
+        <label>💵 Cantidad efectivo</label>
+        <input type="number" inputmode="numeric" id="g9ef" placeholder="0" min="0" oninput="scheduleGranUpdate()"/>
+      </div>
+      <div class="fg">
+        <label>🏦 Cantidad transferencia</label>
+        <input type="number" inputmode="numeric" id="g9tr" placeholder="0" min="0" oninput="scheduleGranUpdate()"/>
+      </div>
+    </div>
+
+    <div style="font-weight:700;font-size:0.82rem;margin:14px 0 6px;color:#553c9a">🥤 Vasos 12 oz</div>
+    <div class="form-row">
+      <div class="fg">
+        <label>💵 Cantidad efectivo</label>
+        <input type="number" inputmode="numeric" id="g12ef" placeholder="0" min="0" oninput="scheduleGranUpdate()"/>
+      </div>
+      <div class="fg">
+        <label>🏦 Cantidad transferencia</label>
+        <input type="number" inputmode="numeric" id="g12tr" placeholder="0" min="0" oninput="scheduleGranUpdate()"/>
+      </div>
+    </div>
+
+    <div style="margin-top:14px;border-top:1.5px dashed var(--border);padding-top:12px">
+      <div style="display:flex;justify-content:space-between;font-size:0.83rem;margin-bottom:4px">
+        <span style="color:#2b6cb0">🥤 9oz — <span id="gr-tot9">0</span> vasos</span>
+        <span id="gr-val9" style="font-weight:700;color:#2b6cb0">$ 0</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:0.83rem;margin-bottom:10px">
+        <span style="color:#553c9a">🥤 12oz — <span id="gr-tot12">0</span> vasos</span>
+        <span id="gr-val12" style="font-weight:700;color:#553c9a">$ 0</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:0.83rem;margin-bottom:3px">
+        <span>💵 Efectivo ingresado</span><span id="gr-ef" style="font-weight:700;color:#276749">$ 0</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:0.83rem;margin-bottom:10px">
+        <span>🏦 Transferencias</span><span id="gr-tr" style="font-weight:700;color:#2b6cb0">$ 0</span>
+      </div>
+      <div class="neto-box neto-pos" style="margin:0">
+        <span class="neto-label">🧊 Total bruto</span>
+        <span class="neto-value" id="gr-bruto">$ 0</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Descuento -->
+  <div class="card">
+    <div class="card-title">🏷️ Descuento</div>
+    <div class="form-row">
+      <div class="fg">
+        <label>Monto descuento</label>
+        <input type="text" inputmode="numeric" id="gr-desc-monto" placeholder="0" oninput="moneyFmt(this);scheduleGranUpdate()"/>
+      </div>
+      <div class="fg">
+        <label>Código (quien aplica)</label>
+        <input type="password" id="gr-desc-codigo" placeholder="Código secreto" autocomplete="off" oninput="scheduleGranUpdate();lookupDiscountCode()"/>
+      </div>
+    </div>
+    <div id="gr-desc-info" style="display:none;margin-top:8px;padding:8px 12px;border-radius:8px;font-size:0.8rem"></div>
+    <button onclick="clearDescuento()" class="btn-sm btn-danger" style="margin-top:10px;width:100%">🗑 Eliminar descuento</button>
+    <div style="display:flex;justify-content:space-between;font-size:0.85rem;margin-top:8px;color:var(--red)">
+      <span>(−) Descuento aplicado</span><span id="gr-desc-val" style="font-weight:700">$ 0</span>
+    </div>
+    <div style="display:flex;justify-content:space-between;font-size:0.88rem;font-weight:800;background:#f0fff4;padding:8px 10px;border-radius:8px;margin-top:6px;color:#276749">
+      <span>= Total neto granizados</span><span id="gr-neto">$ 0</span>
+    </div>
+  </div>
+
+  <!-- Caja granizados -->
+  <div class="card">
+    <div class="card-title">💰 Base caja granizados</div>
+    <div class="form-row">
+      <div class="fg">
+        <label>💵 Base Efectivo</label>
+        <input type="text" inputmode="numeric" id="gr-base-ef" placeholder="0" oninput="moneyFmt(this);scheduleGranUpdate()"/>
+      </div>
+      <div class="fg">
+        <label>🏦 Base Transferencias</label>
+        <input type="text" inputmode="numeric" id="gr-base-tr" placeholder="0" oninput="moneyFmt(this);scheduleGranUpdate()"/>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+    <div class="caja-saldo" style="margin:0">
+      <div class="saldo-label">💵 Saldo ef. caja</div>
+      <div class="saldo-value" id="gr-saldo-ef">$ 0</div>
+      <div class="saldo-sub" id="gr-sub-ef">Base: $0 — Compras: $0</div>
+    </div>
+    <div class="caja-saldo" style="margin:0;background:linear-gradient(135deg,#2b6cb0,#2c5282)">
+      <div class="saldo-label">🏦 Saldo tr. caja</div>
+      <div class="saldo-value" id="gr-saldo-tr">$ 0</div>
+      <div class="saldo-sub" id="gr-sub-tr">Base: $0 — Compras: $0</div>
+    </div>
+  </div>
+  <div class="caja-saldo" style="background:linear-gradient(135deg,#553c9a,#44337a);margin-bottom:10px">
+    <div class="saldo-label">🏧 Total saldo caja granizados</div>
+    <div class="saldo-value" id="gr-saldo-total">$ 0</div>
+  </div>
+
+  <!-- Compras granizados -->
+  <div class="card">
+    <div class="card-title">🛒 Compras granizados</div>
+    <div class="form-row">
+      <div class="fg">
+        <label>Ítem</label>
+        <input type="text" id="gr-c-desc" placeholder="Ej: Hielo, jarabe, vasos..."/>
+      </div>
+      <div class="fg" style="max-width:130px">
+        <label>Valor</label>
+        <input type="text" inputmode="numeric" id="gr-c-monto" placeholder="0" oninput="moneyFmt(this)"/>
+      </div>
+    </div>
+    <div style="margin-top:8px">
+      <label style="font-size:0.8rem;color:var(--gray);display:block;margin-bottom:6px">¿De dónde sale el pago?</label>
+      <div style="display:flex;gap:8px">
+        <button id="gr-btn-tipo-ef" onclick="setGranCompraTipo('efectivo')" style="flex:1;padding:10px;border-radius:10px;border:2px solid #48bb78;background:#f0fff4;color:#276749;font-weight:700;cursor:pointer;font-size:0.88rem">💵 Efectivo</button>
+        <button id="gr-btn-tipo-tr" onclick="setGranCompraTipo('transferencia')" style="flex:1;padding:10px;border-radius:10px;border:2px solid #e2e8f0;background:#fff;color:#4a5568;font-weight:700;cursor:pointer;font-size:0.88rem">🏦 Transferencia</button>
+      </div>
+    </div>
+    <button class="btn-purple mt8" style="width:100%" id="btn-add-gc" onclick="addCompraGran()">+ Agregar compra</button>
+  </div>
+  <div class="card">
+    <div class="card-title">
+      Lista de compras
+      <button class="btn-sm btn-danger" onclick="clearComprasGran()">🗑 Limpiar</button>
+    </div>
+    <table>
+      <thead><tr><th>#</th><th>Ítem</th><th>Valor</th><th>Tipo</th><th></th></tr></thead>
+      <tbody id="tb-compras-gran"><tr><td colspan="5" class="empty-msg">Sin compras</td></tr></tbody>
+    </table>
+  </div>
+
+  <!-- Total disponible granizados -->
+  <div class="card">
+    <div class="card-title">💼 Total disponible granizados</div>
+    <div style="display:flex;justify-content:space-between;font-size:0.85rem;margin-bottom:3px;color:#276749"><span>💵 Ef. neto ventas</span><span id="gr4-efneto" style="font-weight:700">$ 0</span></div>
+    <div style="display:flex;justify-content:space-between;font-size:0.85rem;margin-bottom:3px;color:#276749"><span>&nbsp;&nbsp;(+) Saldo caja efectivo</span><span id="gr4-saldo-ef" style="font-weight:700">$ 0</span></div>
+    <div style="display:flex;justify-content:space-between;font-size:0.88rem;font-weight:800;background:#f0fff4;padding:7px 10px;border-radius:8px;margin-bottom:10px;color:#276749"><span>💵 Disponible efectivo</span><span id="gr4-disp-ef">$ 0</span></div>
+    <div style="display:flex;justify-content:space-between;font-size:0.85rem;margin-bottom:3px;color:#2b6cb0"><span>🏦 Tr. netas ventas</span><span id="gr4-trneto" style="font-weight:700">$ 0</span></div>
+    <div style="display:flex;justify-content:space-between;font-size:0.85rem;margin-bottom:3px;color:#2b6cb0"><span>&nbsp;&nbsp;(+) Saldo caja transferencias</span><span id="gr4-saldo-tr" style="font-weight:700">$ 0</span></div>
+    <div style="display:flex;justify-content:space-between;font-size:0.88rem;font-weight:800;background:#ebf8ff;padding:7px 10px;border-radius:8px;margin-bottom:10px;color:#2b6cb0"><span>🏦 Disponible transferencias</span><span id="gr4-disp-tr">$ 0</span></div>
+    <div class="divider"></div>
+    <div class="neto-box neto-pos" id="gr-total-box" style="margin:0">
+      <span class="neto-label">💼 Total disponible</span>
+      <span class="neto-value" id="gr-total">$ 0</span>
+    </div>
+  </div>
+  <div style="height:10px"></div>
+</div>
+
 <!-- ═══ MODAL: Guardar día ═══ -->
 <div class="modal-bg" id="modal-save">
   <div class="modal">
@@ -510,6 +679,38 @@
     <button class="btn-export mt8" onclick="exportExcelFromRecord()">📥 Exportar a Excel</button>
     <div style="height:8px"></div>
     <button class="btn-danger" style="width:100%;padding:11px" onclick="deleteRecord()">🗑 Eliminar este registro</button>
+  </div>
+</div>
+
+<!-- ═══ MODAL: Editar usuario ═══ -->
+<div class="modal-bg" id="modal-edit-user">
+  <div class="modal">
+    <div class="modal-title">✏️ Editar usuario <button class="btn-sm btn-ghost" onclick="closeModal('modal-edit-user')">✕</button></div>
+    <input type="hidden" id="eu-uid"/>
+    <input type="hidden" id="eu-username-original"/>
+    <div class="fg"><label>Nombre completo</label><input type="text" id="eu-nombre" placeholder="Nombre"/></div>
+    <div class="fg" style="margin-top:8px">
+      <label>Nombre de usuario (login)</label>
+      <input type="text" id="eu-username" placeholder="ej: juan.perez" autocapitalize="none" oninput="checkUsernameChange()"/>
+    </div>
+    <div id="eu-pass-section" style="display:none;margin-top:8px;padding:10px;background:#fffbeb;border:1.5px solid #f6e05e;border-radius:8px">
+      <div style="font-size:0.78rem;color:#744210;font-weight:600;margin-bottom:8px">⚠️ Cambiar el usuario requiere una nueva contraseña para recrear el acceso.</div>
+      <div class="fg"><label>Nueva contraseña</label><input type="password" id="eu-pass" placeholder="Mínimo 6 caracteres"/></div>
+    </div>
+    <div class="fg" style="margin-top:8px">
+      <label>Rol</label>
+      <select id="eu-role"><option value="mesero">Mesero</option><option value="admin">Admin</option></select>
+    </div>
+    <div class="fg" style="margin-top:8px"><label>Código de descuento</label><input type="text" id="eu-codigo" placeholder="Ej: DESC-JUAN (opcional)"/></div>
+    <div style="margin-top:12px;display:flex;align-items:center;gap:10px;background:#fffbeb;border:1px solid #f6e05e;border-radius:8px;padding:10px 12px">
+      <input type="checkbox" id="eu-testmode" style="width:18px;height:18px;cursor:pointer;accent-color:#ed8936"/>
+      <div>
+        <label for="eu-testmode" style="font-weight:700;font-size:0.85rem;cursor:pointer">🧪 Modo prueba</label>
+        <div style="font-size:0.75rem;color:var(--gray)">Este usuario trabaja en datos separados, sin afectar los reales</div>
+      </div>
+    </div>
+    <button onclick="updateUser()" class="btn-blue mt8" style="width:100%;padding:12px" id="btn-update-user">Guardar cambios</button>
+    <div id="eu-error" style="color:var(--red);font-size:0.82rem;margin-top:8px;text-align:center;min-height:18px"></div>
   </div>
 </div>
 
@@ -561,11 +762,19 @@ let empleadoTipo  = 'efectivo';
 let currentHistKey    = null;
 let currentHistRecord = null;
 
+// ── Granizados state ──
+const PRECIO_9OZ  = 10000;
+const PRECIO_12OZ = 12000;
+let stateGran = { oz9ef:0, oz9tr:0, oz12ef:0, oz12tr:0, descuentoMonto:0, descuentoCodigo:'', baseEf:0, baseTr:0, compras:[] };
+let granCompraTipo = 'efectivo';
+let granUpdateTimer = null;
+
 // Auth state
 let currentUser  = null;
 let currentRole  = null;
 let currentUserName  = null;
 let currentDiscountCode = null;
+let currentTestMode = false;
 
 // Firestore listeners
 let unsubs = [];
@@ -576,6 +785,14 @@ const $ = id => document.getElementById(id);
 const fmt = n => '$ ' + (n||0).toLocaleString('es-CO');
 const fmtRaw = n => (n||0).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
 const today = () => new Date().toISOString().slice(0,10);
+
+// ── Modo prueba: colecciones separadas ──
+const DRAFT = () => db.collection(currentTestMode ? 'test_draft' : 'draft');
+const HIST  = () => db.collection(currentTestMode ? 'test_historial' : 'historial');
+
+// ── Modales ──
+function openModal(id){ const el=$(id); if(el){ el.classList.add('open'); } }
+function closeModal(id){ const el=$(id); if(el){ el.classList.remove('open'); } }
 
 function moneyFmt(el) {
   const raw = el.value.replace(/\D/g, '');
@@ -593,18 +810,24 @@ auth.onAuthStateChanged(async user => {
   if (user) {
     try {
       const doc = await db.collection('usuarios').doc(user.uid).get();
-      const data = doc.data() || {};
+      if (!doc.exists) { await auth.signOut(); return; } // perfil eliminado → expulsar
+      const data = doc.data();
       currentRole = data.role || 'mesero';
       currentUserName = data.nombre || user.email.split('@')[0];
       currentDiscountCode = data.codigoDescuento || '';
+      currentTestMode = data.testMode === true;
     } catch(e) {
       currentRole = 'mesero';
       currentUserName = user.email.split('@')[0];
       currentDiscountCode = '';
+      currentTestMode = false;
     }
     currentUser = user;
     showApp();
     applyRoleUI();
+    // Mostrar/ocultar banner modo prueba
+    const banner = $('test-mode-banner');
+    if(banner) banner.style.display = currentTestMode ? 'flex' : 'none';
     setupListeners();
   } else {
     currentUser = null;
@@ -652,12 +875,12 @@ function showApp() {
 
 function applyRoleUI() {
   if (currentRole === 'admin') {
-    ['tab-0','tab-1','tab-2','tab-3','tab-4','tab-5','tab-6'].forEach(id => { const el=$(id); if(el) el.style.display=''; });
+    ['tab-0','tab-1','tab-2','tab-3','tab-4','tab-5','tab-6','tab-7'].forEach(id => { const el=$(id); if(el) el.style.display=''; });
     const sb = $('top-save-btn'); if(sb) sb.style.display='';
   } else {
-    // Mesero: solo facturas, gastos, resumen básico
+    // Mesero: facturas, gastos, granizados, resumen básico
     ['tab-2','tab-3','tab-5','tab-6'].forEach(id => { const el=$(id); if(el) el.style.display='none'; });
-    ['resumen-neto-section','resumen-caja-section','resumen-total-section','resumen-export-section'].forEach(id => { const el=$(id); if(el) el.style.display='none'; });
+    ['resumen-caja-section','resumen-total-section','resumen-export-section'].forEach(id => { const el=$(id); if(el) el.style.display='none'; });
     const sb = $('top-save-btn'); if(sb) sb.style.display='none';
   }
   goTab(0);
@@ -668,7 +891,7 @@ function applyRoleUI() {
 // ══════════════════════════════════════
 function setupListeners() {
   clearListeners();
-  const draftRef = db.collection('draft').doc('current');
+  const draftRef = DRAFT().doc('current');
 
   unsubs.push(draftRef.collection('facturas').orderBy('createdAt').onSnapshot(snap => {
     state.facturas = snap.docs.map(d => ({...d.data(), _docId: d.id}));
@@ -701,6 +924,39 @@ function setupListeners() {
     if (state.baseTr > 0)       $('base-tr').value       = fmtRaw(state.baseTr);
     if (locked && !prevLocked) applyLock();
     renderCaja();
+  }, e => console.error(e)));
+
+  // ── Granizados ──
+  const granRef = DRAFT().doc('granizados');
+  unsubs.push(granRef.onSnapshot(snap => {
+    const d = snap.data() || {};
+    stateGran.oz9ef  = d.oz9ef  || 0;
+    stateGran.oz9tr  = d.oz9tr  || 0;
+    stateGran.oz12ef = d.oz12ef || 0;
+    stateGran.oz12tr = d.oz12tr || 0;
+    stateGran.descuentoMonto  = d.descuentoMonto  || 0;
+    stateGran.descuentoCodigo = d.descuentoCodigo || '';
+    stateGran.baseEf = d.baseEf || 0;
+    stateGran.baseTr = d.baseTr || 0;
+    // Actualizar inputs solo si no están en foco
+    const setIfBlurred = (id, val) => { const el=$(id); if(el && el!==document.activeElement) el.value = val||0 ? String(val) : ''; };
+    setIfBlurred('g9ef',  stateGran.oz9ef);
+    setIfBlurred('g9tr',  stateGran.oz9tr);
+    setIfBlurred('g12ef', stateGran.oz12ef);
+    setIfBlurred('g12tr', stateGran.oz12tr);
+    if(stateGran.descuentoMonto>0 && $('gr-desc-monto')!==document.activeElement)
+      $('gr-desc-monto').value = fmtRaw(stateGran.descuentoMonto);
+    // No restaurar el código en el input (es secreto, tipo password)
+    if(stateGran.baseEf>0 && $('gr-base-ef')!==document.activeElement)
+      $('gr-base-ef').value = fmtRaw(stateGran.baseEf);
+    if(stateGran.baseTr>0 && $('gr-base-tr')!==document.activeElement)
+      $('gr-base-tr').value = fmtRaw(stateGran.baseTr);
+    renderGranizados();
+  }, e => console.error(e)));
+
+  unsubs.push(granRef.collection('compras').orderBy('createdAt').onSnapshot(snap => {
+    stateGran.compras = snap.docs.map(d => ({...d.data(), _docId: d.id}));
+    renderGranizados();
   }, e => console.error(e)));
 }
 
@@ -840,19 +1096,19 @@ async function addFactura() {
   data.createdAt=TS(); data.createdBy=currentUser.uid;
   $('f-desc').value=''; $('f-monto').value='';
   $('f-desc').focus();
-  try { await db.collection('draft').doc('current').collection('facturas').add(data); }
+  try { await DRAFT().doc('current').collection('facturas').add(data); }
   catch(e){ alert('Error al guardar: '+e.message); }
 }
 
 async function delFactura(docId){
   if(locked) return;
-  try{ await db.collection('draft').doc('current').collection('facturas').doc(docId).delete(); }
+  try{ await DRAFT().doc('current').collection('facturas').doc(docId).delete(); }
   catch(e){ alert('Error: '+e.message); }
 }
 async function clearFacturas(){
   if(locked) return;
   if(!confirm('¿Eliminar todas las facturas?')) return;
-  const snap=await db.collection('draft').doc('current').collection('facturas').get();
+  const snap=await DRAFT().doc('current').collection('facturas').get();
   const batch=db.batch(); snap.docs.forEach(d=>batch.delete(d.ref)); await batch.commit();
 }
 
@@ -886,11 +1142,11 @@ async function addGasto(){
   if(!desc){ alert('Ingresa el concepto.'); return; }
   if(monto<=0){ alert('Ingresa un monto válido.'); return; }
   $('g-desc').value=''; $('g-monto').value=''; $('g-desc').focus();
-  try{ await db.collection('draft').doc('current').collection('gastos').add({desc,monto,createdAt:TS(),createdBy:currentUser.uid}); }
+  try{ await DRAFT().doc('current').collection('gastos').add({desc,monto,createdAt:TS(),createdBy:currentUser.uid}); }
   catch(e){ alert('Error: '+e.message); }
 }
-async function delGasto(docId){ if(locked) return; try{ await db.collection('draft').doc('current').collection('gastos').doc(docId).delete(); }catch(e){ alert('Error: '+e.message); } }
-async function clearGastos(){ if(locked) return; if(!confirm('¿Eliminar todos los gastos?')) return; const snap=await db.collection('draft').doc('current').collection('gastos').get(); const batch=db.batch(); snap.docs.forEach(d=>batch.delete(d.ref)); await batch.commit(); }
+async function delGasto(docId){ if(locked) return; try{ await DRAFT().doc('current').collection('gastos').doc(docId).delete(); }catch(e){ alert('Error: '+e.message); } }
+async function clearGastos(){ if(locked) return; if(!confirm('¿Eliminar todos los gastos?')) return; const snap=await DRAFT().doc('current').collection('gastos').get(); const batch=db.batch(); snap.docs.forEach(d=>batch.delete(d.ref)); await batch.commit(); }
 
 function renderGastos(){
   const tb=$('tb-gastos');
@@ -915,11 +1171,11 @@ async function addEmpleado(){
   if(!nombre){ alert('Ingresa el nombre.'); return; }
   if(pago<=0){ alert('Ingresa un pago válido.'); return; }
   $('e-nombre').value=''; $('e-pago').value=''; $('e-nombre').focus();
-  try{ await db.collection('draft').doc('current').collection('empleados').add({nombre,pago,tipo:empleadoTipo,createdAt:TS(),createdBy:currentUser.uid}); }
+  try{ await DRAFT().doc('current').collection('empleados').add({nombre,pago,tipo:empleadoTipo,createdAt:TS(),createdBy:currentUser.uid}); }
   catch(e){ alert('Error: '+e.message); }
 }
-async function delEmpleado(docId){ if(locked) return; try{ await db.collection('draft').doc('current').collection('empleados').doc(docId).delete(); }catch(e){ alert('Error: '+e.message); } }
-async function clearEmpleados(){ if(locked) return; if(!confirm('¿Eliminar todos los empleados?')) return; const snap=await db.collection('draft').doc('current').collection('empleados').get(); const batch=db.batch(); snap.docs.forEach(d=>batch.delete(d.ref)); await batch.commit(); }
+async function delEmpleado(docId){ if(locked) return; try{ await DRAFT().doc('current').collection('empleados').doc(docId).delete(); }catch(e){ alert('Error: '+e.message); } }
+async function clearEmpleados(){ if(locked) return; if(!confirm('¿Eliminar todos los empleados?')) return; const snap=await DRAFT().doc('current').collection('empleados').get(); const batch=db.batch(); snap.docs.forEach(d=>batch.delete(d.ref)); await batch.commit(); }
 
 function renderEmpleados(){
   const tb=$('tb-empleados');
@@ -951,7 +1207,7 @@ function updateCaja(){
   renderCaja();
   clearTimeout(cajaUpdateTimer);
   cajaUpdateTimer=setTimeout(async()=>{
-    try{ await db.collection('draft').doc('current').set({baseEfectivo:state.baseEfectivo,baseTr:state.baseTr},{merge:true}); }
+    try{ await DRAFT().doc('current').set({baseEfectivo:state.baseEfectivo,baseTr:state.baseTr},{merge:true}); }
     catch(e){ console.error(e); }
   }, 800);
 }
@@ -962,11 +1218,11 @@ async function addCompra(){
   if(!desc){ alert('Ingresa el ítem.'); return; }
   if(monto<=0){ alert('Ingresa un valor válido.'); return; }
   $('c-desc').value=''; $('c-monto').value=''; $('c-desc').focus();
-  try{ await db.collection('draft').doc('current').collection('compras').add({desc,monto,tipo:compraTipo,createdAt:TS(),createdBy:currentUser.uid}); }
+  try{ await DRAFT().doc('current').collection('compras').add({desc,monto,tipo:compraTipo,createdAt:TS(),createdBy:currentUser.uid}); }
   catch(e){ alert('Error: '+e.message); }
 }
-async function delCompra(docId){ if(locked) return; try{ await db.collection('draft').doc('current').collection('compras').doc(docId).delete(); }catch(e){ alert('Error: '+e.message); } }
-async function clearCompras(){ if(locked) return; if(!confirm('¿Eliminar todas las compras?')) return; const snap=await db.collection('draft').doc('current').collection('compras').get(); const batch=db.batch(); snap.docs.forEach(d=>batch.delete(d.ref)); await batch.commit(); }
+async function delCompra(docId){ if(locked) return; try{ await DRAFT().doc('current').collection('compras').doc(docId).delete(); }catch(e){ alert('Error: '+e.message); } }
+async function clearCompras(){ if(locked) return; if(!confirm('¿Eliminar todas las compras?')) return; const snap=await DRAFT().doc('current').collection('compras').get(); const batch=db.batch(); snap.docs.forEach(d=>batch.delete(d.ref)); await batch.commit(); }
 
 function renderCaja(){
   const baseEf=state.baseEfectivo||0, baseTr=state.baseTr||0;
@@ -992,7 +1248,6 @@ function renderCaja(){
 function renderResumen(){
   const t=totals();
   $('r-ef').textContent=fmt(t.ef); $('r-tr').textContent=fmt(t.tr); $('r-cnt').textContent=t.cnt; $('r-bruto').textContent=fmt(t.bruto);
-  if(currentRole!=='admin') return;
   $('r2-ef').textContent=fmt(t.ef); $('r2-tr').textContent=fmt(t.tr); $('r-venta-dia').textContent=fmt(t.ventaDia);
   $('venta-dia-box').className='neto-box '+(t.ventaDia>=0?'neto-pos':'neto-neg');
   $('r3-ef').textContent=fmt(t.ef); $('r2-gastos').textContent=fmt(t.tg); $('r2-emp-ef').textContent=fmt(t.teEf); $('r2-efneto').textContent=fmt(t.efNeto);
@@ -1015,10 +1270,20 @@ async function saveDay(){
   const nombre=$('save-nombre').value.trim();
   if(!nombre){ alert('Escribe un nombre para este registro.'); return; }
   const key=nombre.replace(/[^a-zA-Z0-9áéíóúÁÉÍÓÚñÑ \-_()\/.]/g,'').trim().replace(/ /g,'_');
-  const record={fecha:nombre, state:JSON.parse(JSON.stringify(state)), totals:totals(), savedAt:new Date().toISOString(), savedBy:currentUser.uid, savedByName:currentUserName};
+  const tg = totalsGran();
+  const record={
+    fecha:nombre,
+    state:JSON.parse(JSON.stringify(state)),
+    totals:totals(),
+    granizados: JSON.parse(JSON.stringify(stateGran)),
+    totalsGran: tg,
+    savedAt:new Date().toISOString(),
+    savedBy:currentUser.uid,
+    savedByName:currentUserName
+  };
   try{
-    await db.collection('historial').doc(key).set(record);
-    await db.collection('draft').doc('current').set({locked:true},{merge:true});
+    await HIST().doc(key).set(record);
+    await DRAFT().doc('current').set({locked:true},{merge:true});
     closeModal('modal-save');
     alert('✅ Registro guardado como "'+nombre+'"\n\nEl día ha sido bloqueado.');
   } catch(e){ alert('Error al guardar: '+e.message); }
@@ -1030,17 +1295,22 @@ async function saveDay(){
 async function newDay(){
   if(!confirm('¿Iniciar un nuevo día?\n\nEsto eliminará todos los datos actuales del día.\n\nAsegúrate de haber guardado primero.')) return;
   try{
-    const draftRef=db.collection('draft').doc('current');
-    const [fS,gS,eS,cS]=await Promise.all([
+    const draftRef=DRAFT().doc('current');
+    const granRef=DRAFT().doc('granizados');
+    const [fS,gS,eS,cS,gcS]=await Promise.all([
       draftRef.collection('facturas').get(),
       draftRef.collection('gastos').get(),
       draftRef.collection('empleados').get(),
-      draftRef.collection('compras').get()
+      draftRef.collection('compras').get(),
+      granRef.collection('compras').get()
     ]);
     const batch=db.batch();
-    [...fS.docs,...gS.docs,...eS.docs,...cS.docs].forEach(d=>batch.delete(d.ref));
+    [...fS.docs,...gS.docs,...eS.docs,...cS.docs,...gcS.docs].forEach(d=>batch.delete(d.ref));
     batch.set(draftRef,{baseEfectivo:0,baseTr:0,locked:false});
+    batch.set(granRef,{oz9ef:0,oz9tr:0,oz12ef:0,oz12tr:0,descuentoMonto:0,descuentoCodigo:'',baseEf:0,baseTr:0});
     await batch.commit();
+    // Limpiar inputs granizados
+    ['g9ef','g9tr','g12ef','g12tr','gr-desc-monto','gr-desc-codigo','gr-base-ef','gr-base-tr'].forEach(id=>{const el=$(id);if(el)el.value='';});
     $('base-efectivo').value=''; $('base-tr').value='';
     unlockUI();
     locked=false;
@@ -1055,7 +1325,7 @@ async function renderHistorial(){
   const div=$('hist-list');
   div.innerHTML='<div class="empty-msg">Cargando...</div>';
   try{
-    const snap=await db.collection('historial').orderBy('savedAt','desc').get();
+    const snap=await HIST().orderBy('savedAt','desc').get();
     if(snap.empty){ div.innerHTML='<div class="empty-msg">No hay registros guardados aún.</div>'; return; }
     div.innerHTML=snap.docs.map(d=>{
       const r=d.data(), t=r.totals, col=t.total>=0?'c-green':'c-red';
@@ -1071,7 +1341,7 @@ async function renderHistorial(){
 async function showRecord(docId){
   currentHistKey=docId;
   try{
-    const doc=await db.collection('historial').doc(docId).get();
+    const doc=await HIST().doc(docId).get();
     if(!doc.exists) return;
     const r=doc.data();
     currentHistRecord=r;
@@ -1124,6 +1394,7 @@ async function showRecord(docId){
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:3px;padding-bottom:4px;border-bottom:1px solid #f0f4f8"><span style="color:var(--red)">Compras</span><span style="text-align:right;color:var(--red);font-weight:700">${fmt(t.tcEf||0)}</span><span style="text-align:right;color:var(--red);font-weight:700">${fmt(t.tcTr||0)}</span></div>
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:3px;margin-bottom:4px"><span style="font-weight:700">Saldo caja</span><span style="text-align:right;color:#276749;font-weight:700">${fmt(t.saldoCajaEf||0)}</span><span style="text-align:right;color:#2b6cb0;font-weight:700">${fmt(t.saldoCajaTr||0)}</span></div>
         <div style="display:flex;justify-content:space-between;font-weight:800;font-size:0.9rem;background:#faf5ff;padding:7px 10px;border-radius:8px;color:#553c9a"><span>🏧 Total caja</span><span>${fmt(t.saldoCaja||0)}</span></div>
+        <div style="display:flex;justify-content:space-between;margin-top:8px
         <div style="display:flex;justify-content:space-between;margin-top:8px;color:#276749"><span>💵 Ef. neto</span><span>${fmt(t.efNeto||0)}</span></div>
         <div style="display:flex;justify-content:space-between;color:#276749"><span>&nbsp;&nbsp;(+) Saldo caja ef.</span><span>${fmt(t.saldoCajaEf||0)}</span></div>
         <div style="display:flex;justify-content:space-between;font-weight:800;background:#f0fff4;padding:6px 10px;border-radius:8px;margin-bottom:6px;color:#276749"><span>💵 Disponible efectivo</span><span>${fmt(t.dispEf||0)}</span></div>
@@ -1131,21 +1402,41 @@ async function showRecord(docId){
         <div style="display:flex;justify-content:space-between;color:#2b6cb0"><span>&nbsp;&nbsp;(+) Saldo caja tr.</span><span>${fmt(t.saldoCajaTr||0)}</span></div>
         <div style="display:flex;justify-content:space-between;font-weight:800;background:#ebf8ff;padding:6px 10px;border-radius:8px;margin-bottom:8px;color:#2b6cb0"><span>🏦 Disponible transferencias</span><span>${fmt(t.dispTr||0)}</span></div>
         <div style="display:flex;justify-content:space-between;font-size:1rem;font-weight:800;border-top:2px solid var(--border);padding-top:8px;color:${t.total>=0?'#276749':'var(--red)'}"><span>💼 Total disponible</span><span>${fmt(t.total)}</span></div>
-      </div>`;
+      </div>
+      ${(()=>{
+        const sg=r.granizados||null; const tg=r.totalsGran||null;
+        if(!sg||!tg) return '';
+        const comprasGran=sg.compras||[];
+        return `<hr class="divider"/>
+        <div style="font-weight:700;margin-bottom:6px;font-size:0.9rem">🧊 Granizados</div>
+        <div style="font-size:0.84rem;display:flex;flex-direction:column;gap:4px">
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:3px;font-size:0.78rem;margin-bottom:2px"><span></span><span style="text-align:right;font-weight:700;color:#276749">💵 Ef.</span><span style="text-align:right;font-weight:700;color:#2b6cb0">🏦 Tr.</span></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:3px"><span style="color:var(--gray)">Vasos 9oz</span><span style="text-align:right">${tg.oz9ef}</span><span style="text-align:right">${tg.oz9tr}</span></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:3px"><span style="color:var(--gray)">Vasos 12oz</span><span style="text-align:right">${tg.oz12ef}</span><span style="text-align:right">${tg.oz12tr}</span></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:3px;border-top:1px dashed #c6f6d5;padding-top:4px"><span style="font-weight:700">Venta bruta</span><span style="text-align:right;color:#276749;font-weight:700">${fmt(tg.efBruto)}</span><span style="text-align:right;color:#2b6cb0;font-weight:700">${fmt(tg.trBruto)}</span></div>
+          ${tg.desc>0?`<div style="display:flex;justify-content:space-between;color:var(--red)"><span>(−) Descuento</span><span>${fmt(tg.desc)}</span></div>`:''}
+          <div style="display:flex;justify-content:space-between;font-weight:800;background:#e6fffa;padding:6px 10px;border-radius:8px"><span>Venta neta granizados</span><span style="color:#234e52">${fmt(tg.neto)}</span></div>
+          ${comprasGran.length?`<div style="font-weight:700;margin-top:6px;font-size:0.78rem;color:var(--gray)">COMPRAS GRANIZADOS</div>${rows(comprasGran.map(c=>[c.desc,fmt(c.monto),c.tipo==='efectivo'?'💵 Ef':'🏦 Tr']),['Ítem','Valor','Tipo'])}`:''}
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:3px;margin-top:4px"><span style="color:var(--gray)">Base caja</span><span style="text-align:right;color:#276749">${fmt(tg.baseEf)}</span><span style="text-align:right;color:#2b6cb0">${fmt(tg.baseTr)}</span></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:3px"><span style="color:var(--red)">Compras</span><span style="text-align:right;color:var(--red)">${fmt(tg.tcEf)}</span><span style="text-align:right;color:var(--red)">${fmt(tg.tcTr)}</span></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:3px"><span style="font-weight:700">Saldo caja</span><span style="text-align:right;color:#276749;font-weight:700">${fmt(tg.saldoEf)}</span><span style="text-align:right;color:#2b6cb0;font-weight:700">${fmt(tg.saldoTr)}</span></div>
+          <div style="display:flex;justify-content:space-between;font-size:1rem;font-weight:800;background:#e6fffa;padding:7px 10px;border-radius:8px;color:#234e52"><span>🧊 Total disponible granizados</span><span>${fmt(tg.total)}</span></div>
+        </div>`;
+      })()}`;
     openModal('modal-hist');
   } catch(e){ alert('Error al cargar el registro: '+e.message); }
 }
 
 async function deleteRecord(){
   if(!confirm('¿Eliminar este registro?')) return;
-  try{ await db.collection('historial').doc(currentHistKey).delete(); closeModal('modal-hist'); renderHistorial(); }
+  try{ await HIST().doc(currentHistKey).delete(); closeModal('modal-hist'); renderHistorial(); }
   catch(e){ alert('Error: '+e.message); }
 }
 
 // ══════════════════════════════════════
 //   EXCEL EXPORT / IMPORT
 // ══════════════════════════════════════
-function buildExcelData(st, t, fecha) {
+function buildExcelData(st, t, fecha, sg, tg) {
   const data=[];
   data.push(['CONTROL DE FACTURAS — '+fecha]);
   data.push([]);
@@ -1178,13 +1469,28 @@ function buildExcelData(st, t, fecha) {
   data.push(['Transferencias ingresadas',t.tr]); data.push(['(−) Empleados transferencias',t.teTr]); data.push(['= Transferencias netas',t.trNeto]); data.push(['NETO DEL DÍA',t.netoDia]); data.push([]);
   data.push(['--- Total disponible ---']); data.push(['Efectivo neto',t.efNeto]); data.push(['(+) Saldo caja efectivo',t.saldoCajaEf]); data.push(['= Disponible efectivo',t.dispEf]);
   data.push(['Transferencias netas',t.trNeto]); data.push(['(+) Saldo caja transferencias',t.saldoCajaTr]); data.push(['= Disponible transferencias',t.dispTr]); data.push(['TOTAL DISPONIBLE',t.total]);
+  if(sg && tg){
+    data.push([]); data.push(['GRANIZADOS']); data.push([]);
+    data.push(['VENTAS GRANIZADOS']); data.push(['Producto','Efectivo (vasos)','Transferencia (vasos)','Total vasos','Valor']);
+    data.push(['9 oz',tg.oz9ef,tg.oz9tr,tg.oz9ef+tg.oz9tr,(tg.oz9ef+tg.oz9tr)*10000]);
+    data.push(['12 oz',tg.oz12ef,tg.oz12tr,tg.oz12ef+tg.oz12tr,(tg.oz12ef+tg.oz12tr)*12000]);
+    data.push(['Efectivo bruto',tg.efBruto]); data.push(['Transferencias brutas',tg.trBruto]); data.push(['VENTA BRUTA GRANIZADOS',tg.bruto]);
+    if(tg.desc>0) data.push(['(−) Descuento',tg.desc]);
+    data.push(['VENTA NETA GRANIZADOS',tg.neto]); data.push([]);
+    data.push(['CAJA GRANIZADOS']); data.push(['Base efectivo',tg.baseEf]); data.push(['Base transferencias',tg.baseTr]);
+    if((sg.compras||[]).length){ data.push(['Ítem','Valor','Tipo']); (sg.compras||[]).forEach(c=>data.push([c.desc,c.monto,c.tipo==='efectivo'?'Efectivo':'Transferencia'])); }
+    data.push(['TOTAL COMPRAS EFECTIVO',tg.tcEf]); data.push(['TOTAL COMPRAS TRANSFERENCIAS',tg.tcTr]);
+    data.push(['SALDO CAJA EF.',tg.saldoEf]); data.push(['SALDO CAJA TR.',tg.saldoTr]);
+    data.push(['DISPONIBLE EF.',tg.dispEf]); data.push(['DISPONIBLE TR.',tg.dispTr]);
+    data.push(['TOTAL DISPONIBLE GRANIZADOS',tg.total]);
+  }
   return data;
 }
 
 function exportExcel(){
   const nombre=prompt('¿Con qué nombre quieres guardar el archivo Excel?','facturas_'+today());
   if(!nombre) return;
-  const t=totals(), data=buildExcelData(state,t,nombre);
+  const t=totals(), tg=totalsGran(), data=buildExcelData(state,t,nombre,stateGran,tg);
   const wb=XLSX.utils.book_new(), ws=XLSX.utils.aoa_to_sheet(data);
   ws['!cols']=[{wch:32},{wch:18},{wch:14},{wch:14}];
   XLSX.utils.book_append_sheet(wb,ws,'Resumen');
@@ -1200,9 +1506,10 @@ function exportExcelFromRecord(){
   if(!savedState.baseEfectivo) savedState.baseEfectivo=0;
   if(!savedState.baseTr) savedState.baseTr=0;
   const origState=state; state=savedState; const t=totals(); state=origState;
+  const savedGran=r.granizados||null; const savedTg=r.totalsGran||null;
   const nombre=prompt('¿Con qué nombre quieres guardar el Excel?', r.fecha.replace(/[\/\\:*?"<>|]/g,'_'));
   if(!nombre) return;
-  const data=buildExcelData(savedState,t,r.fecha);
+  const data=buildExcelData(savedState,t,r.fecha,savedGran,savedTg);
   const wb=XLSX.utils.book_new(), ws=XLSX.utils.aoa_to_sheet(data);
   ws['!cols']=[{wch:32},{wch:18},{wch:14},{wch:14}];
   XLSX.utils.book_append_sheet(wb,ws,'Resumen');
@@ -1223,7 +1530,7 @@ function handleImport(e){
 }
 
 async function parseImport(rows){
-  const parseVal=v=>parseFloat(String(v||'0').replace(/\./g,'').replace(',','.'))||0;
+  const parseVal=v=>parseFloat(String(v||'0').replace(/[$.]/g,'').replace(',','.'))||0;
   const findSec=name=>rows.findIndex(r=>String(r[0]||'').trim().toUpperCase()===name.toUpperCase());
   const iF=findSec('FACTURAS'), iG=findSec('GASTOS DEL DÍA'), iE=findSec('PAGO A EMPLEADOS'), iC=findSec('CAJA / COMPRAS'), iR=findSec('RESUMEN FINAL');
   const getRows=(start,end)=>{ if(start<0) return []; const res=[]; for(let i=start+2;i<(end>0?end:rows.length);i++){ const c0=String(rows[i][0]||'').trim(),c1=String(rows[i][1]||'').trim(); if(!c0&&!c1) continue; res.push(rows[i]); } return res; };
@@ -1235,87 +1542,298 @@ async function parseImport(rows){
   const newEmpleados=[]; getRows(iE,iC>0?iC:iR>0?iR:rows.length).forEach(r=>{ const nombre=String(r[0]||'').trim(),pago=parseVal(r[1]),tipoStr=String(r[2]||'').toLowerCase(); if(!nombre||pago<=0||nombre.toUpperCase().startsWith('TOTAL')) return; newEmpleados.push({nombre,pago,tipo:tipoStr.includes('trans')?'transferencia':'efectivo'}); });
   let newBaseEf=0,newBaseTr=0; const newCompras=[];
   if(iC>=0){ const r1=rows[iC+1]||[],r2=rows[iC+2]||[]; if(String(r1[0]||'').toLowerCase().includes('efectivo')) newBaseEf=parseVal(r1[1]); if(String(r2[0]||'').toLowerCase().includes('transfer')) newBaseTr=parseVal(r2[1]); const end=iR>0?iR:rows.length; const skip=['total compras','saldo caja','--- saldo']; for(let i=iC+4;i<end;i++){ const r=rows[i],desc=String(r[0]||'').trim(),monto=parseVal(r[1]),tipoStr=String(r[2]||'').toLowerCase(); if(!desc||monto<=0) continue; if(skip.some(s=>desc.toLowerCase().startsWith(s))) continue; newCompras.push({desc,monto,tipo:tipoStr.includes('trans')?'transferencia':'efectivo'}); } }
+  // Granizados
+  const iGran=findSec('GRANIZADOS');
+  let newGranizados=null;
+  if(iGran>=0){
+    const iVG=rows.findIndex((r,i)=>i>iGran&&String(r[0]||'').trim().toUpperCase()==='VENTAS GRANIZADOS');
+    const iCG=rows.findIndex((r,i)=>i>iGran&&String(r[0]||'').trim().toUpperCase()==='CAJA GRANIZADOS');
+    let oz9ef=0,oz9tr=0,oz12ef=0,oz12tr=0,baseGranEf=0,baseGranTr=0; const comprasGran=[];
+    if(iVG>=0){ for(let i=iVG+2;i<(iCG>0?iCG:rows.length);i++){ const r0=String(rows[i][0]||'').trim(); if(r0==='9 oz'){oz9ef=parseVal(rows[i][1]);oz9tr=parseVal(rows[i][2]);} if(r0==='12 oz'){oz12ef=parseVal(rows[i][1]);oz12tr=parseVal(rows[i][2]);} } }
+    if(iCG>=0){ const r1=rows[iCG+1]||[],r2=rows[iCG+2]||[]; if(String(r1[0]||'').toLowerCase().includes('efectivo')) baseGranEf=parseVal(r1[1]); if(String(r2[0]||'').toLowerCase().includes('transfer')) baseGranTr=parseVal(r2[1]); const skipGran=['total compras','saldo caja','disponible','total disponible']; for(let i=iCG+4;i<rows.length;i++){ const r=rows[i],desc=String(r[0]||'').trim(),monto=parseVal(r[1]),tipoStr=String(r[2]||'').toLowerCase(); if(!desc||monto<=0) continue; if(skipGran.some(s=>desc.toLowerCase().startsWith(s))) continue; if(['ítem','item'].includes(desc.toLowerCase())) continue; comprasGran.push({desc,monto,tipo:tipoStr.includes('trans')?'transferencia':'efectivo'}); } }
+    newGranizados={oz9ef,oz9tr,oz12ef,oz12tr,descuentoMonto:0,descuentoCodigo:'',baseEf:baseGranEf,baseTr:baseGranTr,compras:comprasGran};
+  }
   if(!newFacturas.length&&!newGastos.length&&!newEmpleados.length){ alert('No se encontraron datos en el archivo.'); return; }
   try{
-    const draftRef=db.collection('draft').doc('current');
-    const [fS,gS,eS,cS]=await Promise.all([draftRef.collection('facturas').get(),draftRef.collection('gastos').get(),draftRef.collection('empleados').get(),draftRef.collection('compras').get()]);
+    const draftRef=DRAFT().doc('current');
+    const granRef=DRAFT().doc('granizados');
+    const [fS,gS,eS,cS,gcS]=await Promise.all([draftRef.collection('facturas').get(),draftRef.collection('gastos').get(),draftRef.collection('empleados').get(),draftRef.collection('compras').get(),granRef.collection('compras').get()]);
     const batch=db.batch();
-    [...fS.docs,...gS.docs,...eS.docs,...cS.docs].forEach(d=>batch.delete(d.ref));
+    [...fS.docs,...gS.docs,...eS.docs,...cS.docs,...gcS.docs].forEach(d=>batch.delete(d.ref));
     batch.set(draftRef,{baseEfectivo:newBaseEf,baseTr:newBaseTr,locked:false},{merge:true});
     newFacturas.forEach(f=>batch.set(draftRef.collection('facturas').doc(),{...f,createdAt:TS(),createdBy:currentUser.uid}));
     newGastos.forEach(g=>batch.set(draftRef.collection('gastos').doc(),{...g,createdAt:TS(),createdBy:currentUser.uid}));
     newEmpleados.forEach(e=>batch.set(draftRef.collection('empleados').doc(),{...e,createdAt:TS(),createdBy:currentUser.uid}));
     newCompras.forEach(c=>batch.set(draftRef.collection('compras').doc(),{...c,createdAt:TS(),createdBy:currentUser.uid}));
+    if(newGranizados){ const {compras:gc,...granBase}=newGranizados; batch.set(granRef,granBase,{merge:false}); gc.forEach(c=>batch.set(granRef.collection('compras').doc(),{...c,createdAt:TS(),createdBy:currentUser.uid})); }
     await batch.commit();
-    alert(`✅ Importado:\n• ${newFacturas.length} facturas\n• ${newGastos.length} gastos\n• ${newEmpleados.length} empleados\n• ${newCompras.length} compras`);
+    alert(`✅ Importado:\n• ${newFacturas.length} facturas\n• ${newGastos.length} gastos\n• ${newEmpleados.length} empleados\n• ${newCompras.length} compras${newGranizados?'\n• Datos de granizados':''}`);
   } catch(e){ alert('Error al importar: '+e.message); }
 }
 
 // ══════════════════════════════════════
-//   USER MANAGEMENT
+//   GRANIZADOS
 // ══════════════════════════════════════
+function totalsGran() {
+  const {oz9ef,oz9tr,oz12ef,oz12tr,descuentoMonto,baseEf,baseTr,compras} = stateGran;
+  const efBruto  = oz9ef*PRECIO_9OZ  + oz12ef*PRECIO_12OZ;
+  const trBruto  = oz9tr*PRECIO_9OZ  + oz12tr*PRECIO_12OZ;
+  const bruto    = efBruto + trBruto;
+  const desc     = descuentoMonto || 0;
+  const efNeto   = efBruto - desc;
+  const trNeto   = trBruto;
+  const neto     = efNeto + trNeto;
+  const tcEf     = compras.filter(c=>c.tipo==='efectivo').reduce((s,c)=>s+c.monto,0);
+  const tcTr     = compras.filter(c=>c.tipo==='transferencia').reduce((s,c)=>s+c.monto,0);
+  const saldoEf  = Math.max(0, baseEf-tcEf);
+  const saldoTr  = Math.max(0, baseTr-tcTr);
+  const saldo    = saldoEf + saldoTr;
+  const dispEf   = efNeto + saldoEf;
+  const dispTr   = trNeto + saldoTr;
+  const total    = dispEf + dispTr;
+  return {oz9ef,oz9tr,oz12ef,oz12tr,efBruto,trBruto,bruto,desc,efNeto,trNeto,neto,tcEf,tcTr,saldoEf,saldoTr,saldo,dispEf,dispTr,total,baseEf,baseTr};
+}
+
+function renderGranizados() {
+  const t = totalsGran();
+  $('gr-tot9').textContent  = t.oz9ef+t.oz9tr;
+  $('gr-tot12').textContent = t.oz12ef+t.oz12tr;
+  $('gr-val9').textContent  = fmt((t.oz9ef+t.oz9tr)*PRECIO_9OZ);
+  $('gr-val12').textContent = fmt((t.oz12ef+t.oz12tr)*PRECIO_12OZ);
+  $('gr-ef').textContent    = fmt(t.efBruto);
+  $('gr-tr').textContent    = fmt(t.trBruto);
+  $('gr-bruto').textContent = fmt(t.bruto);
+  $('gr-desc-val').textContent = fmt(t.desc);
+  $('gr-neto').textContent     = fmt(t.neto);
+  $('gr-saldo-ef').textContent  = fmt(t.saldoEf);
+  $('gr-sub-ef').textContent    = `Base: ${fmt(t.baseEf)} — Compras: ${fmt(t.tcEf)}`;
+  $('gr-saldo-tr').textContent  = fmt(t.saldoTr);
+  $('gr-sub-tr').textContent    = `Base: ${fmt(t.baseTr)} — Compras: ${fmt(t.tcTr)}`;
+  $('gr-saldo-total').textContent = fmt(t.saldo);
+  $('gr4-efneto').textContent  = fmt(t.efNeto);
+  $('gr4-saldo-ef').textContent = fmt(t.saldoEf);
+  $('gr4-disp-ef').textContent  = fmt(t.dispEf);
+  $('gr4-trneto').textContent  = fmt(t.trNeto);
+  $('gr4-saldo-tr').textContent = fmt(t.saldoTr);
+  $('gr4-disp-tr').textContent  = fmt(t.dispTr);
+  $('gr-total').textContent     = fmt(t.total);
+  $('gr-total-box').className   = 'neto-box '+(t.total>=0?'neto-pos':'neto-neg');
+  const tb = $('tb-compras-gran');
+  if(!stateGran.compras.length){ tb.innerHTML='<tr><td colspan="5" class="empty-msg">Sin compras</td></tr>'; return; }
+  tb.innerHTML = stateGran.compras.map((c,i)=>{
+    const badge=c.tipo==='efectivo'?'<span class="badge badge-ef">💵</span>':'<span class="badge badge-tr">🏦</span>';
+    return `<tr><td>${i+1}</td><td>${c.desc}</td><td><strong>${fmt(c.monto)}</strong></td><td>${badge}</td><td><button class="btn-sm btn-danger" onclick="delCompraGran('${c._docId}')">✕</button></td></tr>`;
+  }).join('')+`<tr class="compra-total-row"><td colspan="2" style="text-align:right;font-weight:700;color:var(--gray)">Total compras:</td><td colspan="3"><strong>${fmt(t.tcEf+t.tcTr)}</strong></td></tr>`;
+}
+
+function scheduleGranUpdate(){
+  clearTimeout(granUpdateTimer);
+  granUpdateTimer = setTimeout(updateGranFirestore, 800);
+}
+
+async function updateGranFirestore(){
+  const oz9ef  = parseInt($('g9ef').value)||0;
+  const oz9tr  = parseInt($('g9tr').value)||0;
+  const oz12ef = parseInt($('g12ef').value)||0;
+  const oz12tr = parseInt($('g12tr').value)||0;
+  const descMonto = moneyVal('gr-desc-monto');
+  const descCod   = $('gr-desc-codigo').value.trim();
+  const baseEf = moneyVal('gr-base-ef');
+  const baseTr = moneyVal('gr-base-tr');
+  stateGran.oz9ef=oz9ef; stateGran.oz9tr=oz9tr; stateGran.oz12ef=oz12ef; stateGran.oz12tr=oz12tr;
+  stateGran.descuentoMonto=descMonto; stateGran.descuentoCodigo=descCod;
+  stateGran.baseEf=baseEf; stateGran.baseTr=baseTr;
+  renderGranizados();
+  try{
+    await DRAFT().doc('granizados').set({oz9ef,oz9tr,oz12ef,oz12tr,descuentoMonto:descMonto,descuentoCodigo:descCod,baseEf,baseTr},{merge:true});
+  } catch(e){ console.error('Gran update error:',e); }
+}
+
+async function lookupDiscountCode(){
+  const code=$('gr-desc-codigo').value.trim();
+  if(!code){ $('gr-desc-info').style.display='none'; return; }
+  try{
+    const snap=await db.collection('usuarios').where('codigoDescuento','==',code).get();
+    if(!snap.empty){
+      const u=snap.docs[0].data();
+      $('gr-desc-info').textContent='✅ Código válido — '+u.nombre;
+      $('gr-desc-info').style.display='block';
+      $('gr-desc-info').style.color='#276749';
+    } else {
+      $('gr-desc-info').textContent='❌ Código no encontrado';
+      $('gr-desc-info').style.display='block';
+      $('gr-desc-info').style.color='var(--red)';
+    }
+  } catch(e){}
+}
+
+async function clearDescuento(){
+  if(!confirm('¿Eliminar el descuento aplicado?')) return;
+  $('gr-desc-monto').value = '';
+  $('gr-desc-codigo').value = '';
+  $('gr-desc-info').style.display = 'none';
+  stateGran.descuentoMonto  = 0;
+  stateGran.descuentoCodigo = '';
+  renderGranizados();
+  try{ await DRAFT().doc('granizados').set({descuentoMonto:0, descuentoCodigo:''},{merge:true}); }
+  catch(e){ alert('Error: '+e.message); }
+}
+
+function setGranCompraTipo(tipo){
+  granCompraTipo=tipo;
+  $('btn-gran-ef').classList.toggle('active',tipo==='efectivo');
+  $('btn-gran-tr').classList.toggle('active',tipo==='transferencia');
+}
+
+async function addGranCompra(){
+  const desc=$('gc-desc').value.trim();
+  const monto=moneyVal('gc-monto');
+  if(!desc||!monto){ alert('Ingresa descripción y monto.'); return; }
+  try{
+    await DRAFT().doc('granizados').collection('compras').add({desc,monto,tipo:granCompraTipo,createdAt:TS(),createdBy:currentUser.uid});
+    $('gc-desc').value=''; $('gc-monto').value='';
+  } catch(e){ alert('Error: '+e.message); }
+}
+
+async function delCompraGran(docId){
+  try{ await DRAFT().doc('granizados').collection('compras').doc(docId).delete(); }
+  catch(e){ alert('Error: '+e.message); }
+}
+
+async function clearGranCompras(){
+  if(!confirm('¿Eliminar todas las compras de granizados?')) return;
+  const snap=await DRAFT().doc('granizados').collection('compras').get();
+  const batch=db.batch(); snap.docs.forEach(d=>batch.delete(d.ref)); await batch.commit();
+}
+
+// ══════════════════════════════════════
+//   USUARIOS
+// ══════════════════════════════════════
+let usersCache = {};
+
 async function loadUsers(){
   const div=$('users-list'); if(!div) return;
   div.innerHTML='<div class="empty-msg">Cargando...</div>';
   try{
     const snap=await db.collection('usuarios').get();
     if(snap.empty){ div.innerHTML='<div class="empty-msg">No hay usuarios registrados.</div>'; return; }
+    usersCache={};
+    snap.docs.forEach(d=>{ usersCache[d.id]=d.data(); });
     div.innerHTML=snap.docs.map(d=>{
       const u=d.data();
       const roleBadge=u.role==='admin'?'<span class="role-badge role-admin">Admin</span>':'<span class="role-badge role-mesero">Mesero</span>';
+      const testBadge=u.testMode?'<span class="role-badge" style="background:#fef3c7;color:#92400e">🧪 Prueba</span>':'';
       return `<div class="user-item">
         <div class="user-item-info">
-          <div class="user-item-name">${u.nombre||u.username} ${roleBadge}</div>
+          <div class="user-item-name">${u.nombre||u.username} ${roleBadge}${testBadge}</div>
           <div class="user-item-sub">@${u.username||u.email}${u.codigoDescuento?' · 🏷️ '+u.codigoDescuento:''}</div>
         </div>
-        <button class="btn-sm btn-danger" onclick="deleteUserDoc('${d.id}')">✕</button>
+        <div style="display:flex;gap:6px">
+          <button class="btn-sm btn-ghost" onclick="showEditUser('${d.id}')">✏️</button>
+          <button class="btn-sm btn-danger" onclick="deleteUserDoc('${d.id}')">✕</button>
+        </div>
       </div>`;
     }).join('');
   } catch(e){ div.innerHTML='<div class="empty-msg">Error al cargar usuarios.</div>'; }
 }
 
-function showCreateUser(){
-  ['nu-nombre','nu-user','nu-pass','nu-codigo'].forEach(id=>$(id).value='');
-  $('nu-role').value='mesero'; $('nu-error').textContent='';
-  openModal('modal-create-user');
+function showEditUser(uid){
+  const u=usersCache[uid]; if(!u) return;
+  $('eu-uid').value=uid;
+  $('eu-nombre').value=u.nombre||'';
+  $('eu-username').value=u.username||'';
+  $('eu-username-original').value=u.username||'';
+  $('eu-role').value=u.role||'mesero';
+  $('eu-codigo').value=u.codigoDescuento||'';
+  $('eu-testmode').checked=u.testMode===true;
+  $('eu-pass').value='';
+  $('eu-pass-section').style.display='none';
+  $('eu-error').textContent='';
+  openModal('modal-edit-user');
 }
 
-async function createUser(){
-  const nombre=$('nu-nombre').value.trim(), username=$('nu-user').value.trim().toLowerCase(), pass=$('nu-pass').value, role=$('nu-role').value, codigo=$('nu-codigo').value.trim();
-  $('nu-error').textContent='';
-  if(!nombre||!username||!pass){ $('nu-error').textContent='Completa todos los campos requeridos.'; return; }
-  if(pass.length<6){ $('nu-error').textContent='La contraseña debe tener al menos 6 caracteres.'; return; }
-  const email=username+'@salchimonster.app';
-  const btn=$('btn-create-user'); btn.disabled=true; btn.textContent='Creando...';
+function checkUsernameChange(){
+  const changed=$('eu-username').value.trim().toLowerCase() !== $('eu-username-original').value.trim().toLowerCase();
+  $('eu-pass-section').style.display=changed?'block':'none';
+  if(!changed) $('eu-pass').value='';
+}
+
+async function updateUser(){
+  const uid=$('eu-uid').value;
+  const nombre=$('eu-nombre').value.trim();
+  const newUsername=$('eu-username').value.trim().toLowerCase();
+  const originalUsername=$('eu-username-original').value.trim().toLowerCase();
+  const role=$('eu-role').value;
+  const codigo=$('eu-codigo').value.trim();
+  const testMode=$('eu-testmode').checked;
+  const usernameChanged = newUsername !== originalUsername;
+  $('eu-error').textContent='';
+  if(!nombre){ $('eu-error').textContent='El nombre no puede estar vacío.'; return; }
+  if(!newUsername){ $('eu-error').textContent='El nombre de usuario no puede estar vacío.'; return; }
+  const btn=$('btn-update-user'); btn.disabled=true; btn.textContent='Guardando...';
   try{
-    if(!secondaryApp) secondaryApp=firebase.initializeApp(firebaseConfig,'secondary');
-    const secAuth=secondaryApp.auth();
-    const cred=await secAuth.createUserWithEmailAndPassword(email,pass);
-    const uid=cred.user.uid;
-    await secAuth.signOut();
-    await db.collection('usuarios').doc(uid).set({nombre,username,email,role,codigoDescuento:codigo,createdAt:TS()});
-    closeModal('modal-create-user');
-    loadUsers();
-    alert('✅ Usuario "'+nombre+'" creado correctamente.\nPodrá ingresar con:\nUsuario: '+username+'\nContraseña: la que ingresaste');
+    if(usernameChanged){
+      const newPass=$('eu-pass').value;
+      if(newPass.length<6){ $('eu-error').textContent='La nueva contraseña debe tener al menos 6 caracteres.'; btn.disabled=false; btn.textContent='Guardar cambios'; return; }
+      const newEmail=newUsername+'@salchimonster.app';
+      if(!secondaryApp) secondaryApp=firebase.initializeApp(firebaseConfig,'secondary');
+      const secAuth=secondaryApp.auth();
+      const cred=await secAuth.createUserWithEmailAndPassword(newEmail,newPass);
+      const newUid=cred.user.uid;
+      await secAuth.signOut();
+      const batch=db.batch();
+      batch.set(db.collection('usuarios').doc(newUid),{nombre,username:newUsername,email:newEmail,role,codigoDescuento:codigo,testMode,updatedAt:TS()});
+      batch.delete(db.collection('usuarios').doc(uid));
+      await batch.commit();
+      closeModal('modal-edit-user'); loadUsers();
+      alert('✅ Usuario actualizado.\n\nEl usuario ya puede ingresar con:\nUsuario: '+newUsername+'\n\n⚠️ Ve a Firebase Console → Authentication y elimina el usuario anterior: '+originalUsername+'@salchimonster.app');
+    } else {
+      await db.collection('usuarios').doc(uid).update({nombre,role,codigoDescuento:codigo,testMode,updatedAt:TS()});
+      closeModal('modal-edit-user'); loadUsers();
+      alert('✅ Usuario actualizado correctamente.');
+    }
   } catch(e){
-    $('nu-error').textContent=e.code==='auth/email-already-in-use'?'Ese usuario ya existe.':'Error: '+e.message;
-  } finally{ btn.disabled=false; btn.textContent='Crear usuario'; }
+    $('eu-error').textContent=e.code==='auth/email-already-in-use'?'Ese nombre de usuario ya existe.':'Error: '+e.message;
+  } finally{ btn.disabled=false; btn.textContent='Guardar cambios'; }
 }
 
 async function deleteUserDoc(uid){
-  if(!confirm('¿Eliminar este usuario del sistema?\n\nNota: el usuario no podrá volver a ingresar, pero para eliminarlo completamente de la autenticación debes hacerlo desde Firebase Console.')) return;
-  try{ await db.collection('usuarios').doc(uid).delete(); loadUsers(); }
-  catch(e){ alert('Error: '+e.message); }
+  if(uid===currentUser.uid){ alert('No puedes eliminar tu propio usuario.'); return; }
+  const u=usersCache[uid]||{};
+  if(!confirm(`¿Eliminar usuario "${u.nombre||uid}"?\n\nEsto solo elimina el perfil. Ve a Firebase Console → Authentication para eliminar también el acceso de login.`)) return;
+  try{
+    await db.collection('usuarios').doc(uid).delete();
+    loadUsers();
+    alert('✅ Perfil eliminado. Recuerda eliminar el usuario en Firebase Authentication.');
+  } catch(e){ alert('Error: '+e.message); }
 }
 
-// ══════════════════════════════════════
-//   MODALS
-// ══════════════════════════════════════
-function openModal(id){ $(id).classList.add('open'); }
-function closeModal(id){ $(id).classList.remove('open'); }
-document.querySelectorAll('.modal-bg').forEach(bg=>{
-  bg.addEventListener('click',e=>{ if(e.target===bg) bg.classList.remove('open'); });
-});
+async function createUser(){
+  const nombre=$('nu-nombre').value.trim();
+  const username=$('nu-user').value.trim().toLowerCase();
+  const pass=$('nu-pass').value;
+  const role=$('nu-role').value;
+  const codigo=$('nu-codigo')?$('nu-codigo').value.trim():'';
+  $('nu-error').textContent='';
+  if(!nombre||!username||!pass){ $('nu-error').textContent='Completa todos los campos.'; return; }
+  if(pass.length<6){ $('nu-error').textContent='La contraseña debe tener al menos 6 caracteres.'; return; }
+  const btn=$('btn-create-user'); btn.disabled=true; btn.textContent='Creando...';
+  try{
+    const email=username+'@salchimonster.app';
+    if(!secondaryApp) secondaryApp=firebase.initializeApp(firebaseConfig,'secondary');
+    const secAuth=secondaryApp.auth();
+    const cred=await secAuth.createUserWithEmailAndPassword(email,pass);
+    const newUid=cred.user.uid;
+    await secAuth.signOut();
+    await db.collection('usuarios').doc(newUid).set({nombre,username,email,role,codigoDescuento:codigo,testMode:false,createdAt:TS()});
+    closeModal('modal-create-user');
+    loadUsers();
+    $('nu-nombre').value=''; $('nu-user').value=''; $('nu-pass').value='';
+    alert('✅ Usuario "'+username+'" creado correctamente.');
+  } catch(e){
+    $('nu-error').textContent=e.code==='auth/email-already-in-use'?'Ese nombre de usuario ya existe.':'Error: '+e.message;
+  } finally{ btn.disabled=false; btn.textContent='Crear usuario'; }
+}
 
 </script>
 </body>
