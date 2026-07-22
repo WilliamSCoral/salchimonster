@@ -163,6 +163,29 @@
     .mt8 { margin-top: 8px; }
     .row-space { display: flex; justify-content: space-between; align-items: center; }
     @media (max-width: 360px) { .stat-grid { grid-template-columns: 1fr 1fr; } }
+    @media print {
+      body > *:not(#print-area) { display: none !important; }
+      #print-area { display: block !important; }
+      #print-area * { visibility: visible; }
+      @page { margin: 0; size: 58mm auto; }
+      body { margin: 0; background: #fff; }
+    }
+    #print-area {
+      display: none;
+      font-family: 'Courier New', monospace;
+      font-size: 11px;
+      width: 54mm;
+      padding: 3mm 2mm;
+      color: #000;
+    }
+    #print-area h2 { font-size: 13px; text-align: center; font-weight: 900; margin-bottom: 2px; }
+    #print-area .pc { text-align: center; }
+    #print-area .pl { border-top: 1px dashed #000; margin: 5px 0; }
+    #print-area .pr { display: flex; justify-content: space-between; margin-bottom: 2px; }
+    #print-area .pb { font-weight: bold; }
+    #print-area .ps { font-size: 9px; color: #555; text-align: center; }
+    #print-area .pmesa { font-size: 20px; font-weight: 900; text-align: center; margin: 5px 0; }
+    #print-area .ptotal { font-size: 13px; font-weight: bold; }
   </style>
 </head>
 <body>
@@ -2324,88 +2347,54 @@ function imprimirCocina(){
   const hora = $('com-hora').value || new Date().toLocaleTimeString('es-CO',{hour:'2-digit',minute:'2-digit'});
   if(!comandaItems.length){ alert('Agrega platos antes de imprimir.'); return; }
   const fecha = new Date().toLocaleDateString('es-CO',{day:'2-digit',month:'2-digit',year:'numeric'});
-  const itemsHtml = comandaItems.map(i=>`<div style="display:flex;justify-content:space-between;margin-bottom:4px;font-size:13px"><span style="font-weight:bold">${i.cantidad}×</span><span style="flex:1;margin-left:6px">${i.nombre}</span></div>`).join('');
-  const win = window.open('','_blank','width=300,height=500');
-  win.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8">
-  <style>
-    *{margin:0;padding:0;box-sizing:border-box;}
-    body{font-family:'Courier New',monospace;font-size:12px;width:58mm;padding:4mm 3mm;}
-    h2{font-size:15px;text-align:center;font-weight:900;letter-spacing:1px;margin-bottom:2px;}
-    .center{text-align:center;}
-    .line{border-top:2px dashed #000;margin:6px 0;}
-    .mesa{font-size:20px;font-weight:900;text-align:center;margin:6px 0;}
-    .hora{text-align:center;font-size:11px;color:#333;margin-bottom:4px;}
-    .small{font-size:9px;}
-  </style>
-  </head><body>
-  <h2>SALCHIMONSTER MOCOA</h2>
-  <div class="hora" style="font-size:10px;text-align:center;margin-bottom:2px">🍳 ORDEN DE COCINA</div>
-  <div class="hora">${fecha} — ${hora}</div>
-  <div class="line"></div>
-  <div class="mesa">MESA ${mesa}</div>
-  <div class="center" style="font-size:10px;margin-bottom:4px">Atendido por: <strong>${currentUserName||'—'}</strong></div>
-  <div class="line"></div>
-  ${itemsHtml}
-  <div class="line"></div>
-  <div class="center small" style="margin-top:4px">— Fin del pedido —</div>
-  </body></html>`);
-  win.document.close();
-  win.focus();
-  setTimeout(()=>{ win.print(); win.close(); }, 400);
+  const itemsHtml = comandaItems.map(i=>`<div class="pr"><span class="pb">${i.cantidad}×</span><span style="flex:1;margin-left:6px">${i.nombre}</span></div>`).join('');
+  $('print-area').innerHTML=`
+    <h2>SALCHIMONSTER MOCOA</h2>
+    <div class="pc" style="font-size:10px;margin-bottom:2px">ORDEN DE COCINA</div>
+    <div class="pc" style="font-size:10px">${fecha} — ${hora}</div>
+    <div class="pl"></div>
+    <div class="pmesa">MESA ${mesa}</div>
+    <div class="pc" style="font-size:10px;margin-bottom:4px">Atendido por: <strong>${currentUserName||'—'}</strong></div>
+    <div class="pl"></div>
+    ${itemsHtml}
+    <div class="pl"></div>
+    <div class="ps">— Fin del pedido —</div>`;
+  window.print();
 }
 
 function imprimirComanda(){
   const mesa    = $('rf-titulo').textContent;
   const hora    = $('rf-hora').textContent;
-  const items   = $('rf-items').innerHTML;
   const subtotal= $('rf-subtotal').textContent;
   const descRow = $('rf-desc-row').style.display!=='none';
   const desc    = $('rf-descuento').textContent;
   const total   = $('rf-total').textContent;
   const pago    = $('rf-pago').textContent;
   const fecha   = new Date().toLocaleDateString('es-CO',{day:'2-digit',month:'2-digit',year:'numeric'});
-  const win = window.open('','_blank','width=300,height=600');
-  win.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8">
-  <style>
-    *{margin:0;padding:0;box-sizing:border-box;}
-    body{font-family:'Courier New',monospace;font-size:11px;width:58mm;padding:4mm 3mm;}
-    h2{font-size:13px;text-align:center;margin-bottom:2px;}
-    .center{text-align:center;}
-    .line{border-top:1px dashed #000;margin:5px 0;}
-    .row{display:flex;justify-content:space-between;margin-bottom:2px;}
-    .bold{font-weight:bold;}
-    .total-row{font-size:13px;font-weight:bold;}
-    .small{font-size:9px;color:#555;}
-  </style>
-  </head><body>
-  <h2>SALCHIMONSTER MOCOA</h2>
-  <div class="center small">${fecha} — ${hora}</div>
-  <div class="center bold" style="margin-top:3px;font-size:12px">${mesa}</div>
-  <div class="center small" style="margin-bottom:2px">Atendido por: <strong>${currentUserName||'—'}</strong></div>
-  <div class="line"></div>
-  <div id="ticket-items"></div>
-  <div class="line"></div>
-  <div class="row"><span>Subtotal</span><span>${subtotal}</span></div>
-  ${descRow?`<div class="row"><span>Descuento</span><span>${desc}</span></div>`:''}
-  <div class="row total-row"><span>TOTAL</span><span>${total}</span></div>
-  <div class="line"></div>
-  <div class="center small" style="margin-top:4px">${pago}</div>
-  <div class="center small" style="margin-top:6px">¡Gracias por su visita!</div>
-  </body></html>`);
-  // Parsear items del innerHTML para ticket limpio
+  // Parsear items del modal de resumen
   const tmpDiv = document.createElement('div');
-  tmpDiv.innerHTML = items;
-  const rows = tmpDiv.querySelectorAll('div');
-  let ticketItems = '';
-  rows.forEach(r=>{
-    const cols = r.querySelectorAll('span');
-    if(cols.length>=2) ticketItems+=`<div class="row"><span>${cols[0].textContent}</span><span>${cols[1].textContent}</span></div>`;
-    else if(r.textContent.trim()) ticketItems+=`<div>${r.textContent}</div>`;
+  tmpDiv.innerHTML = $('rf-items').innerHTML;
+  let itemsHtml='';
+  tmpDiv.querySelectorAll('div').forEach(r=>{
+    const cols=r.querySelectorAll('span');
+    if(cols.length>=2) itemsHtml+=`<div class="pr"><span>${cols[0].textContent}</span><span>${cols[1].textContent}</span></div>`;
+    else if(r.textContent.trim()) itemsHtml+=`<div>${r.textContent.trim()}</div>`;
   });
-  win.document.getElementById('ticket-items').innerHTML = ticketItems || items.replace(/<[^>]+>/g,' ');
-  win.document.close();
-  win.focus();
-  setTimeout(()=>{ win.print(); win.close(); }, 400);
+  $('print-area').innerHTML=`
+    <h2>SALCHIMONSTER MOCOA</h2>
+    <div class="ps">${fecha} — ${hora}</div>
+    <div class="pc pb" style="margin-top:3px;font-size:12px">${mesa}</div>
+    <div class="ps" style="margin-bottom:2px">Atendido por: <strong>${currentUserName||'—'}</strong></div>
+    <div class="pl"></div>
+    ${itemsHtml}
+    <div class="pl"></div>
+    <div class="pr"><span>Subtotal</span><span>${subtotal}</span></div>
+    ${descRow?`<div class="pr"><span>Descuento</span><span>${desc}</span></div>`:''}
+    <div class="pr ptotal"><span>TOTAL</span><span>${total}</span></div>
+    <div class="pl"></div>
+    <div class="ps" style="margin-top:4px">${pago}</div>
+    <div class="ps" style="margin-top:6px">¡Gracias por su visita!</div>`;
+  window.print();
 }
 
 function verResumenFactura(docId){
@@ -2523,5 +2512,6 @@ async function cerrarComanda(){
 }
 
 </script>
+<div id="print-area"></div>
 </body>
 </html>
