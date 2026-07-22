@@ -788,8 +788,8 @@
       <button class="btn-sm btn-ghost" onclick="closeModal('modal-save')">✕</button>
     </div>
     <div class="fg">
-      <label>Fecha</label>
-      <input type="date" id="save-date"/>
+      <label>Nombre del registro</label>
+      <input type="text" id="save-nombre" placeholder="Ej: Lunes 21 julio, Turno mañana..."/>
     </div>
     <button class="btn-blue mt8" style="width:100%;padding:12px" onclick="saveDay()">Guardar registro</button>
   </div>
@@ -1286,26 +1286,27 @@ function renderResumen(){
 //   GUARDAR / CARGAR
 // ══════════════════════════════════════
 function showSave(){
-  $('save-date').value=today();
+  $('save-nombre').value = '';
   openModal('modal-save');
 }
 
 function saveDay(){
-  const d=$('save-date').value;
-  if(!d){ alert('Selecciona una fecha.'); return; }
-  const key='cf_'+d;
+  const nombre = $('save-nombre').value.trim();
+  if(!nombre){ alert('Escribe un nombre para este registro.'); return; }
+  // Usar el nombre como clave (limpiando caracteres problemáticos)
+  const key = 'cf_' + nombre.replace(/[^a-zA-Z0-9áéíóúÁÉÍÓÚñÑ \-_()\/]/g, '');
   const record={
-    fecha:d,
+    fecha: nombre,          // ahora "fecha" es el nombre libre
     state: JSON.parse(JSON.stringify(state)),
     totals: totals(),
     savedAt: new Date().toISOString()
   };
   localStorage.setItem(key, JSON.stringify(record));
-  localStorage.removeItem(DRAFT_KEY);   // borrar el borrador, ya está guardado oficialmente
+  localStorage.removeItem(DRAFT_KEY);
   locked = true;
   applyLock();
   closeModal('modal-save');
-  alert('✅ Registro guardado para el '+fmtDate(d)+'\n\nEl día ha sido bloqueado. Ya no se puede modificar ni eliminar la información.');
+  alert('✅ Registro guardado como "'+nombre+'"\n\nEl día ha sido bloqueado. Ya no se puede modificar ni eliminar la información.');
 }
 
 // ══════════════════════════════════════
@@ -1320,7 +1321,7 @@ function renderHistorial(){
     const t=r.totals;
     const col=t.total>=0?'c-green':'c-red';
     return `<div class="hist-item" onclick="showRecord('${k}')">
-      <div class="hist-fecha">📅 ${fmtDate(r.fecha)}</div>
+      <div class="hist-fecha">📅 ${r.fecha}</div>
       <div class="hist-info">
         <span>🧾 ${t.cnt} facturas</span>
         <span>💵 ${fmt(t.ef)}</span>
@@ -1336,7 +1337,7 @@ function showRecord(key){
   currentHistKey=key;
   const r=JSON.parse(localStorage.getItem(key));
   const t=r.totals;
-  $('hist-modal-fecha').textContent=fmtDate(r.fecha);
+  $('hist-modal-fecha').textContent=r.fecha;
 
   const rows = (items, cols) => items.length
     ? `<table style="width:100%;font-size:0.82rem;border-collapse:collapse">
@@ -1346,7 +1347,7 @@ function showRecord(key){
     : '<p style="color:var(--gray);font-size:0.82rem">Sin datos</p>';
 
   $('hist-modal-body').innerHTML=`
-    <p style="font-size:0.78rem;color:var(--gray);margin-bottom:12px">Guardado: ${new Date(r.savedAt).toLocaleString('es-CO')}</p>
+    <p style="font-size:0.78rem;color:var(--gray);margin-bottom:12px">Guardado el: ${new Date(r.savedAt).toLocaleString('es-CO')}</p>
 
     <div style="font-weight:700;margin-bottom:6px;font-size:0.82rem">🧾 Facturas</div>
     ${rows(r.state.facturas.map(f=>[f.num,f.desc||'—',fmt(f.monto),f.tipo==='efectivo'?'Ef':'Tr']),['#Fact','Desc','Monto','Tipo'])}
@@ -1538,26 +1539,30 @@ function exportExcelFromRecord(){
   const t = totals();
   state = origState;
 
+  const nombreDefault = r.fecha.replace(/[\/\\:*?"<>|]/g,'_');
+  const nombre = prompt('¿Con qué nombre quieres guardar el archivo Excel?', nombreDefault);
+  if(!nombre) return;
   const data = buildExcelData(savedState, t, r.fecha);
   const wb = XLSX.utils.book_new();
   const ws = XLSX.utils.aoa_to_sheet(data);
   ws['!cols'] = [{wch:32},{wch:18},{wch:14},{wch:14}];
   XLSX.utils.book_append_sheet(wb, ws, 'Resumen');
-  XLSX.writeFile(wb, 'facturas_'+r.fecha+'.xlsx');
+  XLSX.writeFile(wb, nombre+'.xlsx');
 }
 
 // ══════════════════════════════════════
 //   EXPORT EXCEL
 // ══════════════════════════════════════
 function exportExcel(){
+  const nombre = prompt('¿Con qué nombre quieres guardar el archivo Excel?', 'facturas_'+today());
+  if(!nombre) return;
   const t = totals();
-  const fecha = today();
-  const data = buildExcelData(state, t, fecha);
+  const data = buildExcelData(state, t, nombre);
   const wb = XLSX.utils.book_new();
   const ws = XLSX.utils.aoa_to_sheet(data);
   ws['!cols'] = [{wch:32},{wch:18},{wch:14},{wch:14}];
   XLSX.utils.book_append_sheet(wb, ws, 'Resumen');
-  XLSX.writeFile(wb, 'facturas_'+fecha+'.xlsx');
+  XLSX.writeFile(wb, nombre+'.xlsx');
 }
 
 // ══════════════════════════════════════
