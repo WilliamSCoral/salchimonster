@@ -827,9 +827,14 @@
     <div style="font-weight:700;font-size:0.82rem;margin-bottom:6px">Items en la comanda</div>
     <div id="com-items-lista" style="margin-bottom:8px"></div>
 
-    <!-- Descuento -->
-    <div class="form-row" style="margin-top:4px">
-      <div class="fg"><label>Descuento (opcional)</label><input type="text" inputmode="numeric" id="com-descuento" placeholder="0" oninput="moneyFmt(this);recalcComanda()"/></div>
+    <!-- Descuento con código -->
+    <div style="background:#fffbeb;border:1px solid #fef08a;border-radius:10px;padding:10px 12px;margin-top:4px">
+      <div style="font-weight:700;font-size:0.8rem;margin-bottom:6px;color:#78350f">🏷️ Descuento (requiere código)</div>
+      <div class="form-row" style="margin-bottom:6px">
+        <div class="fg"><label style="font-size:0.75rem">Monto descuento</label><input type="text" inputmode="numeric" id="com-descuento" placeholder="0" oninput="moneyFmt(this);recalcComanda()" style="background:#fff"/></div>
+        <div class="fg"><label style="font-size:0.75rem">Código secreto</label><input type="password" id="com-desc-codigo" placeholder="••••" autocomplete="off" style="background:#fff" oninput="lookupDiscountComanda()"/></div>
+      </div>
+      <div id="com-desc-info" style="display:none;font-size:0.78rem;padding:5px 8px;border-radius:6px"></div>
     </div>
 
     <!-- Totales -->
@@ -839,12 +844,43 @@
       <div style="display:flex;justify-content:space-between;font-weight:800;font-size:0.95rem;border-top:1px solid var(--border);padding-top:6px;margin-top:4px"><span>Total</span><span id="com-total" style="color:var(--primary)">$ 0</span></div>
     </div>
 
-    <button onclick="guardarComandaAbierta()" class="btn-ghost mt8" style="width:100%;padding:11px;border:2px solid var(--primary);color:var(--primary);font-weight:700" id="btn-guardar-abierta">💾 Guardar mesa abierta</button>
+    <div style="display:flex;gap:8px;margin-top:8px">
+      <button onclick="guardarComandaAbierta()" class="btn-ghost" style="flex:1;padding:11px;border:2px solid var(--primary);color:var(--primary);font-weight:700" id="btn-guardar-abierta">💾 Guardar mesa</button>
+      <button onclick="imprimirCocina()" class="btn-ghost" style="padding:11px 14px;border:2px solid #38a169;color:#38a169;font-weight:700;border-radius:10px;background:#fff;cursor:pointer" title="Imprimir para cocina">🖨️ Cocina</button>
+    </div>
     <div id="com-error" style="color:var(--red);font-size:0.82rem;margin-top:6px;text-align:center;min-height:16px"></div>
   </div>
 </div>
 
 <!-- ═══ MODAL: Cerrar comanda (cobro) ═══ -->
+<div class="modal-bg" id="modal-resumen-factura">
+  <div class="modal">
+    <div class="modal-title">🧾 Resumen — <span id="rf-titulo"></span> <button class="btn-sm btn-ghost" onclick="closeModal('modal-resumen-factura')">✕</button></div>
+    <div style="background:var(--light);border-radius:10px;padding:10px 12px;margin-bottom:12px">
+      <div style="display:flex;justify-content:space-between;font-size:0.82rem;margin-bottom:6px">
+        <span style="color:var(--gray)">⏰ Hora</span><span id="rf-hora" style="font-weight:600"></span>
+      </div>
+      <div id="rf-items" style="border-top:1px solid #e2e8f0;padding-top:8px;margin-top:4px"></div>
+    </div>
+    <div style="background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:10px 12px;font-size:0.85rem">
+      <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+        <span style="color:var(--gray)">Subtotal</span><span id="rf-subtotal" style="font-weight:600"></span>
+      </div>
+      <div id="rf-desc-row" style="display:flex;justify-content:space-between;margin-bottom:4px">
+        <span style="color:var(--red)">Descuento</span><span id="rf-descuento" style="color:var(--red);font-weight:600"></span>
+      </div>
+      <div style="display:flex;justify-content:space-between;border-top:1.5px solid #e2e8f0;padding-top:6px;margin-top:4px">
+        <span style="font-weight:800">Total</span><span id="rf-total" style="font-weight:800;color:var(--primary);font-size:1rem"></span>
+      </div>
+    </div>
+    <div id="rf-pago" style="margin-top:10px;font-size:0.82rem;color:var(--gray);text-align:center"></div>
+    <div style="display:flex;gap:8px;margin-top:14px">
+      <button class="btn" style="flex:1" onclick="imprimirComanda()">🖨️ Imprimir</button>
+      <button class="btn btn-ghost" style="flex:1" onclick="closeModal('modal-resumen-factura')">Cerrar</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-bg" id="modal-cerrar-comanda">
   <div class="modal">
     <div class="modal-title">💳 Cobrar mesa <span id="cc-mesa-label"></span> <button class="btn-sm btn-ghost" onclick="closeModal('modal-cerrar-comanda')">✕</button></div>
@@ -1268,7 +1304,7 @@ function renderFacturas(){
   state.facturas.forEach((f,idx)=>{
     const seq=idx+1, did=f._docId;
     // Etiqueta extra para facturas con detalle
-    const mesaTag=f.modoDetalle&&f.mesa?`<span style="font-size:0.68rem;background:#fef3c7;color:#92400e;padding:1px 5px;border-radius:4px;margin-left:4px">Mesa ${f.mesa} ${f.hora?'⏰'+f.hora:''}</span>`:'';
+    const mesaTag=f.modoDetalle&&f.mesa?`<span onclick="verResumenFactura('${did}')" style="font-size:0.68rem;background:#fef3c7;color:#92400e;padding:1px 7px;border-radius:4px;margin-left:4px;cursor:pointer;border:1px solid #f6d860" title="Ver detalle">Mesa ${f.mesa} ${f.hora?'⏰'+f.hora:''} 🔍</span>`:'';
     if(!f.mixto){
       const badge=f.tipo==='efectivo'?'<span class="badge badge-ef">Ef</span>':'<span class="badge badge-tr">Tr</span>';
       html+=`<tr><td style="color:#a0aec0;font-size:0.75rem">${seq}</td><td><strong>${f.num}</strong>${mesaTag}${f.desc?`<br><span style="font-size:0.7rem;color:var(--gray)">${f.desc}</span>`:''}</td><td><strong>${fmt(f.monto||f.total||0)}</strong></td><td>${badge}</td><td><button class="btn-sm btn-danger" onclick="delFactura('${did}')">✕</button></td></tr>`;
@@ -2111,8 +2147,9 @@ let ccTipo  = 'efectivo';
 
 function setupComandasListener(){
   const ref = DRAFT().doc('current').collection('comandas');
-  const unsub = ref.where('estado','==','abierta').orderBy('hora').onSnapshot(snap=>{
+  const unsub = ref.where('estado','==','abierta').onSnapshot(snap=>{
     comandasAbiertas = snap.docs.map(d=>({_docId:d.id,...d.data()}));
+    comandasAbiertas.sort((a,b)=>(a.hora||'').localeCompare(b.hora||''));
     renderComandasAbiertas();
   }, e=>console.error(e));
   unsubs.push(unsub);
@@ -2134,6 +2171,7 @@ function renderComandasAbiertas(){
         <div style="display:flex;gap:6px">
           <button class="btn-sm btn-ghost" onclick="editarComanda('${c._docId}')">✏️ Editar</button>
           <button class="btn-sm btn-blue" onclick="abrirCobro('${c._docId}')">💳 Cobrar</button>
+          <button class="btn-sm btn-danger" onclick="eliminarComanda('${c._docId}','${c.mesa||''}')">🗑️</button>
         </div>
       </div>
     </div>`;
@@ -2147,6 +2185,8 @@ function openComanda(){
   $('com-hora').value=new Date().toLocaleTimeString('es-CO',{hour:'2-digit',minute:'2-digit'});
   $('com-descuento').value='';
   $('com-buscar').value='';
+  $('com-desc-codigo').value=''; $('com-desc-info').style.display='none';
+  comandaDescCodigoValido=false;
   $('com-error').textContent='';
   $('comanda-num-label').textContent='nueva';
   renderComandaItems();
@@ -2162,6 +2202,8 @@ function editarComanda(docId){
   $('com-mesa').value=c.mesa||'';
   $('com-hora').value=c.hora||'';
   $('com-descuento').value=c.descuento?fmtRaw(c.descuento):'';
+  $('com-desc-codigo').value=''; $('com-desc-info').style.display='none';
+  comandaDescCodigoValido = c.descuento>0; // si ya tenía descuento guardado, lo permitimos editar sin re-validar
   $('com-buscar').value='';
   $('com-error').textContent='';
   $('comanda-num-label').textContent='Mesa '+(c.mesa||'');
@@ -2225,6 +2267,32 @@ function recalcComanda(){
   if($('com-total'))    $('com-total').textContent=fmt(total);
 }
 
+let comandaDescCodigoValido = false;
+
+async function lookupDiscountComanda(){
+  const code = $('com-desc-codigo').value.trim();
+  const info = $('com-desc-info');
+  comandaDescCodigoValido = false;
+  if(!code){ info.style.display='none'; recalcComanda(); return; }
+  try{
+    const snap = await db.collection('usuarios').where('codigoDescuento','==',code).get();
+    if(!snap.empty){
+      const u = snap.docs[0].data();
+      info.textContent = '✅ Código válido — '+u.nombre;
+      info.style.background='#f0fdf4'; info.style.color='#276749';
+      info.style.display='block';
+      comandaDescCodigoValido = true;
+    } else {
+      info.textContent = '❌ Código incorrecto';
+      info.style.background='#fff5f5'; info.style.color='var(--red)';
+      info.style.display='block';
+      // Limpiar monto si el código es incorrecto
+      $('com-descuento').value='';
+      recalcComanda();
+    }
+  } catch(e){ info.style.display='none'; }
+}
+
 async function guardarComandaAbierta(){
   const mesa   = $('com-mesa').value.trim();
   const hora   = $('com-hora').value;
@@ -2235,6 +2303,11 @@ async function guardarComandaAbierta(){
   $('com-error').textContent='';
   if(!mesa){ $('com-error').textContent='Ingresa el número de mesa.'; return; }
   if(!comandaItems.length){ $('com-error').textContent='Agrega al menos un plato.'; return; }
+  // Validar que si hay descuento el código sea válido
+  if(desc>0 && !comandaDescCodigoValido){ $('com-error').textContent='⚠️ Ingresa un código válido para aplicar el descuento.'; return; }
+  // Validar mesa duplicada (solo al crear, no al editar la misma)
+  const mesaDup = comandasAbiertas.find(c=> c.mesa===mesa && c._docId!==docId);
+  if(mesaDup){ $('com-error').textContent=`⚠️ La mesa ${mesa} ya está abierta.`; return; }
   const data={mesa,hora,items:JSON.parse(JSON.stringify(comandaItems)),subtotal:sub,descuento:desc,total,estado:'abierta',modoDetalle:true,updatedAt:TS()};
   const btn=$('btn-guardar-abierta'); btn.disabled=true; btn.textContent='Guardando...';
   try{
@@ -2244,6 +2317,138 @@ async function guardarComandaAbierta(){
     closeModal('modal-comanda');
   } catch(e){ $('com-error').textContent='Error: '+e.message; }
   finally{ btn.disabled=false; btn.textContent='💾 Guardar mesa abierta'; }
+}
+
+function imprimirCocina(){
+  const mesa = $('com-mesa').value.trim() || '—';
+  const hora = $('com-hora').value || new Date().toLocaleTimeString('es-CO',{hour:'2-digit',minute:'2-digit'});
+  if(!comandaItems.length){ alert('Agrega platos antes de imprimir.'); return; }
+  const fecha = new Date().toLocaleDateString('es-CO',{day:'2-digit',month:'2-digit',year:'numeric'});
+  const itemsHtml = comandaItems.map(i=>`<div style="display:flex;justify-content:space-between;margin-bottom:4px;font-size:13px"><span style="font-weight:bold">${i.cantidad}×</span><span style="flex:1;margin-left:6px">${i.nombre}</span></div>`).join('');
+  const win = window.open('','_blank','width=300,height=500');
+  win.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8">
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box;}
+    body{font-family:'Courier New',monospace;font-size:12px;width:58mm;padding:4mm 3mm;}
+    h2{font-size:15px;text-align:center;font-weight:900;letter-spacing:1px;margin-bottom:2px;}
+    .center{text-align:center;}
+    .line{border-top:2px dashed #000;margin:6px 0;}
+    .mesa{font-size:20px;font-weight:900;text-align:center;margin:6px 0;}
+    .hora{text-align:center;font-size:11px;color:#333;margin-bottom:4px;}
+    .small{font-size:9px;}
+  </style>
+  </head><body>
+  <h2>SALCHIMONSTER MOCOA</h2>
+  <div class="hora" style="font-size:10px;text-align:center;margin-bottom:2px">🍳 ORDEN DE COCINA</div>
+  <div class="hora">${fecha} — ${hora}</div>
+  <div class="line"></div>
+  <div class="mesa">MESA ${mesa}</div>
+  <div class="center" style="font-size:10px;margin-bottom:4px">Atendido por: <strong>${currentUserName||'—'}</strong></div>
+  <div class="line"></div>
+  ${itemsHtml}
+  <div class="line"></div>
+  <div class="center small" style="margin-top:4px">— Fin del pedido —</div>
+  </body></html>`);
+  win.document.close();
+  win.focus();
+  setTimeout(()=>{ win.print(); win.close(); }, 400);
+}
+
+function imprimirComanda(){
+  const mesa    = $('rf-titulo').textContent;
+  const hora    = $('rf-hora').textContent;
+  const items   = $('rf-items').innerHTML;
+  const subtotal= $('rf-subtotal').textContent;
+  const descRow = $('rf-desc-row').style.display!=='none';
+  const desc    = $('rf-descuento').textContent;
+  const total   = $('rf-total').textContent;
+  const pago    = $('rf-pago').textContent;
+  const fecha   = new Date().toLocaleDateString('es-CO',{day:'2-digit',month:'2-digit',year:'numeric'});
+  const win = window.open('','_blank','width=300,height=600');
+  win.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8">
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box;}
+    body{font-family:'Courier New',monospace;font-size:11px;width:58mm;padding:4mm 3mm;}
+    h2{font-size:13px;text-align:center;margin-bottom:2px;}
+    .center{text-align:center;}
+    .line{border-top:1px dashed #000;margin:5px 0;}
+    .row{display:flex;justify-content:space-between;margin-bottom:2px;}
+    .bold{font-weight:bold;}
+    .total-row{font-size:13px;font-weight:bold;}
+    .small{font-size:9px;color:#555;}
+  </style>
+  </head><body>
+  <h2>SALCHIMONSTER MOCOA</h2>
+  <div class="center small">${fecha} — ${hora}</div>
+  <div class="center bold" style="margin-top:3px;font-size:12px">${mesa}</div>
+  <div class="center small" style="margin-bottom:2px">Atendido por: <strong>${currentUserName||'—'}</strong></div>
+  <div class="line"></div>
+  <div id="ticket-items"></div>
+  <div class="line"></div>
+  <div class="row"><span>Subtotal</span><span>${subtotal}</span></div>
+  ${descRow?`<div class="row"><span>Descuento</span><span>${desc}</span></div>`:''}
+  <div class="row total-row"><span>TOTAL</span><span>${total}</span></div>
+  <div class="line"></div>
+  <div class="center small" style="margin-top:4px">${pago}</div>
+  <div class="center small" style="margin-top:6px">¡Gracias por su visita!</div>
+  </body></html>`);
+  // Parsear items del innerHTML para ticket limpio
+  const tmpDiv = document.createElement('div');
+  tmpDiv.innerHTML = items;
+  const rows = tmpDiv.querySelectorAll('div');
+  let ticketItems = '';
+  rows.forEach(r=>{
+    const cols = r.querySelectorAll('span');
+    if(cols.length>=2) ticketItems+=`<div class="row"><span>${cols[0].textContent}</span><span>${cols[1].textContent}</span></div>`;
+    else if(r.textContent.trim()) ticketItems+=`<div>${r.textContent}</div>`;
+  });
+  win.document.getElementById('ticket-items').innerHTML = ticketItems || items.replace(/<[^>]+>/g,' ');
+  win.document.close();
+  win.focus();
+  setTimeout(()=>{ win.print(); win.close(); }, 400);
+}
+
+function verResumenFactura(docId){
+  const f = state.facturas.find(x=>x._docId===docId); if(!f) return;
+  $('rf-titulo').textContent = `Mesa ${f.mesa}`;
+  $('rf-hora').textContent   = f.hora || '—';
+  // Items
+  const items = f.items||[];
+  if(items.length){
+    $('rf-items').innerHTML = items.map(i=>`
+      <div style="display:flex;justify-content:space-between;font-size:0.82rem;padding:4px 0;border-bottom:1px solid #f0f4f8">
+        <span>${i.cantidad}× ${i.nombre}</span>
+        <span style="font-weight:600">${fmt(i.precio*i.cantidad)}</span>
+      </div>`).join('');
+  } else {
+    $('rf-items').innerHTML = '<div style="font-size:0.8rem;color:var(--gray)">Sin detalle de platos</div>';
+  }
+  // Totales
+  const sub  = f.subtotal || (f.monto||f.total||0);
+  const desc = f.descuento||0;
+  const total= f.total||f.monto||0;
+  $('rf-subtotal').textContent  = fmt(sub);
+  $('rf-desc-row').style.display= desc>0?'flex':'none';
+  $('rf-descuento').textContent = '− '+fmt(desc);
+  $('rf-total').textContent     = fmt(total);
+  // Pago
+  let pagoTxt='';
+  if(f.mixto && f.pagos){
+    const ef=f.pagos.filter(p=>p.tipo==='efectivo').reduce((s,p)=>s+p.monto,0);
+    const tr=f.pagos.filter(p=>p.tipo==='transferencia').reduce((s,p)=>s+p.monto,0);
+    pagoTxt=`💵 Efectivo: ${fmt(ef)}  🏦 Transferencia: ${fmt(tr)}`;
+  } else {
+    pagoTxt = f.tipo==='efectivo'?'💵 Pago en efectivo':'🏦 Pago por transferencia';
+  }
+  $('rf-pago').textContent = pagoTxt;
+  openModal('modal-resumen-factura');
+}
+
+async function eliminarComanda(docId, mesa){
+  if(!confirm(`¿Eliminar la comanda de la Mesa ${mesa}?\nEsto no registra ningún cobro.`)) return;
+  try{
+    await DRAFT().doc('current').collection('comandas').doc(docId).delete();
+  } catch(e){ alert('Error: '+e.message); }
 }
 
 function abrirCobro(docId){
