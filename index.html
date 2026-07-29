@@ -157,6 +157,7 @@
     .role-badge { display: inline-block; padding: 2px 7px; border-radius: 10px; font-size: 0.68rem; font-weight: 700; }
     .role-admin  { background: #feebc8; color: #c05621; }
     .role-mesero { background: #bee3f8; color: #2b6cb0; }
+    .role-cocina { background: #c6f6d5; color: #276749; }
 
     /* ── Misc ── */
     .text-right { text-align: right; }
@@ -986,18 +987,32 @@
         <label>Categoría</label>
         <select id="inv-categoria"><option value="">Seleccionar...</option></select>
       </div>
-      <div class="fg" style="max-width:120px">
+      <div class="fg" style="max-width:160px">
         <label>Unidad</label>
-        <select id="inv-unidad">
-          <option value="und">Unidades</option>
-          <option value="kg">Kilogramos</option>
-          <option value="g">Gramos</option>
-          <option value="L">Litros</option>
-          <option value="ml">Mililitros</option>
-          <option value="porciones">Porciones</option>
-          <option value="bolsas">Bolsas</option>
-          <option value="cajas">Cajas</option>
+        <select id="inv-unidad" onchange="toggleUnidadCustom()">
+          <optgroup label="📦 Conteo">
+            <option value="und">und — Unidades</option>
+            <option value="doc">doc — Docenas</option>
+            <option value="porc">porc — Porciones</option>
+          </optgroup>
+          <optgroup label="⚖️ Peso">
+            <option value="g">g — Gramos</option>
+            <option value="kg">kg — Kilogramos</option>
+          </optgroup>
+          <optgroup label="💧 Volumen">
+            <option value="ml">ml — Mililitros</option>
+            <option value="L">L — Litros</option>
+          </optgroup>
+          <optgroup label="🗃️ Empaque">
+            <option value="bol">bol — Bolsas</option>
+            <option value="caj">caj — Cajas</option>
+            <option value="paq">paq — Paquetes</option>
+          </optgroup>
+          <optgroup label="✏️">
+            <option value="__otra__">Otra...</option>
+          </optgroup>
         </select>
+        <input type="text" id="inv-unidad-custom" placeholder="Escribe la unidad" style="display:none;margin-top:6px;width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:0.9rem">
       </div>
     </div>
     <div class="form-row" style="margin-top:8px">
@@ -1096,7 +1111,7 @@
     </div>
     <div class="fg" style="margin-top:8px">
       <label>Rol</label>
-      <select id="eu-role"><option value="mesero">Mesero</option><option value="admin">Admin</option></select>
+      <select id="eu-role"><option value="mesero">Mesero</option><option value="cocina">Cocina</option><option value="admin">Admin</option></select>
     </div>
     <div class="fg" style="margin-top:8px"><label>Código de descuento</label><input type="text" id="eu-codigo" placeholder="Ej: DESC-JUAN (opcional)"/></div>
     <div style="margin-top:12px;display:flex;align-items:center;gap:10px;background:#fffbeb;border:1px solid #f6e05e;border-radius:8px;padding:10px 12px">
@@ -1120,7 +1135,7 @@
     <div class="fg" style="margin-top:8px"><label>Contraseña</label><input type="password" id="nu-pass" placeholder="Mínimo 6 caracteres"/></div>
     <div class="fg" style="margin-top:8px">
       <label>Rol</label>
-      <select id="nu-role"><option value="mesero">Mesero</option><option value="admin">Admin</option></select>
+      <select id="nu-role"><option value="mesero">Mesero</option><option value="cocina">Cocina</option><option value="admin">Admin</option></select>
     </div>
     <div class="fg" style="margin-top:8px"><label>Código de descuento</label><input type="text" id="nu-codigo" placeholder="Ej: DESC-JUAN (opcional)"/></div>
     <button onclick="createUser()" class="btn-blue mt8" style="width:100%;padding:12px" id="btn-create-user">Crear usuario</button>
@@ -1412,7 +1427,9 @@ auth.onAuthStateChanged(async user => {
       currentDiscountCode = data.codigoDescuento || '';
       currentTestMode = data.testMode === true;
     } catch(e) {
-      currentRole = 'mesero';
+      console.error('Error al leer perfil de usuario:', e);
+      // No asumir mesero si falla Firestore — mantener el último rol conocido o admin por seguridad
+      currentRole = currentRole || 'admin';
       currentUserName = user.email.split('@')[0];
       currentDiscountCode = '';
       currentTestMode = false;
@@ -1469,14 +1486,21 @@ function showApp() {
 }
 
 function applyRoleUI() {
+  if (currentRole === 'cocina') {
+    window.location.replace('cocina.html');
+    return;
+  }
+
+  // Primero mostrar TODOS los tabs (reset limpio)
+  const allTabs = ['tab-0','tab-1','tab-2','tab-3','tab-4','tab-5','tab-6','tab-7','tab-8','tab-9'];
+  allTabs.forEach(id => { const el=$(id); if(el) el.style.display=''; });
+
   if (currentRole === 'admin') {
-    ['tab-0','tab-1','tab-2','tab-3','tab-4','tab-5','tab-6','tab-7','tab-8'].forEach(id => { const el=$(id); if(el) el.style.display=''; });
     ['resumen-caja-section','resumen-total-section','resumen-export-section','resumen-neto-section'].forEach(id => { const el=$(id); if(el) el.style.display=''; });
     const sb = $('top-save-btn'); if(sb) sb.style.display='';
   } else {
     // Mesero: ocultar empleados, caja, historial, usuarios
     ['tab-2','tab-3','tab-5','tab-6'].forEach(id => { const el=$(id); if(el) el.style.display='none'; });
-    // Resumen mesero: mostrar neto, ocultar caja detallada, totales y exportar
     ['resumen-caja-section','resumen-total-section','resumen-export-section'].forEach(id => { const el=$(id); if(el) el.style.display='none'; });
     const ne=$('resumen-neto-section'); if(ne) ne.style.display='';
     const sb = $('top-save-btn'); if(sb) sb.style.display='none';
@@ -2963,7 +2987,7 @@ async function loadUsers(){
     snap.docs.forEach(d=>{ usersCache[d.id]=d.data(); });
     div.innerHTML=snap.docs.map(d=>{
       const u=d.data();
-      const roleBadge=u.role==='admin'?'<span class="role-badge role-admin">Admin</span>':'<span class="role-badge role-mesero">Mesero</span>';
+      const roleBadge=u.role==='admin'?'<span class="role-badge role-admin">Admin</span>':u.role==='cocina'?'<span class="role-badge role-cocina">🍳 Cocina</span>':'<span class="role-badge role-mesero">Mesero</span>';
       const testBadge=u.testMode?'<span class="role-badge" style="background:#fef3c7;color:#92400e">🧪 Prueba</span>':'';
       return `<div class="user-item">
         <div class="user-item-info">
@@ -3337,12 +3361,49 @@ function renderInventarioList(){
   }).join('');
 }
 
+function toggleUnidadCustom(){
+  const sel=$('inv-unidad');
+  const custom=$('inv-unidad-custom');
+  if(sel.value==='__otra__'){
+    custom.style.display='block';
+    custom.focus();
+  } else {
+    custom.style.display='none';
+    custom.value='';
+  }
+}
+
+function getUnidadValue(){
+  const sel=$('inv-unidad');
+  if(sel.value==='__otra__'){
+    return ($('inv-unidad-custom').value||'').trim() || 'und';
+  }
+  return sel.value;
+}
+
+function setUnidadValue(val){
+  const sel=$('inv-unidad');
+  const custom=$('inv-unidad-custom');
+  // Buscar si el valor existe en el select
+  const exists=[...sel.options].some(o=>o.value===val);
+  if(exists){
+    sel.value=val;
+    custom.style.display='none';
+  } else {
+    sel.value='__otra__';
+    custom.style.display='block';
+    custom.value=val;
+  }
+}
+
 function openModalInvItem(docId){
   $('inv-docid').value=docId||'';
   $('inv-nombre').value='';
   $('inv-stock').value='';
   $('inv-stock-min').value='';
   $('inv-unidad').value='und';
+  $('inv-unidad-custom').style.display='none';
+  $('inv-unidad-custom').value='';
   $('inv-item-error').textContent='';
   $('modal-inv-title').textContent=docId?'✏️ Editar producto':'📦 Nuevo producto';
   $('btn-save-inv').textContent=docId?'Guardar cambios':'Guardar producto';
@@ -3352,7 +3413,7 @@ function openModalInvItem(docId){
     if(it){
       $('inv-nombre').value=it.nombre||'';
       $('inv-categoria').value=it.categoria||'';
-      $('inv-unidad').value=it.unidad||'und';
+      setUnidadValue(it.unidad||'und');
       $('inv-stock').value=it.stock||0;
       $('inv-stock-min').value=it.stockMin||0;
     }
@@ -3364,7 +3425,7 @@ async function saveInvItem(){
   const docId=$('inv-docid').value;
   const nombre=($('inv-nombre').value||'').trim();
   const categoria=$('inv-categoria').value;
-  const unidad=$('inv-unidad').value;
+  const unidad=getUnidadValue();
   const stock=parseFloat($('inv-stock').value)||0;
   const stockMin=parseFloat($('inv-stock-min').value)||0;
   $('inv-item-error').textContent='';
@@ -3639,12 +3700,26 @@ async function guardarComandaAbierta(){
   // Validar mesa duplicada (solo al crear, no al editar la misma)
   const mesaDup = comandasAbiertas.find(c=> c.mesa===mesa && c._docId!==docId);
   if(mesaDup){ $('com-error').textContent=`⚠️ La mesa ${mesa} ya está abierta.`; return; }
-  const data={mesa,hora,items:JSON.parse(JSON.stringify(comandaItems)),subtotal:sub,descuento:desc,total,estado:'abierta',modoDetalle:true,updatedAt:TS()};
+  const itemsParaCocina = JSON.parse(JSON.stringify(comandaItems));
+  const data={mesa,hora,items:itemsParaCocina,subtotal:sub,descuento:desc,total,estado:'abierta',modoDetalle:true,updatedAt:TS()};
   const btn=$('btn-guardar-abierta'); btn.disabled=true; btn.textContent='Guardando...';
   try{
     const ref = DRAFT().doc('current').collection('comandas');
-    if(docId){ await ref.doc(docId).update(data); }
-    else{ data.createdAt=TS(); data.createdBy=currentUser.uid; await ref.add(data); }
+    if(docId){
+      await ref.doc(docId).update(data);
+    } else {
+      data.createdAt=TS(); data.createdBy=currentUser.uid;
+      await ref.add(data);
+      // Solo al crear (no al editar) enviar a pantalla de cocina
+      await db.collection('pedidos_cocina').add({
+        mesa,
+        hora,
+        items: itemsParaCocina.map(i=>({cantidad:i.cantidad, nombre:i.nombre, codigo:i.codigo||''})),
+        mesero: currentUserName || '',
+        estado: 'pendiente',
+        creadoAt: TS()
+      });
+    }
     closeModal('modal-comanda');
   } catch(e){ $('com-error').textContent='Error: '+e.message; }
   finally{ btn.disabled=false; btn.textContent='💾 Guardar mesa abierta'; }
