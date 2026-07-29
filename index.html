@@ -1783,11 +1783,25 @@ async function addFactura() {
 }
 
 async function delFactura(docId){
+  if(currentRole !== 'admin'){ alert('⛔ Solo los administradores pueden eliminar facturas.'); return; }
   if(locked) return;
-  try{ await DRAFT().doc('current').collection('facturas').doc(docId).delete(); }
+  try{
+    const factRef = DRAFT().doc('current').collection('facturas').doc(docId);
+    const factDoc = await factRef.get();
+    const factData = factDoc.data() || {};
+    const batch = db.batch();
+    batch.delete(factRef);
+    // Limpiar pedidos_cocina vinculados por comandaId (solo si la factura lo tiene)
+    if(factData.comandaId){
+      const snap = await db.collection('pedidos_cocina').where('comandaId','==',factData.comandaId).get();
+      snap.docs.forEach(d => batch.delete(d.ref));
+    }
+    await batch.commit();
+  }
   catch(e){ alert('Error: '+e.message); }
 }
 async function clearFacturas(){
+  if(currentRole !== 'admin'){ alert('⛔ Solo los administradores pueden eliminar facturas.'); return; }
   if(locked) return;
   if(!confirm('¿Eliminar todas las facturas?')) return;
   const snap=await DRAFT().doc('current').collection('facturas').get();
@@ -1804,15 +1818,16 @@ function renderFacturas(){
     const mesaTag=f.modoDetalle&&f.mesa?`<span onclick="verResumenFactura('${did}')" style="font-size:0.68rem;background:#fef3c7;color:#92400e;padding:1px 7px;border-radius:4px;margin-left:4px;cursor:pointer;border:1px solid #f6d860" title="Ver detalle">Mesa ${f.mesa} ${f.hora?'⏰'+f.hora:''} 🔍</span>`:'';
     if(!f.mixto){
       const badge=f.tipo==='efectivo'?'<span class="badge badge-ef">Ef</span>':'<span class="badge badge-tr">Tr</span>';
-      html+=`<tr><td style="color:#a0aec0;font-size:0.75rem">${seq}</td><td><strong>${f.num}</strong>${mesaTag}${f.desc?`<br><span style="font-size:0.7rem;color:var(--gray)">${f.desc}</span>`:''}</td><td><strong>${fmt(f.monto||f.total||0)}</strong></td><td>${badge}</td><td><button class="btn-sm btn-danger" onclick="delFactura('${did}')">✕</button></td></tr>`;
+      html+=`<tr><td style="color:#a0aec0;font-size:0.75rem">${seq}</td><td><strong>${f.num}</strong>${mesaTag}${f.desc?`<br><span style="font-size:0.7rem;color:var(--gray)">${f.desc}</span>`:''}</td><td><strong>${fmt(f.monto||f.total||0)}</strong></td><td>${badge}</td><td>${currentRole==='admin'?`<button class="btn-sm btn-danger" onclick="delFactura('${did}')">✕</button>`:''}</td></tr>`;
     } else {
       const pagos=f.pagos||[];
       const efTotal=pagos.filter(p=>p.tipo==='efectivo').reduce((s,p)=>s+(p.monto||0),0);
       const transfers=pagos.filter(p=>p.tipo==='transferencia');
       let first=true;
-      if(efTotal>0){ html+=`<tr><td style="color:#a0aec0;font-size:0.75rem">${seq}</td><td><strong>${f.num}</strong>${mesaTag}${f.desc?`<br><span style="font-size:0.7rem;color:var(--gray)">${f.desc}</span>`:''}</td><td><strong>${fmt(efTotal)}</strong></td><td><span class="badge badge-ef">Ef</span></td><td>${first?`<button class="btn-sm btn-danger" onclick="delFactura('${did}')">✕</button>`:''}</td></tr>`; first=false; }
-      transfers.forEach((p,ti)=>{ html+=`<tr><td></td><td><strong>${f.num}-${ti+1}</strong>${f.desc?`<br><span style="font-size:0.7rem;color:var(--gray)">${f.desc}</span>`:''}</td><td><strong>${fmt(p.monto||0)}</strong></td><td><span class="badge badge-tr">Tr</span></td><td>${first?`<button class="btn-sm btn-danger" onclick="delFactura('${did}')">✕</button>`:''}</td></tr>`; first=false; });
-      if(!efTotal&&!transfers.length){ html+=`<tr><td style="color:#a0aec0;font-size:0.75rem">${seq}</td><td><strong>${f.num}</strong>${mesaTag}${f.desc?`<br><span style="font-size:0.7rem;color:var(--gray)">${f.desc}</span>`:''}</td><td><strong>${fmt(f.total||f.monto||0)}</strong></td><td><span class="badge badge-ef">Ef</span></td><td><button class="btn-sm btn-danger" onclick="delFactura('${did}')">✕</button></td></tr>`; }
+      const delBtn = currentRole==='admin' ? `<button class="btn-sm btn-danger" onclick="delFactura('${did}')">✕</button>` : '';
+      if(efTotal>0){ html+=`<tr><td style="color:#a0aec0;font-size:0.75rem">${seq}</td><td><strong>${f.num}</strong>${mesaTag}${f.desc?`<br><span style="font-size:0.7rem;color:var(--gray)">${f.desc}</span>`:''}</td><td><strong>${fmt(efTotal)}</strong></td><td><span class="badge badge-ef">Ef</span></td><td>${first?delBtn:''}</td></tr>`; first=false; }
+      transfers.forEach((p,ti)=>{ html+=`<tr><td></td><td><strong>${f.num}-${ti+1}</strong>${f.desc?`<br><span style="font-size:0.7rem;color:var(--gray)">${f.desc}</span>`:''}</td><td><strong>${fmt(p.monto||0)}</strong></td><td><span class="badge badge-tr">Tr</span></td><td>${first?delBtn:''}</td></tr>`; first=false; });
+      if(!efTotal&&!transfers.length){ html+=`<tr><td style="color:#a0aec0;font-size:0.75rem">${seq}</td><td><strong>${f.num}</strong>${mesaTag}${f.desc?`<br><span style="font-size:0.7rem;color:var(--gray)">${f.desc}</span>`:''}</td><td><strong>${fmt(f.total||f.monto||0)}</strong></td><td><span class="badge badge-ef">Ef</span></td><td>${delBtn}</td></tr>`; }
     }
   });
   const t=totals();
@@ -3552,12 +3567,12 @@ function setupComandasListener(){
     mesasDespachadas = {};
     snap.docs.forEach(d=>{
       const data = d.data();
-      const mesa = data.mesa;
-      if(!mesa) return;
-      // Si hay al menos un pedido despachado y ninguno pendiente → mesa despachada
-      if(!mesasDespachadas[mesa]) mesasDespachadas[mesa] = { pendiente: 0, despachado: 0 };
-      if(data.estado === 'pendiente')  mesasDespachadas[mesa].pendiente++;
-      if(data.estado === 'despachado') mesasDespachadas[mesa].despachado++;
+      // Usar comandaId si existe (docs nuevos), si no usar mesa (docs viejos)
+      const key = data.comandaId || data.mesa;
+      if(!key) return;
+      if(!mesasDespachadas[key]) mesasDespachadas[key] = { pendiente: 0, despachado: 0 };
+      if(data.estado === 'pendiente')  mesasDespachadas[key].pendiente++;
+      if(data.estado === 'despachado') mesasDespachadas[key].despachado++;
     });
     renderComandasAbiertas();
   }, e=>console.error(e));
@@ -3569,7 +3584,7 @@ function renderComandasAbiertas(){
   if(!comandasAbiertas.length){ div.innerHTML='<div class="empty-msg">Sin mesas abiertas</div>'; return; }
   div.innerHTML = comandasAbiertas.map(c=>{
     const itemsStr = (c.items||[]).map(i=>`${i.cantidad}x ${i.nombre}`).join(', ');
-    const cocEst   = mesasDespachadas[c.mesa] || { pendiente: 0, despachado: 0 };
+    const cocEst   = mesasDespachadas[c._docId] || mesasDespachadas[c.mesa] || { pendiente: 0, despachado: 0 };
     const despachada = cocEst.despachado > 0 && cocEst.pendiente === 0;
     const parcial    = cocEst.despachado > 0 && cocEst.pendiente > 0;
     const estadoBadge = despachada
@@ -3736,19 +3751,79 @@ async function guardarComandaAbierta(){
   const btn=$('btn-guardar-abierta'); btn.disabled=true; btn.textContent='Guardando...';
   try{
     const ref = DRAFT().doc('current').collection('comandas');
+    const itemsCocina = itemsParaCocina.map(i=>({cantidad:i.cantidad, nombre:i.nombre, codigo:i.codigo||''}));
     if(docId){
+      // ── Validar: solo se pueden AGREGAR ítems, nunca reducir ni quitar ──
+      const originalDoc = await ref.doc(docId).get();
+      const originalItems = originalDoc.data()?.items || [];
+      const originalCount = {};
+      originalItems.forEach(it=>{
+        originalCount[it.nombre] = (originalCount[it.nombre]||0) + (Number(it.cantidad)||1);
+      });
+      const newCount = {};
+      itemsParaCocina.forEach(it=>{
+        const cant = Number(it.cantidad);
+        if(cant > 0) newCount[it.nombre] = (newCount[it.nombre]||0) + cant;
+      });
+      const reducidos = Object.entries(originalCount)
+        .filter(([nombre, cantOrig])=>(newCount[nombre]||0) < cantOrig)
+        .map(([nombre])=>nombre);
+      if(reducidos.length > 0){
+        $('com-error').textContent = `⛔ No se puede quitar: ${reducidos.join(', ')}. Usa el descuento para ajustes.`;
+        btn.disabled=false; btn.textContent='💾 Guardar mesa abierta';
+        return;
+      }
+
       await ref.doc(docId).update(data);
+
+      // ── Sincronizar cocina ──
+      const snapById = await db.collection('pedidos_cocina').where('comandaId','==',docId).get();
+      let pendingDocs = snapById.docs.filter(d => d.data().estado === 'pendiente');
+      if(pendingDocs.length === 0){
+        const snapByMesa = await db.collection('pedidos_cocina').where('mesa','==',mesa).get();
+        pendingDocs = snapByMesa.docs.filter(d => d.data().estado === 'pendiente');
+      }
+      if(pendingDocs.length > 0){
+        const batch = db.batch();
+        pendingDocs.forEach(d => batch.update(d.ref, { items: itemsCocina, hora, updatedAt: TS() }));
+        await batch.commit();
+      } else {
+        // Todo despachado: crear nuevo doc solo con los ítems extra
+        const hoyInicio = new Date(); hoyInicio.setHours(0,0,0,0);
+        const snapAll = await db.collection('pedidos_cocina').where('mesa','==',mesa).get();
+        const yaDesp = {};
+        snapAll.docs.filter(d=>{
+          if(d.data().estado!=='despachado') return false;
+          const ts = d.data().despachadoAt||d.data().creadoAt;
+          if(!ts) return false;
+          return (ts.toDate?ts.toDate():new Date(ts)) >= hoyInicio;
+        }).forEach(d=>{
+          (d.data().items||[]).forEach(it=>{
+            yaDesp[it.nombre]=(yaDesp[it.nombre]||0)+(Number(it.cantidad)||1);
+          });
+        });
+        const nuevos = [];
+        itemsCocina.forEach(it=>{
+          const extra=(Number(it.cantidad)||1)-(yaDesp[it.nombre]||0);
+          if(extra>0) nuevos.push({...it,cantidad:extra});
+        });
+        if(nuevos.length>0){
+          await db.collection('pedidos_cocina').add({
+            mesa, hora, items: nuevos,
+            mesero: currentUserName||'', estado:'pendiente',
+            creadoAt: TS(), comandaId: docId
+          });
+        }
+      }
     } else {
       data.createdAt=TS(); data.createdBy=currentUser.uid;
-      await ref.add(data);
-      // Solo al crear (no al editar) enviar a pantalla de cocina
+      const comaRef = await ref.add(data);
       await db.collection('pedidos_cocina').add({
-        mesa,
-        hora,
-        items: itemsParaCocina.map(i=>({cantidad:i.cantidad, nombre:i.nombre, codigo:i.codigo||''})),
+        mesa, hora, items: itemsCocina,
         mesero: currentUserName || '',
         estado: 'pendiente',
-        creadoAt: TS()
+        creadoAt: TS(),
+        comandaId: comaRef.id
       });
     }
     closeModal('modal-comanda');
@@ -3850,19 +3925,37 @@ function verResumenFactura(docId){
 async function eliminarComanda(docId, mesa){
   if(!confirm(`¿Eliminar la comanda de la Mesa ${mesa}?\nEsto no registra ningún cobro.`)) return;
   try{
-    await DRAFT().doc('current').collection('comandas').doc(docId).delete();
+    // Buscar pedidos_cocina por comandaId y por mesa (fallback para docs viejos sin comandaId)
+    const [snapId, snapMesa] = await Promise.all([
+      db.collection('pedidos_cocina').where('comandaId','==',docId).get(),
+      db.collection('pedidos_cocina').where('mesa','==',mesa).get()
+    ]);
+    // Unir resultados sin duplicados
+    const docsMap = {};
+    [...snapId.docs, ...snapMesa.docs].forEach(d => { docsMap[d.id] = d; });
+    const todosDocs = Object.values(docsMap);
+    const hayDesp = todosDocs.some(d => d.data().estado === 'despachado');
+    if(hayDesp){
+      alert(`⛔ No se puede eliminar la Mesa ${mesa}: ya hay productos entregados en cocina. Usa el descuento para ajustes.`);
+      return;
+    }
+    // Eliminar comanda y todos los pedidos_cocina vinculados
+    const batch = db.batch();
+    todosDocs.forEach(d => batch.delete(d.ref));
+    batch.delete(DRAFT().doc('current').collection('comandas').doc(docId));
+    await batch.commit();
   } catch(e){ alert('Error: '+e.message); }
 }
 
 async function despacharDesdeMesa(mesa){
   try{
-    const snap = await db.collection('pedidos_cocina')
-      .where('mesa','==',mesa)
-      .where('estado','==','pendiente')
-      .get();
-    if(snap.empty){ alert(`La mesa ${mesa} no tiene pedidos pendientes en cocina.`); return; }
+    const comanda = comandasAbiertas.find(c => c.mesa === mesa);
+    if(!comanda){ alert(`No hay comanda abierta para mesa ${mesa}.`); return; }
+    const snap = await db.collection('pedidos_cocina').where('comandaId','==',comanda._docId).get();
+    const pendingDocs = snap.docs.filter(d => d.data().estado === 'pendiente');
+    if(pendingDocs.length === 0){ alert(`La mesa ${mesa} no tiene pedidos pendientes en cocina.`); return; }
     const batch = db.batch();
-    snap.docs.forEach(d => batch.update(d.ref, {
+    pendingDocs.forEach(d => batch.update(d.ref, {
       estado: 'despachado',
       despachadoAt: firebase.firestore.FieldValue.serverTimestamp()
     }));
@@ -3921,20 +4014,26 @@ async function cerrarComanda(){
   const desc=`Mesa ${c.mesa||''} (${(c.items||[]).map(i=>`${i.cantidad}x ${i.nombre}`).join(', ')})`;
   let factData;
   if(ccTipo==='efectivo'){
-    factData={num,desc,monto:c.total,tipo:'efectivo',mixto:false,modoDetalle:true,mesa:c.mesa,hora:c.hora,items:c.items,subtotal:c.subtotal,descuento:c.descuento};
+    factData={num,desc,monto:c.total,tipo:'efectivo',mixto:false,modoDetalle:true,mesa:c.mesa,hora:c.hora,items:c.items,subtotal:c.subtotal,descuento:c.descuento,comandaId:docId};
   } else if(ccTipo==='transferencia'){
-    factData={num,desc,monto:c.total,tipo:'transferencia',mixto:false,modoDetalle:true,mesa:c.mesa,hora:c.hora,items:c.items,subtotal:c.subtotal,descuento:c.descuento};
+    factData={num,desc,monto:c.total,tipo:'transferencia',mixto:false,modoDetalle:true,mesa:c.mesa,hora:c.hora,items:c.items,subtotal:c.subtotal,descuento:c.descuento,comandaId:docId};
   } else {
     const pagado=ccPagos.reduce((s,p)=>s+p.monto,0);
     if(Math.abs(pagado-c.total)>1){ $('cc-error').textContent='El total de pagos no coincide con el total de la comanda.'; return; }
-    factData={num,desc,total:c.total,mixto:true,pagos:ccPagos,modoDetalle:true,mesa:c.mesa,hora:c.hora,items:c.items,subtotal:c.subtotal,descuento:c.descuento};
+    factData={num,desc,total:c.total,mixto:true,pagos:ccPagos,modoDetalle:true,mesa:c.mesa,hora:c.hora,items:c.items,subtotal:c.subtotal,descuento:c.descuento,comandaId:docId};
   }
   const btn=$('btn-cerrar-comanda'); btn.disabled=true; btn.textContent='Cerrando...';
   try{
     const draftRef=DRAFT().doc('current');
+    const now=firebase.firestore.FieldValue.serverTimestamp();
     const batch=db.batch();
     batch.set(draftRef.collection('facturas').doc(),{...factData,createdAt:TS(),createdBy:currentUser.uid,cerradaAt:TS()});
     batch.delete(draftRef.collection('comandas').doc(docId));
+    // Marcar como despachado todo lo pendiente en cocina para esta comanda
+    const snapCocina=await db.collection('pedidos_cocina').where('comandaId','==',docId).get();
+    snapCocina.docs.filter(d=>d.data().estado==='pendiente').forEach(d=>{
+      batch.update(d.ref,{estado:'despachado',despachadoAt:now});
+    });
     await batch.commit();
     closeModal('modal-cerrar-comanda');
   } catch(e){ $('cc-error').textContent='Error: '+e.message; }

@@ -531,11 +531,19 @@ function initKitchen() {
         return ta - tb;
       });
 
-      // Agregar nuevos (en orden)
+      // Agregar nuevos o actualizar existentes (en orden)
       docsOrdenados.forEach(doc => {
         if(!pedidosActivos[doc.id]) {
           pedidosActivos[doc.id] = doc.data();
           renderCard(doc.id, doc.data());
+        } else {
+          // Detectar si cambiaron los items y actualizar el card
+          const oldStr = JSON.stringify(pedidosActivos[doc.id].items || []);
+          const newStr = JSON.stringify(doc.data().items || []);
+          if(oldStr !== newStr) {
+            pedidosActivos[doc.id] = doc.data();
+            updateCardItems(doc.id, doc.data());
+          }
         }
       });
 
@@ -607,6 +615,71 @@ function renderCard(docId, data) {
   initSwipe(card, docId);
 }
 
+function updateCardItems(docId, data) {
+  const card = document.getElementById('card-' + docId);
+  if(!card) return;
+
+  // Guardar nombres de filas ya marcadas antes de re-renderizar
+  const doneNombres = {};
+  card.querySelectorAll('.item-row.done .item-nombre').forEach(el => {
+    const nombre = el.textContent;
+    doneNombres[nombre] = (doneNombres[nombre] || 0) + 1;
+  });
+
+  const items = data.items || [];
+  const filas = [];
+  items.forEach(it => {
+    for(let u = 0; u < (it.cantidad || 1); u++) {
+      filas.push({ nombre: it.nombre });
+    }
+  });
+  const total = filas.length;
+  const itemsHtml = filas.map((fila, idx) => `
+    <div class="item-row" id="item-${docId}-${idx}" onclick="toggleItem('${docId}', ${idx}, ${total})">
+      <div class="item-cant">1</div>
+      <div class="item-nombre">${fila.nombre}</div>
+      <div class="item-check"></div>
+    </div>`).join('');
+
+  const listEl = card.querySelector('.items-list');
+  if(listEl) listEl.innerHTML = itemsHtml;
+
+  // Restaurar estado done por nombre
+  const pendingRestore = {...doneNombres};
+  for(let i = 0; i < total; i++) {
+    const row = document.getElementById(`item-${docId}-${i}`);
+    if(!row) continue;
+    const nombre = row.querySelector('.item-nombre').textContent;
+    if(pendingRestore[nombre] && pendingRestore[nombre] > 0) {
+      row.classList.add('done');
+      row.querySelector('.item-check').textContent = '✓';
+      pendingRestore[nombre]--;
+    }
+  }
+
+  // Actualizar botón despachar según cuántos quedaron marcados
+  let done = 0;
+  for(let i = 0; i < total; i++) {
+    const r = document.getElementById(`item-${docId}-${i}`);
+    if(r && r.classList.contains('done')) done++;
+  }
+  const btn = document.getElementById(`btn-desp-${docId}`);
+  if(btn) {
+    if(done === total) {
+      btn.classList.add('listo');
+      btn.textContent = '✅ Todo listo — Despachar';
+    } else if(done > 0) {
+      btn.classList.remove('listo');
+      btn.textContent = `${done}/${total} listos — Despachar`;
+    } else {
+      btn.classList.remove('listo');
+      btn.textContent = 'Marcar ítems para despachar';
+    }
+  }
+
+  showToast('🔄 Pedido mesa ' + (data.mesa || '') + ' actualizado');
+}
+
 function toggleItem(docId, idx, total) {
   const row = document.getElementById(`item-${docId}-${idx}`);
   if(!row) return;
@@ -636,13 +709,15 @@ function toggleItem(docId, idx, total) {
 
 // ── Barra de tiempo (verde → amarillo → rojo en 15 min) ──
 function initTimerBar(docId, creadoAt) {
-  const MAX_MS = 15 * 60 * 1000;
+  const YELLOW_MS = 8 * 60 * 1000;
+  const RED_MS    = 16 * 60 * 1000;
   function update() {
     const bar = document.getElementById('bar-' + docId);
     if(!bar) return;
-    const pct = Math.min(100, (Date.now() - creadoAt.getTime()) / MAX_MS * 100);
+    const elapsed = Date.now() - creadoAt.getTime();
+    const pct = Math.min(100, elapsed / RED_MS * 100);
     bar.style.width = pct + '%';
-    bar.style.background = pct < 50 ? '#00b894' : pct < 80 ? '#fdcb6e' : '#e94560';
+    bar.style.background = elapsed < YELLOW_MS ? '#00b894' : elapsed < RED_MS ? '#fdcb6e' : '#e94560';
   }
   update();
   const iv = setInterval(() => {
