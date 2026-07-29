@@ -189,11 +189,18 @@
     display: flex;
     align-items: center;
     gap: 10px;
-    padding: 7px 0;
+    padding: 8px 4px;
     border-bottom: 1px solid var(--border);
     font-size: 0.92rem;
+    cursor: pointer;
+    border-radius: 6px;
+    transition: background 0.15s;
   }
   .item-row:last-child { border-bottom: none; }
+  .item-row:hover { background: rgba(255,255,255,0.04); }
+  .item-row.done { opacity: 0.45; }
+  .item-row.done .item-nombre { text-decoration: line-through; }
+  .item-row.done .item-cant { background: var(--green); }
   .item-cant {
     background: var(--accent);
     color: #fff;
@@ -203,21 +210,42 @@
     border-radius: 8px;
     display: flex; align-items: center; justify-content: center;
     flex-shrink: 0;
+    transition: background 0.2s;
   }
   .item-nombre { flex: 1; font-weight: 600; }
+  .item-check {
+    width: 22px; height: 22px;
+    border-radius: 50%;
+    border: 2px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    font-size: 0.85rem;
+    transition: all 0.2s;
+  }
+  .item-row.done .item-check {
+    background: var(--green);
+    border-color: var(--green);
+  }
 
   .btn-despachar {
     width: 100%;
     padding: 13px;
-    background: var(--green);
-    color: #fff;
-    border: none;
+    background: #2d3561;
+    color: var(--gray);
+    border: 2px solid var(--border);
     border-radius: 12px;
     font-size: 1rem;
     font-weight: 800;
     cursor: pointer;
-    transition: opacity 0.2s, transform 0.1s;
+    transition: all 0.25s;
   }
+  .btn-despachar.listo {
+    background: var(--green);
+    color: #fff;
+    border-color: var(--green);
+    animation: pulse-btn 0.6s ease;
+  }
+  @keyframes pulse-btn { 0%{transform:scale(1)} 50%{transform:scale(1.03)} 100%{transform:scale(1)} }
   .btn-despachar:hover { opacity: 0.88; }
   .btn-despachar:active { transform: scale(0.97); }
   .swipe-hint { text-align: center; font-size: 0.7rem; color: var(--gray); margin-top: 7px; }
@@ -544,6 +572,14 @@ function renderCard(docId, data) {
     ? (data.creadoAt.toDate ? data.creadoAt.toDate() : new Date(data.creadoAt))
     : new Date();
 
+  const items = data.items || [];
+  const itemsHtml = items.map((it, idx) => `
+    <div class="item-row" id="item-${docId}-${idx}" onclick="toggleItem('${docId}', ${idx}, ${items.length})">
+      <div class="item-cant">${it.cantidad}</div>
+      <div class="item-nombre">${it.nombre}</div>
+      <div class="item-check"></div>
+    </div>`).join('');
+
   card.innerHTML = `
     <div class="timer-bar" id="bar-${docId}"></div>
     <div class="card-header">
@@ -551,20 +587,43 @@ function renderCard(docId, data) {
       <div class="hora-badge">⏰ ${data.hora || '--:--'}</div>
     </div>
     ${data.mesero ? `<div class="mesero-tag">👤 ${data.mesero}</div>` : ''}
-    <div class="items-list">
-      ${(data.items || []).map(it => `
-        <div class="item-row">
-          <div class="item-cant">${it.cantidad}</div>
-          <div class="item-nombre">${it.nombre}</div>
-        </div>`).join('')}
-    </div>
-    <button class="btn-despachar" onclick="despachar('${docId}')">✅ Despachado</button>
-    <div class="swipe-hint">← desliza para despachar →</div>
+    <div class="items-list">${itemsHtml}</div>
+    <button class="btn-despachar" id="btn-desp-${docId}" onclick="despachar('${docId}')">
+      Marcar ítems para despachar
+    </button>
+    <div class="swipe-hint">← desliza para despachar todo →</div>
   `;
 
   grid.appendChild(card);
   initTimerBar(docId, creadoAt);
   initSwipe(card, docId);
+}
+
+function toggleItem(docId, idx, total) {
+  const row = document.getElementById(`item-${docId}-${idx}`);
+  if(!row) return;
+  row.classList.toggle('done');
+  // Actualizar check icon
+  const check = row.querySelector('.item-check');
+  check.textContent = row.classList.contains('done') ? '✓' : '';
+  // Contar cuántos están listos
+  let done = 0;
+  for(let i = 0; i < total; i++) {
+    const r = document.getElementById(`item-${docId}-${i}`);
+    if(r && r.classList.contains('done')) done++;
+  }
+  const btn = document.getElementById(`btn-desp-${docId}`);
+  if(!btn) return;
+  if(done === total) {
+    btn.classList.add('listo');
+    btn.textContent = '✅ Todo listo — Despachar';
+  } else if(done > 0) {
+    btn.classList.remove('listo');
+    btn.textContent = `${done}/${total} listos — Despachar`;
+  } else {
+    btn.classList.remove('listo');
+    btn.textContent = 'Marcar ítems para despachar';
+  }
 }
 
 // ── Barra de tiempo (verde → amarillo → rojo en 15 min) ──

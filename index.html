@@ -3536,6 +3536,7 @@ let comandasAbiertas = [];
 let comandaItems = [];
 let ccPagos = [];
 let ccTipo  = 'efectivo';
+let mesasDespachadas = {}; // mesa → true si está despachada en cocina
 
 function setupComandasListener(){
   const ref = DRAFT().doc('current').collection('comandas');
@@ -3545,6 +3546,22 @@ function setupComandasListener(){
     renderComandasAbiertas();
   }, e=>console.error(e));
   unsubs.push(unsub);
+
+  // Escuchar pedidos_cocina para saber qué mesas están despachadas
+  const unsubCocina = db.collection('pedidos_cocina').onSnapshot(snap=>{
+    mesasDespachadas = {};
+    snap.docs.forEach(d=>{
+      const data = d.data();
+      const mesa = data.mesa;
+      if(!mesa) return;
+      // Si hay al menos un pedido despachado y ninguno pendiente → mesa despachada
+      if(!mesasDespachadas[mesa]) mesasDespachadas[mesa] = { pendiente: 0, despachado: 0 };
+      if(data.estado === 'pendiente')  mesasDespachadas[mesa].pendiente++;
+      if(data.estado === 'despachado') mesasDespachadas[mesa].despachado++;
+    });
+    renderComandasAbiertas();
+  }, e=>console.error(e));
+  unsubs.push(unsubCocina);
 }
 
 function renderComandasAbiertas(){
@@ -3552,17 +3569,31 @@ function renderComandasAbiertas(){
   if(!comandasAbiertas.length){ div.innerHTML='<div class="empty-msg">Sin mesas abiertas</div>'; return; }
   div.innerHTML = comandasAbiertas.map(c=>{
     const itemsStr = (c.items||[]).map(i=>`${i.cantidad}x ${i.nombre}`).join(', ');
-    return `<div style="background:#fffbeb;border:1.5px solid #f6e05e;border-radius:10px;padding:10px 12px;margin-bottom:8px">
+    const cocEst   = mesasDespachadas[c.mesa] || { pendiente: 0, despachado: 0 };
+    const despachada = cocEst.despachado > 0 && cocEst.pendiente === 0;
+    const parcial    = cocEst.despachado > 0 && cocEst.pendiente > 0;
+    const estadoBadge = despachada
+      ? `<span style="background:#c6f6d5;color:#276749;font-weight:800;font-size:0.72rem;padding:3px 10px;border-radius:20px;letter-spacing:0.3px">✅ DESPACHADO</span>`
+      : parcial
+      ? `<span style="background:#fef3c7;color:#92400e;font-weight:800;font-size:0.72rem;padding:3px 10px;border-radius:20px;letter-spacing:0.3px">⏳ PARCIAL</span>`
+      : '';
+    const borderColor = despachada ? '#68d391' : parcial ? '#f6e05e' : '#f6e05e';
+    const bgColor     = despachada ? '#f0fff4' : '#fffbeb';
+    return `<div style="background:${bgColor};border:1.5px solid ${borderColor};border-radius:10px;padding:10px 12px;margin-bottom:8px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
-        <span style="font-weight:800;font-size:0.95rem">Mesa ${c.mesa||'—'}</span>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="font-weight:800;font-size:0.95rem">Mesa ${c.mesa||'—'}</span>
+          ${estadoBadge}
+        </div>
         <span style="font-size:0.78rem;color:var(--gray)">⏰ ${c.hora||''}</span>
       </div>
       <div style="font-size:0.8rem;color:#4a5568;margin-bottom:8px">${itemsStr||'Sin platos'}</div>
       <div style="display:flex;justify-content:space-between;align-items:center">
         <span style="font-weight:800;color:var(--primary)">${fmt(c.total||0)}</span>
-        <div style="display:flex;gap:6px">
+        <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end">
           <button class="btn-sm btn-ghost" onclick="editarComanda('${c._docId}')">✏️ Editar</button>
           <button class="btn-sm btn-blue" onclick="abrirCobro('${c._docId}')">💳 Cobrar</button>
+          ${!despachada ? `<button class="btn-sm btn-green" onclick="despacharDesdeMesa('${c.mesa||''}')" title="Marcar como despachado en cocina">🍳 Despachado</button>` : ''}
           <button class="btn-sm btn-danger" onclick="eliminarComanda('${c._docId}','${c.mesa||''}')">🗑️</button>
         </div>
       </div>
@@ -3820,6 +3851,22 @@ async function eliminarComanda(docId, mesa){
   if(!confirm(`¿Eliminar la comanda de la Mesa ${mesa}?\nEsto no registra ningún cobro.`)) return;
   try{
     await DRAFT().doc('current').collection('comandas').doc(docId).delete();
+  } catch(e){ alert('Error: '+e.message); }
+}
+
+async function despacharDesdeMesa(mesa){
+  try{
+    const snap = await db.collection('pedidos_cocina')
+      .where('mesa','==',mesa)
+      .where('estado','==','pendiente')
+      .get();
+    if(snap.empty){ alert(`La mesa ${mesa} no tiene pedidos pendientes en cocina.`); return; }
+    const batch = db.batch();
+    snap.docs.forEach(d => batch.update(d.ref, {
+      estado: 'despachado',
+      despachadoAt: firebase.firestore.FieldValue.serverTimestamp()
+    }));
+    await batch.commit();
   } catch(e){ alert('Error: '+e.message); }
 }
 
