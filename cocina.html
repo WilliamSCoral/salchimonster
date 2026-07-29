@@ -573,10 +573,18 @@ function renderCard(docId, data) {
     : new Date();
 
   const items = data.items || [];
-  const itemsHtml = items.map((it, idx) => `
-    <div class="item-row" id="item-${docId}-${idx}" onclick="toggleItem('${docId}', ${idx}, ${items.length})">
-      <div class="item-cant">${it.cantidad}</div>
-      <div class="item-nombre">${it.nombre}</div>
+  // Expandir cada ítem en filas individuales por unidad
+  const filas = [];
+  items.forEach(it => {
+    for(let u = 0; u < (it.cantidad || 1); u++) {
+      filas.push({ nombre: it.nombre });
+    }
+  });
+  const total = filas.length;
+  const itemsHtml = filas.map((fila, idx) => `
+    <div class="item-row" id="item-${docId}-${idx}" onclick="toggleItem('${docId}', ${idx}, ${total})">
+      <div class="item-cant">1</div>
+      <div class="item-nombre">${fila.nombre}</div>
       <div class="item-check"></div>
     </div>`).join('');
 
