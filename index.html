@@ -311,12 +311,13 @@
         <label id="f-monto-label">Monto</label>
         <input type="text" inputmode="numeric" id="f-monto" placeholder="0" oninput="moneyFmt(this);updateMixtoProgress()"/>
       </div>
-      <div class="fg" style="max-width:145px" id="f-tipo-wrap">
-        <label>Tipo</label>
-        <select id="f-tipo">
-          <option value="efectivo">💵 Efectivo</option>
-          <option value="transferencia">🏦 Transferencia</option>
-        </select>
+      <div id="f-tipo-wrap" style="display:flex;flex-direction:column;gap:3px;flex:1">
+        <label style="font-size:0.7rem;font-weight:600;color:var(--gray);text-transform:uppercase;letter-spacing:0.04em">Tipo</label>
+        <input type="hidden" id="f-tipo" value="efectivo"/>
+        <div style="display:flex;gap:6px">
+          <button type="button" id="btn-ftipo-ef" onclick="setFacturaTipo('efectivo')" style="flex:1;padding:9px 6px;border-radius:8px;border:2px solid #48bb78;background:#f0fff4;color:#276749;font-weight:700;cursor:pointer;font-size:0.82rem">💵 Efectivo</button>
+          <button type="button" id="btn-ftipo-tr" onclick="setFacturaTipo('transferencia')" style="flex:1;padding:9px 6px;border-radius:8px;border:2px solid #e2e8f0;background:#fff;color:#4a5568;font-weight:700;cursor:pointer;font-size:0.82rem">🏦 Transfer</button>
+        </div>
       </div>
     </div>
     <label class="mixto-toggle">
@@ -331,12 +332,13 @@
           <label>Monto pago</label>
           <input type="text" inputmode="numeric" id="p-monto" placeholder="0" oninput="moneyFmt(this)"/>
         </div>
-        <div class="fg" style="max-width:155px">
-          <label>Tipo</label>
-          <select id="p-tipo">
-            <option value="efectivo">💵 Efectivo</option>
-            <option value="transferencia">🏦 Transferencia</option>
-          </select>
+        <div style="display:flex;flex-direction:column;gap:3px;flex:1">
+          <label style="font-size:0.7rem;font-weight:600;color:var(--gray);text-transform:uppercase;letter-spacing:0.04em">Tipo</label>
+          <input type="hidden" id="p-tipo" value="efectivo"/>
+          <div style="display:flex;gap:6px">
+            <button type="button" id="btn-ptipo-ef" onclick="setPagoTipo('efectivo')" style="flex:1;padding:9px 4px;border-radius:8px;border:2px solid #48bb78;background:#f0fff4;color:#276749;font-weight:700;cursor:pointer;font-size:0.78rem">💵 Ef</button>
+            <button type="button" id="btn-ptipo-tr" onclick="setPagoTipo('transferencia')" style="flex:1;padding:9px 4px;border-radius:8px;border:2px solid #e2e8f0;background:#fff;color:#4a5568;font-weight:700;cursor:pointer;font-size:0.78rem">🏦 Tr</button>
+          </div>
         </div>
         <button class="btn-sm btn-ghost" style="margin-bottom:1px" onclick="addPago()">+ Pago</button>
       </div>
@@ -389,6 +391,14 @@
         <label>Monto</label>
         <input type="text" inputmode="numeric" id="g-monto" placeholder="0" oninput="moneyFmt(this)"/>
       </div>
+      <div style="display:flex;flex-direction:column;gap:3px;flex:0 0 auto">
+        <label style="font-size:0.7rem;font-weight:600;color:var(--gray);text-transform:uppercase;letter-spacing:0.04em">Tipo</label>
+        <input type="hidden" id="g-tipo" value="efectivo"/>
+        <div style="display:flex;gap:6px">
+          <button type="button" id="btn-gtipo-ef" onclick="setGastoTipo('efectivo')" style="flex:1;padding:9px 6px;border-radius:8px;border:2px solid #48bb78;background:#f0fff4;color:#276749;font-weight:700;cursor:pointer;font-size:0.82rem">💵 Ef</button>
+          <button type="button" id="btn-gtipo-tr" onclick="setGastoTipo('transferencia')" style="flex:1;padding:9px 6px;border-radius:8px;border:2px solid #e2e8f0;background:#fff;color:#4a5568;font-weight:700;cursor:pointer;font-size:0.82rem">🏦 Tr</button>
+        </div>
+      </div>
     </div>
     <button class="btn-green mt8" style="width:100%" id="btn-add-g" onclick="addGasto()">+ Agregar gasto</button>
   </div>
@@ -398,8 +408,8 @@
       <button class="btn-sm btn-danger" onclick="clearGastos()">🗑 Limpiar</button>
     </div>
     <table>
-      <thead><tr><th>#</th><th>Concepto</th><th>Monto</th><th></th></tr></thead>
-      <tbody id="tb-gastos"><tr><td colspan="4" class="empty-msg">Sin gastos</td></tr></tbody>
+      <thead><tr><th>#</th><th>Concepto</th><th>Monto</th><th>Tipo</th><th></th></tr></thead>
+      <tbody id="tb-gastos"><tr><td colspan="5" class="empty-msg">Sin gastos</td></tr></tbody>
     </table>
   </div>
   </div><!-- /dt-grid-2 -->
@@ -529,10 +539,11 @@
     <div class="card-title">📊 Neto del día</div>
     <div style="font-size:0.82rem;color:var(--gray);margin-bottom:8px">Después de gastos y pagos a empleados</div>
     <div style="display:flex;justify-content:space-between;font-size:0.85rem;margin-bottom:3px"><span>💵 Efectivo ingresado</span><span style="color:#276749;font-weight:700" id="r3-ef">$ 0</span></div>
-    <div style="display:flex;justify-content:space-between;font-size:0.83rem;margin-bottom:3px;color:var(--red)"><span>&nbsp;&nbsp;(−) Gastos del día</span><span id="r2-gastos">$ 0</span></div>
+    <div style="display:flex;justify-content:space-between;font-size:0.83rem;margin-bottom:3px;color:var(--red)"><span>&nbsp;&nbsp;(−) Gastos (ef)</span><span id="r2-gastos">$ 0</span></div>
     <div style="display:flex;justify-content:space-between;font-size:0.83rem;margin-bottom:3px;color:#c05621"><span>&nbsp;&nbsp;(−) Empleados (ef)</span><span id="r2-emp-ef">$ 0</span></div>
     <div style="display:flex;justify-content:space-between;font-size:0.85rem;font-weight:700;border-top:1px dashed #c6f6d5;padding-top:5px;margin-bottom:10px"><span>= Efectivo neto</span><span id="r2-efneto" style="color:#276749">$ 0</span></div>
     <div style="display:flex;justify-content:space-between;font-size:0.85rem;margin-bottom:3px"><span>🏦 Transferencias ingresadas</span><span style="color:#2b6cb0;font-weight:700" id="r3-tr">$ 0</span></div>
+    <div style="display:flex;justify-content:space-between;font-size:0.83rem;margin-bottom:3px;color:var(--red)"><span>&nbsp;&nbsp;(−) Gastos (tr)</span><span id="r2-gastos-tr">$ 0</span></div>
     <div style="display:flex;justify-content:space-between;font-size:0.83rem;margin-bottom:3px;color:#c05621"><span>&nbsp;&nbsp;(−) Empleados (tr)</span><span id="r2-emp-tr">$ 0</span></div>
     <div style="display:flex;justify-content:space-between;font-size:0.85rem;font-weight:700;border-top:1px dashed #bee3f8;padding-top:5px;margin-bottom:10px"><span>= Transferencias netas</span><span id="r2-trneto" style="color:#2b6cb0">$ 0</span></div>
     <div class="neto-box neto-pos" id="neto-dia-box" style="margin:0"><span class="neto-label">📊 Neto del día</span><span class="neto-value" id="r-neto-dia">$ 0</span></div>
@@ -1826,7 +1837,7 @@ function goTab(i) {
 function applyLock() {
   const inputs = ['f-desc','f-monto','f-tipo','g-desc','g-monto','e-nombre','e-pago','c-desc','c-monto','base-efectivo','base-tr'];
   inputs.forEach(id => { const el=$(id); if(el){ el.disabled=true; el.style.opacity='0.6'; }});
-  ['btn-add-f','btn-add-g','btn-add-e','btn-add-c','btn-tipo-ef','btn-tipo-tr','btn-etipo-ef','btn-etipo-tr'].forEach(id => {
+  ['btn-add-f','btn-add-g','btn-add-e','btn-add-c','btn-tipo-ef','btn-tipo-tr','btn-etipo-ef','btn-etipo-tr','btn-ftipo-ef','btn-ftipo-tr','btn-ptipo-ef','btn-ptipo-tr','btn-gtipo-ef','btn-gtipo-tr'].forEach(id => {
     const el=$(id); if(el){ el.disabled=true; el.style.opacity='0.4'; el.style.cursor='not-allowed'; }
   });
   document.querySelectorAll('.btn-danger').forEach(b => { b.disabled=true; b.style.opacity='0.4'; b.style.cursor='not-allowed'; });
@@ -1838,7 +1849,7 @@ function applyLock() {
 function unlockUI() {
   const inputs = ['f-desc','f-monto','f-tipo','g-desc','g-monto','e-nombre','e-pago','c-desc','c-monto','base-efectivo','base-tr'];
   inputs.forEach(id => { const el=$(id); if(el){ el.disabled=false; el.style.opacity='1'; }});
-  ['btn-add-f','btn-add-g','btn-add-e','btn-add-c','btn-tipo-ef','btn-tipo-tr','btn-etipo-ef','btn-etipo-tr'].forEach(id => {
+  ['btn-add-f','btn-add-g','btn-add-e','btn-add-c','btn-tipo-ef','btn-tipo-tr','btn-etipo-ef','btn-etipo-tr','btn-ftipo-ef','btn-ftipo-tr','btn-ptipo-ef','btn-ptipo-tr','btn-gtipo-ef','btn-gtipo-tr'].forEach(id => {
     const el=$(id); if(el){ el.disabled=false; el.style.opacity='1'; el.style.cursor='pointer'; }
   });
   document.querySelectorAll('.btn-danger').forEach(b => { b.disabled=false; b.style.opacity='1'; b.style.cursor='pointer'; });
@@ -1866,6 +1877,7 @@ function addPago() {
   if(monto <= 0) { alert('Ingresa un monto válido.'); return; }
   currentPagos.push({monto, tipo});
   $('p-monto').value = '';
+  setPagoTipo('efectivo');
   renderMixtoPagos(); updateMixtoProgress();
   $('p-monto').focus();
 }
@@ -1899,7 +1911,9 @@ function totals() {
     else { if(f.tipo==='efectivo') ef+=(f.monto||f.total||0); else tr+=(f.monto||f.total||0); }
   });
   const bruto=ef+tr;
-  const tg=state.gastos.reduce((s,g)=>s+g.monto,0);
+  const tgEf=state.gastos.filter(g=>g.tipo!=='transferencia').reduce((s,g)=>s+g.monto,0);
+  const tgTr=state.gastos.filter(g=>g.tipo==='transferencia').reduce((s,g)=>s+g.monto,0);
+  const tg=tgEf+tgTr;
   const teEf=state.empleados.filter(e=>e.tipo!=='transferencia').reduce((s,e)=>s+e.pago,0);
   const teTr=state.empleados.filter(e=>e.tipo==='transferencia').reduce((s,e)=>s+e.pago,0);
   const te=teEf+teTr;
@@ -1909,9 +1923,9 @@ function totals() {
   const baseEf=state.baseEfectivo||0, baseTr=state.baseTr||0;
   const saldoCajaEf=Math.max(0,baseEf-tcEf), saldoCajaTr=Math.max(0,baseTr-tcTr), saldoCaja=saldoCajaEf+saldoCajaTr;
   const ventaDia=ef+tr;
-  const efNeto=ef-tg-teEf, trNeto=tr-teTr, netoDia=efNeto+trNeto;
+  const efNeto=ef-tgEf-teEf, trNeto=tr-tgTr-teTr, netoDia=efNeto+trNeto;
   const dispEf=efNeto+saldoCajaEf, dispTr=trNeto+saldoCajaTr, total=dispEf+dispTr;
-  return {ef,tr,bruto,ventaDia,tg,te,teEf,teTr,tc,tcEf,tcTr,baseEf,baseTr,saldoCajaEf,saldoCajaTr,saldoCaja,efNeto,trNeto,netoDia,dispEf,dispTr,total,cnt:state.facturas.length};
+  return {ef,tr,bruto,ventaDia,tg,tgEf,tgTr,te,teEf,teTr,tc,tcEf,tcTr,baseEf,baseTr,saldoCajaEf,saldoCajaTr,saldoCaja,efNeto,trNeto,netoDia,dispEf,dispTr,total,cnt:state.facturas.length};
 }
 
 // ══════════════════════════════════════
@@ -1939,6 +1953,7 @@ async function addFactura() {
   }
   data.createdAt=TS(); data.createdBy=currentUser.uid;
   $('f-desc').value=''; $('f-monto').value='';
+  setFacturaTipo('efectivo');
   $('f-desc').focus();
   try { await DRAFT().doc('current').collection('facturas').add(data); }
   catch(e){ alert('Error al guardar: '+e.message); }
@@ -2001,11 +2016,13 @@ function renderFacturas(){
 // ══════════════════════════════════════
 async function addGasto(){
   if(locked) return;
-  const desc=$('g-desc').value.trim(), monto=moneyVal('g-monto');
+  const desc=$('g-desc').value.trim(), monto=moneyVal('g-monto'), tipo=$('g-tipo').value||'efectivo';
   if(!desc){ alert('Ingresa el concepto.'); return; }
   if(monto<=0){ alert('Ingresa un monto válido.'); return; }
-  $('g-desc').value=''; $('g-monto').value=''; $('g-desc').focus();
-  try{ await DRAFT().doc('current').collection('gastos').add({desc,monto,createdAt:TS(),createdBy:currentUser.uid}); }
+  $('g-desc').value=''; $('g-monto').value='';
+  setGastoTipo('efectivo');
+  $('g-desc').focus();
+  try{ await DRAFT().doc('current').collection('gastos').add({desc,monto,tipo,createdAt:TS(),createdBy:currentUser.uid}); }
   catch(e){ alert('Error: '+e.message); }
 }
 async function delGasto(docId){ if(locked) return; try{ await DRAFT().doc('current').collection('gastos').doc(docId).delete(); }catch(e){ alert('Error: '+e.message); } }
@@ -2013,14 +2030,53 @@ async function clearGastos(){ if(locked) return; if(!confirm('¿Eliminar todos l
 
 function renderGastos(){
   const tb=$('tb-gastos');
-  if(!state.gastos.length){ tb.innerHTML='<tr><td colspan="4" class="empty-msg">Sin gastos</td></tr>'; return; }
-  const total=state.gastos.reduce((s,g)=>s+g.monto,0);
-  tb.innerHTML=state.gastos.map((g,i)=>`<tr><td>${i+1}</td><td>${g.desc}</td><td><strong>${fmt(g.monto)}</strong></td><td><button class="btn-sm btn-danger" onclick="delGasto('${g._docId}')">✕</button></td></tr>`).join('')+`<tr class="total-row"><td colspan="2">TOTAL</td><td>${fmt(total)}</td><td></td></tr>`;
+  if(!state.gastos.length){ tb.innerHTML='<tr><td colspan="5" class="empty-msg">Sin gastos</td></tr>'; return; }
+  const tgEf=state.gastos.filter(g=>g.tipo!=='transferencia').reduce((s,g)=>s+g.monto,0);
+  const tgTr=state.gastos.filter(g=>g.tipo==='transferencia').reduce((s,g)=>s+g.monto,0);
+  tb.innerHTML=state.gastos.map((g,i)=>{
+    const badge=g.tipo==='transferencia'
+      ?`<span style="background:#ebf8ff;color:#2b6cb0;border-radius:6px;padding:2px 7px;font-size:0.72rem;font-weight:700">🏦 Tr</span>`
+      :`<span style="background:#f0fff4;color:#276749;border-radius:6px;padding:2px 7px;font-size:0.72rem;font-weight:700">💵 Ef</span>`;
+    return `<tr><td>${i+1}</td><td>${g.desc}</td><td><strong>${fmt(g.monto)}</strong></td><td>${badge}</td><td><button class="btn-sm btn-danger" onclick="delGasto('${g._docId}')">✕</button></td></tr>`;
+  }).join('')+`<tr class="total-row"><td colspan="2">TOTAL</td><td>${fmt(tgEf+tgTr)}</td><td style="font-size:0.7rem;color:var(--gray)">💵${fmt(tgEf)} 🏦${fmt(tgTr)}</td><td></td></tr>`;
 }
 
 // ══════════════════════════════════════
 //   EMPLEADOS
 // ══════════════════════════════════════
+function setGastoTipo(tipo){
+  $('g-tipo').value=tipo;
+  const ef=$('btn-gtipo-ef'), tr=$('btn-gtipo-tr');
+  if(tipo==='efectivo'){
+    ef.style.cssText='flex:1;padding:9px 6px;border-radius:8px;border:2px solid #48bb78;background:#f0fff4;color:#276749;font-weight:700;cursor:pointer;font-size:0.82rem';
+    tr.style.cssText='flex:1;padding:9px 6px;border-radius:8px;border:2px solid #e2e8f0;background:#fff;color:#4a5568;font-weight:700;cursor:pointer;font-size:0.82rem';
+  } else {
+    ef.style.cssText='flex:1;padding:9px 6px;border-radius:8px;border:2px solid #e2e8f0;background:#fff;color:#4a5568;font-weight:700;cursor:pointer;font-size:0.82rem';
+    tr.style.cssText='flex:1;padding:9px 6px;border-radius:8px;border:2px solid #2b6cb0;background:#ebf8ff;color:#2b6cb0;font-weight:700;cursor:pointer;font-size:0.82rem';
+  }
+}
+function setFacturaTipo(tipo){
+  $('f-tipo').value=tipo;
+  const ef=$('btn-ftipo-ef'), tr=$('btn-ftipo-tr');
+  if(tipo==='efectivo'){
+    ef.style.cssText='flex:1;padding:9px 6px;border-radius:8px;border:2px solid #48bb78;background:#f0fff4;color:#276749;font-weight:700;cursor:pointer;font-size:0.82rem';
+    tr.style.cssText='flex:1;padding:9px 6px;border-radius:8px;border:2px solid #e2e8f0;background:#fff;color:#4a5568;font-weight:700;cursor:pointer;font-size:0.82rem';
+  } else {
+    ef.style.cssText='flex:1;padding:9px 6px;border-radius:8px;border:2px solid #e2e8f0;background:#fff;color:#4a5568;font-weight:700;cursor:pointer;font-size:0.82rem';
+    tr.style.cssText='flex:1;padding:9px 6px;border-radius:8px;border:2px solid #2b6cb0;background:#ebf8ff;color:#2b6cb0;font-weight:700;cursor:pointer;font-size:0.82rem';
+  }
+}
+function setPagoTipo(tipo){
+  $('p-tipo').value=tipo;
+  const ef=$('btn-ptipo-ef'), tr=$('btn-ptipo-tr');
+  if(tipo==='efectivo'){
+    ef.style.cssText='flex:1;padding:9px 4px;border-radius:8px;border:2px solid #48bb78;background:#f0fff4;color:#276749;font-weight:700;cursor:pointer;font-size:0.78rem';
+    tr.style.cssText='flex:1;padding:9px 4px;border-radius:8px;border:2px solid #e2e8f0;background:#fff;color:#4a5568;font-weight:700;cursor:pointer;font-size:0.78rem';
+  } else {
+    ef.style.cssText='flex:1;padding:9px 4px;border-radius:8px;border:2px solid #e2e8f0;background:#fff;color:#4a5568;font-weight:700;cursor:pointer;font-size:0.78rem';
+    tr.style.cssText='flex:1;padding:9px 4px;border-radius:8px;border:2px solid #2b6cb0;background:#ebf8ff;color:#2b6cb0;font-weight:700;cursor:pointer;font-size:0.78rem';
+  }
+}
 function setEmpleadoTipo(tipo){
   if(locked) return;
   empleadoTipo=tipo;
@@ -2115,8 +2171,8 @@ function renderResumen(){
   const ventaDia = t.ventaDia;
   $('r-venta-dia').textContent=fmt(ventaDia);
   $('venta-dia-box').className='neto-box '+(ventaDia>=0?'neto-pos':'neto-neg');
-  $('r3-ef').textContent=fmt(t.ef); $('r2-gastos').textContent=fmt(t.tg); $('r2-emp-ef').textContent=fmt(t.teEf); $('r2-efneto').textContent=fmt(t.efNeto);
-  $('r3-tr').textContent=fmt(t.tr); $('r2-emp-tr').textContent=fmt(t.teTr); $('r2-trneto').textContent=fmt(t.trNeto); $('r-neto-dia').textContent=fmt(t.netoDia);
+  $('r3-ef').textContent=fmt(t.ef); $('r2-gastos').textContent=fmt(t.tgEf); $('r2-emp-ef').textContent=fmt(t.teEf); $('r2-efneto').textContent=fmt(t.efNeto);
+  $('r3-tr').textContent=fmt(t.tr); $('r2-gastos-tr').textContent=fmt(t.tgTr); $('r2-emp-tr').textContent=fmt(t.teTr); $('r2-trneto').textContent=fmt(t.trNeto); $('r-neto-dia').textContent=fmt(t.netoDia);
   $('neto-dia-box').className='neto-box '+(t.netoDia>=0?'neto-pos':'neto-neg');
   $('r-base-ef').textContent=fmt(t.baseEf); $('r-base-tr').textContent=fmt(t.baseTr);
   $('r-compras-ef').textContent=fmt(t.tcEf); $('r-compras-tr').textContent=fmt(t.tcTr);
@@ -2241,7 +2297,9 @@ async function loadCalendarRecords(){
     calLegacyRecords=[];
     snap.docs.forEach(d=>{
       if(DATE_KEY_RE.test(d.id)){
-        calRecords[d.id]=true;
+        const t=d.data().totals||{};
+        const tg=d.data().totalsGran||{}, tm=d.data().totalsMich||{}, tl=d.data().totalsLimon||{};
+        calRecords[d.id]={ total:(t.total||0)+(tg.neto||0)+(tg.sodaNeto||0)+(tm.total||0)+(tl.total||0) };
       } else {
         calLegacyRecords.push({id:d.id, ...d.data()});
       }
@@ -2304,7 +2362,9 @@ function renderCalendar(){
     const hasRec=calRecords[key];
     const isToday=isCurrentMonth&&d===todayNum;
     if(hasRec){
-      html+=`<div onclick="showRecord('${key}')" style="text-align:center;padding:10px 2px;border-radius:10px;background:#276749;color:#fff;font-weight:800;font-size:0.85rem;cursor:pointer;box-shadow:0 2px 6px rgba(39,103,73,0.25)" title="Ver registro del ${d}">${d}</div>`;
+      const totalDisp=hasRec.total||0;
+      const totalFmt=totalDisp>=1000000?'$'+(totalDisp/1000000).toFixed(1)+'M':totalDisp>=1000?'$'+(totalDisp/1000).toFixed(0)+'k':'$'+totalDisp;
+      html+=`<div onclick="showRecord('${key}')" style="text-align:center;padding:8px 2px 6px;border-radius:10px;background:#276749;color:#fff;cursor:pointer;box-shadow:0 2px 6px rgba(39,103,73,0.25)" title="Ver registro del ${d}"><div style="font-weight:800;font-size:0.85rem;line-height:1">${d}</div><div style="font-size:0.58rem;opacity:0.85;margin-top:3px;letter-spacing:-0.01em">${totalFmt}</div></div>`;
     } else if(isToday){
       html+=`<div style="text-align:center;padding:10px 2px;border-radius:10px;background:#ebf8ff;color:#2b6cb0;font-weight:700;font-size:0.85rem;border:2px solid #2b6cb0">${d}</div>`;
     } else {
