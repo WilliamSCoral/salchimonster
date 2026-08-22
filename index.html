@@ -418,39 +418,71 @@
 <!-- ═══ PAGE 2: EMPLEADOS ═══ -->
 <div class="page" id="page-2">
   <div class="locked-banner" id="lock-e">🔒 Día guardado — no se puede modificar</div>
-  <div class="dt-grid-2">
-  <div class="card">
-    <div class="card-title">👷 Nuevo empleado</div>
-    <div class="form-row">
-      <div class="fg">
-        <label>Nombre</label>
-        <input type="text" id="e-nombre" placeholder="Nombre del empleado"/>
-      </div>
-      <div class="fg" style="max-width:130px">
-        <label>Pago</label>
-        <input type="text" inputmode="numeric" id="e-pago" placeholder="0" oninput="moneyFmt(this)"/>
-      </div>
-    </div>
-    <div style="margin-top:8px">
-      <label style="font-size:0.8rem;color:var(--gray);display:block;margin-bottom:6px">¿De dónde sale el pago?</label>
-      <div style="display:flex;gap:8px">
-        <button id="btn-etipo-ef" onclick="setEmpleadoTipo('efectivo')" style="flex:1;padding:10px;border-radius:10px;border:2px solid #48bb78;background:#f0fff4;color:#276749;font-weight:700;cursor:pointer;font-size:0.88rem">💵 Efectivo</button>
-        <button id="btn-etipo-tr" onclick="setEmpleadoTipo('transferencia')" style="flex:1;padding:10px;border-radius:10px;border:2px solid #e2e8f0;background:#fff;color:#4a5568;font-weight:700;cursor:pointer;font-size:0.88rem">🏦 Transferencia</button>
-      </div>
-    </div>
-    <button class="btn-orange mt8" style="width:100%" id="btn-add-e" onclick="addEmpleado()">+ Agregar empleado</button>
+  <!-- Sub-tabs empleados -->
+  <div style="display:flex;gap:4px;margin-bottom:14px;background:#f0f4f8;border-radius:12px;padding:4px">
+    <button id="emp-tab-registrados" onclick="switchEmpTab('registrados')" style="flex:1;padding:8px 4px;border-radius:9px;border:none;background:#276749;color:#fff;font-weight:700;cursor:pointer;font-size:0.78rem;transition:all 0.15s">👔 Registrados</button>
+    <button id="emp-tab-ocasional"   onclick="switchEmpTab('ocasional')"   style="flex:1;padding:8px 4px;border-radius:9px;border:none;background:transparent;color:var(--gray);font-weight:600;cursor:pointer;font-size:0.78rem;transition:all 0.15s">👤 Ocasional</button>
+    <button id="emp-tab-historial"   onclick="switchEmpTab('historial')"   style="flex:1;padding:8px 4px;border-radius:9px;border:none;background:transparent;color:var(--gray);font-weight:600;cursor:pointer;font-size:0.78rem;transition:all 0.15s">📅 Historial</button>
   </div>
-  <div class="card">
-    <div class="card-title">
-      Lista de empleados
-      <button class="btn-sm btn-danger" onclick="clearEmpleados()">🗑 Limpiar</button>
+
+  <!-- ── Registrados ── -->
+  <div id="emp-sec-registrados">
+    <div class="dt-grid-2">
+      <div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+          <span style="font-weight:700;font-size:0.9rem">👔 Empleados registrados</span>
+          <button class="btn-green" style="padding:8px 14px;font-size:0.8rem;border-radius:9px" onclick="showModalConfigEmp(null)">+ Nuevo</button>
+        </div>
+        <div id="lista-emp-reg"><p class="empty-msg">Sin empleados registrados</p></div>
+      </div>
+      <div class="card">
+        <div class="card-title">
+          💸 Pagos del día
+          <button class="btn-sm btn-danger" onclick="clearEmpleados()">🗑 Limpiar</button>
+        </div>
+        <table>
+          <thead><tr><th>#</th><th>Empleado</th><th>Pago</th><th>Tipo</th><th></th></tr></thead>
+          <tbody id="tb-empleados"><tr><td colspan="5" class="empty-msg">Sin pagos hoy</td></tr></tbody>
+        </table>
+      </div>
     </div>
-    <table>
-      <thead><tr><th>#</th><th>Empleado</th><th>Pago</th><th>Tipo</th><th></th></tr></thead>
-      <tbody id="tb-empleados"><tr><td colspan="5" class="empty-msg">Sin empleados</td></tr></tbody>
-    </table>
   </div>
-  </div><!-- /dt-grid-2 -->
+
+  <!-- ── Ocasional ── -->
+  <div id="emp-sec-ocasional" style="display:none">
+    <div class="card">
+      <div class="card-title">👤 Empleado ocasional / reemplazo</div>
+      <div class="form-row">
+        <div class="fg">
+          <label>Nombre</label>
+          <input type="text" id="e-nombre" placeholder="Nombre del empleado"/>
+        </div>
+        <div class="fg" style="max-width:130px">
+          <label>Pago</label>
+          <input type="text" inputmode="numeric" id="e-pago" placeholder="0" oninput="moneyFmt(this)"/>
+        </div>
+      </div>
+      <div style="margin-top:8px">
+        <label style="font-size:0.8rem;color:var(--gray);display:block;margin-bottom:6px">¿De dónde sale el pago?</label>
+        <div style="display:flex;gap:8px">
+          <button id="btn-etipo-ef" onclick="setEmpleadoTipo('efectivo')" style="flex:1;padding:10px;border-radius:10px;border:2px solid #48bb78;background:#f0fff4;color:#276749;font-weight:700;cursor:pointer;font-size:0.88rem">💵 Efectivo</button>
+          <button id="btn-etipo-tr" onclick="setEmpleadoTipo('transferencia')" style="flex:1;padding:10px;border-radius:10px;border:2px solid #e2e8f0;background:#fff;color:#4a5568;font-weight:700;cursor:pointer;font-size:0.88rem">🏦 Transferencia</button>
+        </div>
+      </div>
+      <button class="btn-orange mt8" style="width:100%" id="btn-add-e" onclick="addEmpleado()">+ Agregar empleado</button>
+    </div>
+  </div>
+
+  <!-- ── Historial ── -->
+  <div id="emp-sec-historial" style="display:none">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+      <span style="font-weight:700;font-size:0.9rem">📅 Historial de pagos</span>
+      <select id="emp-hist-filtro" onchange="renderHistorialPagos()" style="padding:6px 10px;border-radius:8px;border:1.5px solid var(--border);font-size:0.8rem;background:#fff">
+        <option value="">Todos</option>
+      </select>
+    </div>
+    <div id="lista-pagos-emp"><p class="empty-msg">Sin historial de pagos</p></div>
+  </div>
 </div>
 
 <!-- ═══ PAGE 3: CAJA ═══ -->
@@ -1365,6 +1397,123 @@
 
 </div><!-- end app-wrapper -->
 
+<!-- ═══ MODAL: Configurar empleado registrado ═══ -->
+<div class="modal-bg" id="modal-config-emp">
+  <div class="modal">
+    <div class="modal-title">👔 <span id="conemp-titulo">Nuevo empleado</span> <button class="btn-sm btn-ghost" onclick="closeModal('modal-config-emp')">✕</button></div>
+    <input type="hidden" id="conemp-doc-id"/>
+    <div class="form-row">
+      <div class="fg">
+        <label>Nombre completo</label>
+        <input type="text" id="conemp-nombre" placeholder="Ej: Yolany García"/>
+      </div>
+    </div>
+    <div class="form-row" style="margin-top:8px">
+      <div class="fg">
+        <label>Sueldo semanal ($)</label>
+        <input type="text" inputmode="numeric" id="conemp-semanal" placeholder="0" oninput="moneyFmt(this);calcEmpRates()"/>
+      </div>
+    </div>
+    <div id="conemp-rates" style="display:none;background:#f0fff4;border:1.5px solid #c6f6d5;border-radius:12px;padding:12px;margin-top:10px">
+      <div style="font-size:0.72rem;font-weight:700;color:#276749;margin-bottom:8px;text-transform:uppercase;letter-spacing:0.04em">Tasas calculadas</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:0.83rem;margin-bottom:10px">
+        <div>📅 Diario: <strong id="conemp-r-dia">$0</strong></div>
+        <div>📆 Mensual: <strong id="conemp-r-mes">$0</strong></div>
+        <div>⏰ Por hora: <strong id="conemp-r-hora">$0</strong></div>
+        <div>⏱ Por minuto: <strong id="conemp-r-min">$0</strong></div>
+      </div>
+      <div style="font-size:0.72rem;font-weight:700;color:var(--gray);margin-bottom:6px;text-transform:uppercase">Tabla extras</div>
+      <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:4px;text-align:center;font-size:0.75rem">
+        <div style="background:#fff;border-radius:6px;padding:4px">10 min<br><strong id="conemp-e10" style="color:#276749">$0</strong></div>
+        <div style="background:#fff;border-radius:6px;padding:4px">20 min<br><strong id="conemp-e20" style="color:#276749">$0</strong></div>
+        <div style="background:#fff;border-radius:6px;padding:4px">30 min<br><strong id="conemp-e30" style="color:#276749">$0</strong></div>
+        <div style="background:#fff;border-radius:6px;padding:4px">40 min<br><strong id="conemp-e40" style="color:#276749">$0</strong></div>
+        <div style="background:#fff;border-radius:6px;padding:4px">50 min<br><strong id="conemp-e50" style="color:#276749">$0</strong></div>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:14px">
+      <button class="btn-green" style="flex:1;padding:11px" onclick="saveEmpleadoReg()">💾 Guardar</button>
+      <button id="conemp-btn-del" class="btn-danger" style="display:none;padding:11px 14px" onclick="deleteEmpleadoReg()">🗑</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MODAL: Pagar empleado registrado ═══ -->
+<div class="modal-bg" id="modal-pagar-emp">
+  <div class="modal">
+    <div class="modal-title">💵 Pagar a <span id="pagoemp-nombre" style="color:#276749">—</span> <button class="btn-sm btn-ghost" onclick="closeModal('modal-pagar-emp')">✕</button></div>
+    <input type="hidden" id="pagoemp-id"/>
+    <input type="hidden" id="pagoemp-tipo" value="efectivo"/>
+
+    <!-- Período -->
+    <div style="margin-bottom:10px">
+      <label style="font-size:0.75rem;font-weight:700;color:var(--gray);text-transform:uppercase;letter-spacing:0.04em;display:block;margin-bottom:6px">Período a pagar</label>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px">
+        <button type="button" id="btn-period-7"    onclick="setPeriodoEmp('7')"            style="padding:9px 2px;border-radius:8px;border:2px solid #48bb78;background:#f0fff4;color:#276749;font-weight:700;cursor:pointer;font-size:0.78rem">📅 7 días<br><span style="font-size:0.65rem;font-weight:400">1 semana</span></button>
+        <button type="button" id="btn-period-14"   onclick="setPeriodoEmp('14')"           style="padding:9px 2px;border-radius:8px;border:2px solid #e2e8f0;background:#fff;color:#4a5568;font-weight:700;cursor:pointer;font-size:0.78rem">📅 14 días<br><span style="font-size:0.65rem;font-weight:400">2 semanas</span></button>
+        <button type="button" id="btn-period-cust" onclick="setPeriodoEmp('personalizado')" style="padding:9px 2px;border-radius:8px;border:2px solid #e2e8f0;background:#fff;color:#4a5568;font-weight:700;cursor:pointer;font-size:0.78rem">🗓 Custom<br><span style="font-size:0.65rem;font-weight:400">elige fechas</span></button>
+      </div>
+    </div>
+
+    <!-- Fechas personalizadas -->
+    <div id="pagoemp-fechas" style="display:none;margin-bottom:8px;background:#fffbeb;border:1.5px solid #f6e05e;border-radius:10px;padding:10px">
+      <div class="form-row" style="margin:0">
+        <div class="fg"><label style="font-size:0.75rem">Desde</label><input type="date" id="pagoemp-desde"/></div>
+        <div class="fg"><label style="font-size:0.75rem">Hasta</label><input type="date" id="pagoemp-hasta"/></div>
+      </div>
+      <button onclick="aplicarFechasCustom()" class="btn-green" style="width:100%;margin-top:8px;padding:8px;font-size:0.82rem">Cargar período →</button>
+    </div>
+
+    <!-- Resumen del período -->
+    <div style="background:#f7fafc;border-radius:10px;padding:10px;margin-bottom:8px;font-size:0.83rem">
+      <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+        <span style="color:var(--gray)">📅 Días del período</span>
+        <strong id="pagoemp-dias-count">0</strong>
+      </div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+        <span style="color:var(--gray)">💰 Subtotal (<span id="pagoemp-dias-label">0</span> × diario)</span>
+        <strong id="pagoemp-subtotal">$0</strong>
+      </div>
+    </div>
+
+    <!-- Grid de días del período -->
+    <div style="margin-bottom:8px">
+      <div style="font-size:0.72rem;color:var(--gray);margin-bottom:4px">Botón <strong>D</strong> = marcar día de descanso (solo informativo, todos los días se pagan igual)</div>
+      <div id="pagoemp-extras-list" style="max-height:220px;overflow-y:auto;border:1.5px solid var(--border);border-radius:10px;padding:4px 10px;background:#fff;font-size:0.82rem">
+        <p style="text-align:center;color:var(--gray);padding:8px 0">Selecciona el período</p>
+      </div>
+      <div style="display:flex;justify-content:space-between;margin-top:6px;font-size:0.83rem;padding:0 2px">
+        <span>Total: <strong id="pagoemp-min-total">0</strong> min</span>
+        <span>= <strong id="pagoemp-extras-val" style="color:#276749">$0</strong></span>
+      </div>
+    </div>
+
+    <!-- Total -->
+    <div style="background:linear-gradient(135deg,#276749,#2f855a);color:#fff;border-radius:12px;padding:14px;text-align:center;margin-bottom:10px">
+      <div style="font-size:0.72rem;opacity:0.8;margin-bottom:4px">TOTAL A PAGAR</div>
+      <div style="font-size:1.5rem;font-weight:800" id="pagoemp-total">$0</div>
+    </div>
+
+    <!-- Saldo disponible -->
+    <div style="font-size:0.75rem;color:var(--gray);margin-bottom:10px;text-align:center;background:#f7fafc;border-radius:8px;padding:6px" id="pagoemp-saldo-info"></div>
+
+    <!-- Tipo -->
+    <div style="display:flex;gap:8px;margin-bottom:14px">
+      <button id="btn-pagoemp-ef" onclick="setPagoEmpTipo('efectivo')"      style="flex:1;padding:10px;border-radius:10px;border:2px solid #48bb78;background:#f0fff4;color:#276749;font-weight:700;cursor:pointer;font-size:0.88rem">💵 Efectivo</button>
+      <button id="btn-pagoemp-tr" onclick="setPagoEmpTipo('transferencia')" style="flex:1;padding:10px;border-radius:10px;border:2px solid #e2e8f0;background:#fff;color:#4a5568;font-weight:700;cursor:pointer;font-size:0.88rem">🏦 Transferencia</button>
+    </div>
+
+    <!-- Error solapamiento -->
+    <div id="pagoemp-overlap-error" style="display:none;background:#fff5f5;border:2px solid #fc8181;border-radius:12px;padding:14px 16px;margin-bottom:12px;text-align:center">
+      <div style="font-size:1.3rem;margin-bottom:4px">⛔</div>
+      <div style="font-weight:800;color:#c53030;font-size:0.95rem;margin-bottom:4px">Período ya pagado</div>
+      <div id="pagoemp-overlap-detail" style="font-size:0.8rem;color:#742a2a;line-height:1.5"></div>
+    </div>
+
+    <button id="btn-registrar-pago-emp" class="btn-green" style="width:100%;font-size:0.95rem;padding:13px;border-radius:12px" onclick="registrarPagoEmpleado()">✅ Registrar pago</button>
+  </div>
+</div>
+
 <!-- ═══ MODAL: Nuevo/Editar plato ═══ -->
 <div class="modal-bg" id="modal-menu-item">
   <div class="modal">
@@ -1809,6 +1958,7 @@ function setupListeners() {
   setupMenuListener();
   // ── Inventario ──
   setupInventarioListeners();
+  setupEmpleadosListeners();
   // ── Modo detalle ──
   loadModoDetalle();
 }
@@ -2105,6 +2255,494 @@ function renderEmpleados(){
     const badge=e.tipo==='transferencia'?'<span class="badge badge-tr">🏦</span>':'<span class="badge badge-ef">💵</span>';
     return `<tr><td>${i+1}</td><td>${e.nombre}</td><td><strong>${fmt(e.pago)}</strong></td><td>${badge}</td><td><button class="btn-sm btn-danger" onclick="delEmpleado('${e._docId}')">✕</button></td></tr>`;
   }).join('')+`<tr class="total-row"><td colspan="2">TOTAL</td><td>${fmt(totalEf+totalTr)}</td><td colspan="2" style="font-size:0.7rem;color:var(--gray)">💵${fmt(totalEf)} 🏦${fmt(totalTr)}</td></tr>`;
+}
+
+// ══════════════════════════════════════
+//   EMPLEADOS REGISTRADOS
+// ══════════════════════════════════════
+let empleadosReg     = [];
+let historialPagosEmp= [];
+let empExtras        = {}; // { "empId_fecha": {extraMin, _docId} }
+let empSubTab        = 'registrados';
+let pagoEmpPeriodo   = '7';
+let pagoEmpDesde     = '';
+let pagoEmpHasta     = '';
+
+const EMP_REG    = () => db.collection('empleados_reg');
+const EMP_PAGO   = () => db.collection('empleados_pagos');
+const EMP_EXTRAS = () => db.collection('empleados_extras');
+const DIAS_CORTO  = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+const MESES_CORTO = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+
+function setupEmpleadosListeners(){
+  EMP_REG().orderBy('nombre').onSnapshot(snap=>{
+    empleadosReg = snap.docs.map(d=>({_docId:d.id,...d.data()}));
+    renderEmpleadosReg();
+    populateEmpHistFiltro();
+  }, e=>console.error('emp_reg',e));
+
+  EMP_PAGO().orderBy('creadoAt','desc').limit(300).onSnapshot(snap=>{
+    historialPagosEmp = snap.docs.map(d=>({_docId:d.id,...d.data()}));
+    renderHistorialPagos();
+  }, e=>console.error('emp_pagos',e));
+
+  // Extras diarios — todos, para acceso rápido por clave empId_fecha
+  EMP_EXTRAS().onSnapshot(snap=>{
+    empExtras={};
+    snap.docs.forEach(d=>{ empExtras[d.id]={_docId:d.id,...d.data()}; });
+    renderEmpleadosReg(); // actualizar contadores de extras en las tarjetas
+  }, e=>console.error('emp_extras',e));
+}
+
+function calcEmpRates(){
+  const s=moneyVal('conemp-semanal');
+  if(!s){ $('conemp-rates').style.display='none'; return; }
+  $('conemp-rates').style.display='block';
+  const diario=Math.round(s/7);
+  const mensual=diario*30;
+  const hora=Math.round(diario/8);
+  const minuto=Math.round(hora/60);
+  $('conemp-r-dia').textContent=fmt(diario);
+  $('conemp-r-mes').textContent=fmt(mensual);
+  $('conemp-r-hora').textContent=fmt(hora);
+  $('conemp-r-min').textContent=fmt(minuto);
+  [10,20,30,40,50].forEach(m=>{ $('conemp-e'+m).textContent=fmt(Math.round(minuto*m)); });
+}
+
+function empRates(emp){
+  const s=emp.sueldoSemanal||0;
+  const diario=Math.round(s/7);
+  return { diario, mensual:diario*30, hora:Math.round(diario/8), minuto:Math.round(Math.round(diario/8)/60) };
+}
+
+// ── Guardar extras (edición de fila existente) ──
+async function guardarExtrasEmp(empId, fecha, minutos){
+  const min=parseInt(minutos)||0;
+  const docId=`${empId}_${fecha}`;
+  const emp=empleadosReg.find(e=>e._docId===empId);
+  const data={empleadoId:empId, nombreEmpleado:emp?.nombre||'', fecha, extraMin:min, actualizadoAt:TS()};
+  try{ await EMP_EXTRAS().doc(docId).set(data,{merge:true}); }
+  catch(e){ alert('Error: '+e.message); }
+}
+
+// ── Agregar extras desde el formulario de la tarjeta ──
+async function agregarExtrasEmp(empId){
+  const fecha=$('extra-fecha-'+empId)?.value||new Date().toISOString().slice(0,10);
+  const min=parseInt($('extra-min-'+empId)?.value)||0;
+  if(min<=0){ alert('Ingresa los minutos.'); return; }
+  await guardarExtrasEmp(empId, fecha, min);
+  const input=$('extra-min-'+empId);
+  if(input) input.value='';
+}
+
+// ── Eliminar extras de un día ──
+async function eliminarExtrasEmp(docId){
+  if(!confirm('¿Eliminar este registro de extras?')) return;
+  try{ await EMP_EXTRAS().doc(docId).delete(); }
+  catch(e){ alert('Error: '+e.message); }
+}
+
+// ── Grid de días en el modal de pago ──
+let pagoEmpDescansos = {}; // {fecha: bool} — solo informativo
+
+function cargarExtrasEnModal(empId, desdeStr, hastaStr){
+  const emp=empleadosReg.find(e=>e._docId===empId);
+  if(!emp) return;
+  const r=empRates(emp);
+  const desde=new Date(desdeStr+'T00:00:00');
+  const hasta=new Date(hastaStr+'T23:59:59');
+  const div=$('pagoemp-extras-list');
+  if(!div) return;
+  let rows='';
+  const d=new Date(desde);
+  while(d<=hasta){
+    const fecha=d.toISOString().slice(0,10);
+    const diaNom=DIAS_CORTO[d.getDay()];
+    const fechaLbl=`${d.getDate()} ${MESES_CORTO[d.getMonth()]}`;
+    const extraMin=empExtras[`${empId}_${fecha}`]?.extraMin||0;
+    const isDesc=pagoEmpDescansos[fecha]||false;
+    const descStyle=isDesc?'background:#f7fafc;color:#a0aec0':'';
+    rows+=`<div style="display:flex;align-items:center;gap:6px;padding:6px 0;border-bottom:1px solid #f0f4f8;${descStyle}">
+      <button type="button" onclick="toggleDescModal('${fecha}')" title="Marcar descanso"
+        style="padding:2px 6px;border-radius:5px;border:1.5px solid ${isDesc?'#e53e3e':'#e2e8f0'};background:${isDesc?'#fff5f5':'#fff'};color:${isDesc?'#e53e3e':'#a0aec0'};font-size:0.68rem;cursor:pointer;font-weight:700;min-width:24px">D</button>
+      <span style="font-weight:700;font-size:0.8rem;width:26px;color:${isDesc?'#a0aec0':'var(--text)'}">${diaNom}</span>
+      <span style="font-size:0.77rem;color:var(--gray);flex:1">${fechaLbl}${isDesc?' · descanso':''}</span>
+      <input type="number" min="0" placeholder="0" value="${extraMin||''}"
+        style="width:55px;padding:4px 6px;border:1.5px solid var(--border);border-radius:6px;font-size:0.8rem;text-align:center"
+        onchange="guardarExtrasEmp('${empId}','${fecha}',this.value);calcPagoEmpTotal()"/>
+      <span style="font-size:0.7rem;color:var(--gray)">min</span>
+      <span style="font-size:0.7rem;color:#276749;font-weight:700;width:44px;text-align:right">${extraMin>0?fmt(Math.round(r.minuto*extraMin)):''}</span>
+    </div>`;
+    d.setDate(d.getDate()+1);
+  }
+  div.innerHTML=rows||'<p style="color:var(--gray);text-align:center;padding:8px">Sin días en el período</p>';
+  calcPagoEmpTotal();
+  verificarSolapePeriodo();
+}
+
+function toggleDescModal(fecha){
+  pagoEmpDescansos[fecha]=!pagoEmpDescansos[fecha];
+  const empId=$('pagoemp-id').value;
+  cargarExtrasEnModal(empId, pagoEmpDesde, pagoEmpHasta);
+}
+
+function renderEmpleadosReg(){
+  const div=$('lista-emp-reg');
+  if(!div) return;
+  if(!empleadosReg.length){ div.innerHTML='<p class="empty-msg">Sin empleados registrados. Agrega el primero con el botón "+"</p>'; return; }
+  const hoy=new Date().toISOString().slice(0,10);
+  div.innerHTML=empleadosReg.map(emp=>{
+    const r=empRates(emp);
+    // Todos los extras de este empleado, ordenados por fecha desc
+    const extrasEmp=Object.values(empExtras).filter(e=>e.empleadoId===emp._docId).sort((a,b)=>b.fecha.localeCompare(a.fecha));
+    const extrasRows=extrasEmp.length
+      ? extrasEmp.map(ex=>{
+          const d=new Date(ex.fecha+'T12:00:00');
+          const label=`${DIAS_CORTO[d.getDay()]} ${d.getDate()} ${MESES_CORTO[d.getMonth()]}`;
+          return `<div style="display:flex;align-items:center;gap:6px;padding:5px 0;border-bottom:1px solid #f0f4f8">
+            <span style="font-size:0.78rem;font-weight:600;flex:1;color:var(--text)">${label}</span>
+            <input type="number" min="0" value="${ex.extraMin||0}"
+              style="width:58px;padding:4px 6px;border:1.5px solid var(--border);border-radius:6px;font-size:0.82rem;text-align:center"
+              onchange="guardarExtrasEmp('${emp._docId}','${ex.fecha}',this.value)"/>
+            <span style="font-size:0.72rem;color:var(--gray)">min</span>
+            <span style="font-size:0.72rem;color:#276749;font-weight:700;width:48px;text-align:right">${fmt(Math.round(r.minuto*(ex.extraMin||0)))}</span>
+            <button onclick="eliminarExtrasEmp('${ex._docId}')" style="border:none;background:none;cursor:pointer;color:#e53e3e;font-size:0.8rem;padding:2px 4px">✕</button>
+          </div>`;
+        }).join('')
+      : `<p style="font-size:0.78rem;color:var(--gray);text-align:center;padding:6px 0;margin:0">Sin extras registrados aún</p>`;
+    return `<div style="background:#fff;border:1.5px solid var(--border);border-radius:12px;padding:12px 14px;margin-bottom:8px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <div style="font-weight:700;font-size:0.95rem">👔 ${emp.nombre}</div>
+        <div style="display:flex;gap:6px">
+          <button onclick="showModalConfigEmp('${emp._docId}')" style="padding:6px 10px;border-radius:8px;border:1.5px solid var(--border);background:#fff;cursor:pointer;font-size:0.78rem">✏️</button>
+          <button onclick="showModalPagarEmp('${emp._docId}')" style="padding:6px 12px;border-radius:8px;border:none;background:#276749;color:#fff;font-weight:700;cursor:pointer;font-size:0.82rem">💵 Pagar</button>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;font-size:0.75rem;text-align:center;margin-bottom:10px">
+        <div style="background:#f7fafc;border-radius:8px;padding:5px"><div style="color:var(--gray)">Semanal</div><strong>${fmt(emp.sueldoSemanal||0)}</strong></div>
+        <div style="background:#f7fafc;border-radius:8px;padding:5px"><div style="color:var(--gray)">Diario</div><strong>${fmt(r.diario)}</strong></div>
+        <div style="background:#f7fafc;border-radius:8px;padding:5px"><div style="color:var(--gray)">x hora</div><strong>${fmt(r.hora)}</strong></div>
+        <div style="background:#f7fafc;border-radius:8px;padding:5px"><div style="color:var(--gray)">x min</div><strong>${fmt(r.minuto)}</strong></div>
+      </div>
+      <div style="border-top:1px solid #f0f4f8;padding-top:8px">
+        <div style="font-size:0.75rem;font-weight:700;color:var(--gray);text-transform:uppercase;letter-spacing:0.04em;margin-bottom:6px">⏱ Extras registrados</div>
+        <div style="max-height:140px;overflow-y:auto">${extrasRows}</div>
+        <div style="display:flex;gap:6px;align-items:center;margin-top:8px;padding-top:6px;border-top:1px dashed #e2e8f0">
+          <span style="font-size:0.75rem;color:var(--gray)">+ Agregar:</span>
+          <input type="date" id="extra-fecha-${emp._docId}" value="${hoy}" style="padding:5px 6px;border:1.5px solid var(--border);border-radius:7px;font-size:0.78rem;flex:1"/>
+          <input type="number" min="0" placeholder="min" id="extra-min-${emp._docId}" style="width:60px;padding:5px 6px;border:1.5px solid var(--border);border-radius:7px;font-size:0.82rem;text-align:center"/>
+          <button onclick="agregarExtrasEmp('${emp._docId}')" style="padding:5px 10px;border-radius:7px;border:none;background:#276749;color:#fff;font-weight:700;cursor:pointer;font-size:0.78rem">✓</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function populateEmpHistFiltro(){
+  const sel=$('emp-hist-filtro');
+  if(!sel) return;
+  const current=sel.value;
+  sel.innerHTML='<option value="">Todos</option>'+empleadosReg.map(e=>`<option value="${e._docId}">${e.nombre}</option>`).join('');
+  if(current) sel.value=current;
+}
+
+function renderHistorialPagos(){
+  const div=$('lista-pagos-emp');
+  if(!div) return;
+  const filtroId=($('emp-hist-filtro')||{}).value||'';
+  let lista=historialPagosEmp;
+  if(filtroId) lista=lista.filter(p=>p.empleadoId===filtroId);
+  if(!lista.length){ div.innerHTML='<p class="empty-msg">Sin pagos registrados</p>'; return; }
+  div.innerHTML=lista.map(p=>{
+    const tipoBadge=p.tipo==='transferencia'
+      ?'<span style="background:#ebf8ff;color:#2b6cb0;border-radius:6px;padding:2px 7px;font-size:0.72rem;font-weight:700">🏦 Tr</span>'
+      :'<span style="background:#f0fff4;color:#276749;border-radius:6px;padding:2px 7px;font-size:0.72rem;font-weight:700">💵 Ef</span>';
+    const extraStr=p.extrasMin?`<span style="color:#276749"> · +${p.extrasMin} min extras</span>`:'';
+    const fechaPago=p.fecha||'—';
+    const periodoStr=p.periodo||'—'; // e.g. "2026-08-15 → 2026-08-21"
+    const diasStr=p.diasPagados?`${p.diasPagados} días`:'';
+    const delBtn=currentRole==='admin'
+      ?`<button onclick="delPagoEmpleado('${p._docId}')" style="padding:4px 9px;border-radius:7px;border:none;background:#fff5f5;color:#e53e3e;font-weight:700;cursor:pointer;font-size:0.8rem;border:1.5px solid #fed7d7">✕</button>`
+      :'';
+    return `<div style="background:#fff;border:1.5px solid var(--border);border-radius:10px;padding:11px 14px;margin-bottom:8px">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px">
+        <div style="font-weight:700;font-size:0.92rem">${p.nombreEmpleado||'—'}</div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <div style="font-weight:800;font-size:1rem;color:#276749">${fmt(p.monto||0)}</div>
+          ${delBtn}
+        </div>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div style="font-size:0.75rem;color:var(--gray);line-height:1.6">
+          <div>📅 <strong>Pagado:</strong> ${fechaPago}</div>
+          <div>🗓 <strong>Período:</strong> ${periodoStr}${diasStr?' ('+diasStr+')':''}</div>
+          ${p.extrasMin?`<div>⏱ <strong>Extras:</strong> ${p.extrasMin} min = ${fmt(p.extrasVal||0)}</div>`:''}
+        </div>
+        <div>${tipoBadge}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function delPagoEmpleado(docId){
+  if(currentRole !== 'admin'){ alert('⛔ Solo el administrador puede eliminar pagos.'); return; }
+  if(!currentDiscountCode){ alert('⛔ Tu cuenta no tiene clave configurada. Configúrala en Usuarios.'); return; }
+  const clave=prompt('Ingresa la clave de administrador para eliminar este pago:');
+  if(clave===null) return;
+  if(clave.trim() !== currentDiscountCode){ alert('❌ Clave incorrecta.'); return; }
+  try{
+    await EMP_PAGO().doc(docId).delete();
+  } catch(e){ alert('Error: '+e.message); }
+}
+
+function switchEmpTab(tab){
+  empSubTab=tab;
+  ['registrados','ocasional','historial'].forEach(t=>{
+    const btn=$('emp-tab-'+t), sec=$('emp-sec-'+t);
+    if(btn){ btn.style.background=t===tab?'#276749':'transparent'; btn.style.color=t===tab?'#fff':'var(--gray)'; }
+    if(sec) sec.style.display=t===tab?'':'none';
+  });
+  if(tab==='historial') renderHistorialPagos();
+}
+
+function showModalConfigEmp(docId){
+  $('conemp-doc-id').value=docId||'';
+  $('conemp-titulo').textContent=docId?'Editar empleado':'Nuevo empleado';
+  $('conemp-btn-del').style.display=docId?'':'none';
+  if(docId){
+    const emp=empleadosReg.find(e=>e._docId===docId);
+    if(!emp) return;
+    $('conemp-nombre').value=emp.nombre||'';
+    $('conemp-semanal').value=fmt(emp.sueldoSemanal||0).replace(/[^0-9]/g,'');
+    calcEmpRates();
+  } else {
+    $('conemp-nombre').value='';
+    $('conemp-semanal').value='';
+    $('conemp-rates').style.display='none';
+  }
+  openModal('modal-config-emp');
+}
+
+async function saveEmpleadoReg(){
+  const nombre=$('conemp-nombre').value.trim();
+  const semanal=moneyVal('conemp-semanal');
+  if(!nombre){ alert('Ingresa el nombre.'); return; }
+  if(semanal<=0){ alert('Ingresa el sueldo semanal.'); return; }
+  const data={nombre, sueldoSemanal:semanal, actualizadoAt:TS()};
+  const docId=$('conemp-doc-id').value;
+  try{
+    if(docId) await EMP_REG().doc(docId).update(data);
+    else await EMP_REG().add({...data, creadoAt:TS(), creadoPor:currentUser?.uid||''});
+    closeModal('modal-config-emp');
+  } catch(e){ alert('Error: '+e.message); }
+}
+
+async function deleteEmpleadoReg(){
+  const docId=$('conemp-doc-id').value;
+  if(!docId) return;
+  if(!confirm('¿Eliminar este empleado del registro?')) return;
+  try{ await EMP_REG().doc(docId).delete(); closeModal('modal-config-emp'); }
+  catch(e){ alert('Error: '+e.message); }
+}
+
+function setPeriodoBtns(periodo){
+  ['7','14','personalizado'].forEach(k=>{
+    const btn=$('btn-period-'+k);
+    if(!btn) return;
+    const sel=k===periodo;
+    btn.style.border=sel?'2px solid #48bb78':'2px solid #e2e8f0';
+    btn.style.background=sel?'#f0fff4':'#fff';
+    btn.style.color=sel?'#276749':'#4a5568';
+  });
+}
+
+function setPeriodoEmp(periodo){
+  pagoEmpPeriodo=periodo;
+  setPeriodoBtns(periodo);
+  $('pagoemp-fechas').style.display=periodo==='personalizado'?'':'none';
+  if(periodo!=='personalizado'){
+    const dias=parseInt(periodo)||7;
+    const hoy=new Date();
+    pagoEmpHasta=hoy.toISOString().slice(0,10);
+    const desdeD=new Date(hoy); desdeD.setDate(hoy.getDate()-(dias-1));
+    pagoEmpDesde=desdeD.toISOString().slice(0,10);
+    actualizarPeriodoModal();
+  }
+}
+
+function aplicarFechasCustom(){
+  pagoEmpDesde=$('pagoemp-desde').value;
+  pagoEmpHasta=$('pagoemp-hasta').value;
+  if(!pagoEmpDesde||!pagoEmpHasta){ alert('Selecciona ambas fechas.'); return; }
+  if(pagoEmpHasta<pagoEmpDesde){ alert('La fecha final debe ser mayor o igual a la inicial.'); return; }
+  actualizarPeriodoModal();
+}
+
+function actualizarPeriodoModal(){
+  const empId=$('pagoemp-id').value;
+  if(!pagoEmpDesde||!pagoEmpHasta||!empId) return;
+  // Contar días
+  const desde=new Date(pagoEmpDesde+'T00:00:00');
+  const hasta=new Date(pagoEmpHasta+'T23:59:59');
+  let dias=0; const d=new Date(desde);
+  while(d<=hasta){ dias++; d.setDate(d.getDate()+1); }
+  if($('pagoemp-dias-count')) $('pagoemp-dias-count').textContent=dias;
+  if($('pagoemp-dias-label')) $('pagoemp-dias-label').textContent=dias;
+  cargarExtrasEnModal(empId, pagoEmpDesde, pagoEmpHasta);
+}
+
+function calcPagoEmpTotal(){
+  const empId=$('pagoemp-id').value;
+  const emp=empleadosReg.find(e=>e._docId===empId);
+  if(!emp||!pagoEmpDesde||!pagoEmpHasta) return;
+  const r=empRates(emp);
+  // Días totales del período (todos se pagan)
+  const desde=new Date(pagoEmpDesde+'T00:00:00');
+  const hasta=new Date(pagoEmpHasta+'T23:59:59');
+  let totalDias=0; const d=new Date(desde);
+  while(d<=hasta){ totalDias++; d.setDate(d.getDate()+1); }
+  // Extras del período desde DB
+  let totalMin=0;
+  const dc=new Date(desde);
+  while(dc<=hasta){
+    const fecha=dc.toISOString().slice(0,10);
+    totalMin+=(empExtras[`${empId}_${fecha}`]?.extraMin||0);
+    dc.setDate(dc.getDate()+1);
+  }
+  const extrasVal=Math.round(r.minuto*totalMin);
+  const subtotal=totalDias*r.diario;
+  if($('pagoemp-dias-count')) $('pagoemp-dias-count').textContent=totalDias;
+  if($('pagoemp-dias-label')) $('pagoemp-dias-label').textContent=totalDias;
+  if($('pagoemp-subtotal')) $('pagoemp-subtotal').textContent=fmt(subtotal);
+  if($('pagoemp-min-total')) $('pagoemp-min-total').textContent=totalMin;
+  if($('pagoemp-extras-val')) $('pagoemp-extras-val').textContent=fmt(extrasVal);
+  if($('pagoemp-total')) $('pagoemp-total').textContent=fmt(subtotal+extrasVal);
+}
+
+function setPagoEmpTipo(tipo){
+  $('pagoemp-tipo').value=tipo;
+  const ef=$('btn-pagoemp-ef'), tr=$('btn-pagoemp-tr');
+  if(tipo==='efectivo'){
+    ef.style.cssText='flex:1;padding:10px;border-radius:10px;border:2px solid #48bb78;background:#f0fff4;color:#276749;font-weight:700;cursor:pointer;font-size:0.88rem';
+    tr.style.cssText='flex:1;padding:10px;border-radius:10px;border:2px solid #e2e8f0;background:#fff;color:#4a5568;font-weight:700;cursor:pointer;font-size:0.88rem';
+  } else {
+    ef.style.cssText='flex:1;padding:10px;border-radius:10px;border:2px solid #e2e8f0;background:#fff;color:#4a5568;font-weight:700;cursor:pointer;font-size:0.88rem';
+    tr.style.cssText='flex:1;padding:10px;border-radius:10px;border:2px solid #2b6cb0;background:#ebf8ff;color:#2b6cb0;font-weight:700;cursor:pointer;font-size:0.88rem';
+  }
+}
+
+function showModalPagarEmp(empId){
+  const emp=empleadosReg.find(e=>e._docId===empId);
+  if(!emp) return;
+  $('pagoemp-id').value=empId;
+  $('pagoemp-nombre').textContent=emp.nombre;
+  pagoEmpPeriodo='7';
+  pagoEmpDescansos={};
+  setPeriodoBtns('7');
+  $('pagoemp-fechas').style.display='none';
+  setPagoEmpTipo('efectivo');
+  const t=totals();
+  $('pagoemp-saldo-info').innerHTML=`💵 Ef: <strong>${fmt(t.dispEf)}</strong> &nbsp;|&nbsp; 🏦 Tr: <strong>${fmt(t.dispTr)}</strong>`;
+  // Últimos 7 días por defecto
+  const hoy=new Date();
+  pagoEmpHasta=hoy.toISOString().slice(0,10);
+  const desdeD=new Date(hoy); desdeD.setDate(hoy.getDate()-6);
+  pagoEmpDesde=desdeD.toISOString().slice(0,10);
+  actualizarPeriodoModal();
+  openModal('modal-pagar-emp');
+}
+
+function verificarSolapePeriodo(){
+  const empId=$('pagoemp-id').value;
+  const errDiv=$('pagoemp-overlap-error');
+  const detDiv=$('pagoemp-overlap-detail');
+  const btn=$('btn-registrar-pago-emp');
+  if(!errDiv||!empId||!pagoEmpDesde||!pagoEmpHasta){ if(errDiv) errDiv.style.display='none'; return false; }
+  // Buscar pagos anteriores del mismo empleado
+  const solapados=historialPagosEmp.filter(p=>{
+    if(p.empleadoId!==empId) return false;
+    // Obtener desde/hasta del pago histórico
+    let d=p.desde, h=p.hasta;
+    if(!d||!h){
+      // Parsear del string "YYYY-MM-DD → YYYY-MM-DD"
+      const parts=(p.periodo||'').split(' → ');
+      d=parts[0]?.trim(); h=parts[1]?.trim();
+    }
+    if(!d||!h) return false;
+    // Hay solapamiento si: d <= pagoEmpHasta  Y  h >= pagoEmpDesde
+    return d<=pagoEmpHasta && h>=pagoEmpDesde;
+  });
+  if(solapados.length){
+    const detalles=solapados.map(p=>{
+      const d=p.desde||p.periodo?.split(' → ')[0]?.trim()||'';
+      const h=p.hasta||p.periodo?.split(' → ')[1]?.trim()||'';
+      const fmt=s=>{ if(!s) return ''; const [y,m,dd]=s.split('-'); return `${dd}/${m}/${y}`; };
+      const mf=new Intl.NumberFormat('es-CO',{style:'currency',currency:'COP',maximumFractionDigits:0}).format(p.monto||0);
+      return `${fmt(d)} al ${fmt(h)} — pagado ${mf}`;
+    }).join('<br>');
+    detDiv.innerHTML=`A <strong>${historialPagosEmp.find(p=>p.empleadoId===empId)?.nombreEmpleado||'este empleado'}</strong> ya se le pagó por días que se cruzan con este período:<br><br><em>${detalles}</em>`;
+    errDiv.style.display='block';
+    btn.disabled=true;
+    btn.style.opacity='0.45';
+    btn.style.cursor='not-allowed';
+    return true;
+  } else {
+    errDiv.style.display='none';
+    btn.disabled=false;
+    btn.style.opacity='1';
+    btn.style.cursor='pointer';
+    return false;
+  }
+}
+
+async function registrarPagoEmpleado(){
+  const empId=$('pagoemp-id').value;
+  const emp=empleadosReg.find(e=>e._docId===empId);
+  if(!emp){ alert('Empleado no encontrado.'); return; }
+  if(!pagoEmpDesde||!pagoEmpHasta){ alert('Selecciona el período.'); return; }
+  if(verificarSolapePeriodo()){ return; }
+  const r=empRates(emp);
+  // Calcular totales desde DB
+  const desde=new Date(pagoEmpDesde+'T00:00:00');
+  const hasta=new Date(pagoEmpHasta+'T23:59:59');
+  let totalDias=0, totalMin=0;
+  const d=new Date(desde);
+  while(d<=hasta){
+    totalDias++;
+    totalMin+=(empExtras[`${empId}_${d.toISOString().slice(0,10)}`]?.extraMin||0);
+    d.setDate(d.getDate()+1);
+  }
+  const extrasVal=Math.round(r.minuto*totalMin);
+  const subtotal=totalDias*r.diario;
+  const monto=subtotal+extrasVal;
+  const tipo=$('pagoemp-tipo').value;
+  if(monto<=0){ alert('El monto calculado es 0.'); return; }
+  const hoy=new Date().toISOString().slice(0,10);
+  const pagoData={ nombre:emp.nombre, pago:monto, tipo, createdAt:TS(), createdBy:currentUser?.uid||'', empleadoId:empId, esOcasional:false, periodo:`${pagoEmpDesde} → ${pagoEmpHasta}`, diasPagados:totalDias, extrasMin:totalMin, extrasVal };
+  const histData={ empleadoId:empId, nombreEmpleado:emp.nombre, monto, tipo, periodo:`${pagoEmpDesde} → ${pagoEmpHasta}`, desde:pagoEmpDesde, hasta:pagoEmpHasta, diasPagados:totalDias, extrasMin:totalMin, extrasVal, fecha:hoy, creadoAt:TS(), creadoPor:currentUser?.uid||'' };
+  try{
+    // 1. Registrar el pago
+    const batch=db.batch();
+    batch.set(DRAFT().doc('current').collection('empleados').doc(), pagoData);
+    batch.set(EMP_PAGO().doc(), histData);
+    await batch.commit();
+    closeModal('modal-pagar-emp');
+    // 2. Eliminar todos los extras del período (en batch separado)
+    const extrasAEliminar=[];
+    const dc=new Date(pagoEmpDesde+'T00:00:00');
+    const hh=new Date(pagoEmpHasta+'T23:59:59');
+    while(dc<=hh){
+      const fecha=dc.toISOString().slice(0,10);
+      const docId=`${empId}_${fecha}`;
+      if(empExtras[docId]?._docId) extrasAEliminar.push(docId);
+      dc.setDate(dc.getDate()+1);
+    }
+    if(extrasAEliminar.length){
+      const b2=db.batch();
+      extrasAEliminar.forEach(id=>b2.delete(EMP_EXTRAS().doc(id)));
+      await b2.commit();
+    }
+  } catch(e){ alert('Error: '+e.message); }
 }
 
 // ══════════════════════════════════════

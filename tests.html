@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<title>🧪 Salchimonster — Test Suite</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Segoe UI',system-ui,sans-serif;background:#f0f4f8;color:#1a202c;padding:24px}
+  h1{font-size:1.5rem;font-weight:800;margin-bottom:4px}
+  .subtitle{color:#718096;font-size:0.88rem;margin-bottom:24px}
+  .suite{background:#fff;border-radius:14px;box-shadow:0 2px 8px rgba(0,0,0,.07);margin-bottom:20px;overflow:hidden}
+  .suite-header{padding:14px 18px;font-weight:700;font-size:0.95rem;display:flex;align-items:center;gap:10px;border-bottom:1.5px solid #e2e8f0}
+  .suite-header .badge{font-size:0.72rem;padding:2px 8px;border-radius:20px;font-weight:600}
+  .badge-pass{background:#c6f6d5;color:#276749}
+  .badge-fail{background:#fed7d7;color:#9b2c2c}
+  .badge-skip{background:#e2e8f0;color:#4a5568}
+  .test{padding:10px 18px;display:flex;align-items:flex-start;gap:12px;border-bottom:1px solid #f7fafc;font-size:0.85rem}
+  .test:last-child{border-bottom:none}
+  .icon{font-size:1rem;flex-shrink:0;margin-top:1px}
+  .test-name{font-weight:600;color:#2d3748;margin-bottom:2px}
+  .test-detail{color:#718096;font-size:0.78rem;font-family:monospace;white-space:pre-wrap;word-break:break-all}
+  .test-fail .test-detail{color:#c53030}
+  .summary{background:#fff;border-radius:14px;box-shadow:0 2px 8px rgba(0,0,0,.07);padding:18px 20px;margin-bottom:24px;display:flex;gap:24px;align-items:center}
+  .summary-num{font-size:2rem;font-weight:800;line-height:1}
+  .summary-label{font-size:0.75rem;color:#718096;text-transform:uppercase;letter-spacing:.04em}
+  .num-pass{color:#276749}
+  .num-fail{color:#c53030}
+  .num-total{color:#2b6cb0}
+  .progress{height:8px;background:#e2e8f0;border-radius:4px;margin-bottom:24px;overflow:hidden}
+  .progress-bar{height:100%;background:#48bb78;border-radius:4px;transition:width .4s}
+</style>
+</head>
+<body>
+
+<h1>🧪 Salchimonster — Test Suite</h1>
+<p class="subtitle">Pruebas de las funcionalidades agregadas hoy · Se ejecutan sin Firebase ni DOM</p>
+
+<div class="summary" id="summary"></div>
+<div class="progress"><div class="progress-bar" id="progress-bar"></div></div>
+<div id="results"></div>
+
+<script>
+// ══════════════════════════════════════════
+//  FUNCIONES PURAS EXTRAÍDAS DE index.html
+// ══════════════════════════════════════════
+
+// 1. Cálculo de tarifas de empleado
+function empRates(emp){
+  const s = emp.sueldoSemanal || 0;
+  const diario = Math.round(s / 7);
+  return {
+    diario,
+    mensual: diario * 30,
+    hora:    Math.round(diario / 8),
+    minuto:  Math.round(Math.round(diario / 8) / 60)
+  };
+}
+
+// 2. Formateo de totales en celda calendario
+function formatCalendarTotal(totalDisp){
+  if (totalDisp >= 1_000_000) return '$' + (totalDisp / 1_000_000).toFixed(1) + 'M';
+  if (totalDisp >= 1_000)     return '$' + (totalDisp / 1_000).toFixed(0) + 'k';
+  return '$' + totalDisp;
+}
+
+// 3. Split de gastos: efectivo vs transferencia
+function splitGastos(gastos){
+  const tgEf = gastos.filter(g => g.tipo !== 'transferencia').reduce((s, g) => s + g.monto, 0);
+  const tgTr = gastos.filter(g => g.tipo === 'transferencia').reduce((s, g) => s + g.monto, 0);
+  return { tgEf, tgTr, tg: tgEf + tgTr };
+}
+
+// 4. Detección de solapamiento de períodos
+function periodosSeSuperponen(desdeA, hastaA, desdeB, hastaB){
+  return desdeA <= hastaB && hastaA >= desdeB;
+}
+
+function verificarSolapeLogica(empId, pagoEmpDesde, pagoEmpHasta, historialPagosEmp){
+  return historialPagosEmp.filter(p => {
+    if (p.empleadoId !== empId) return false;
+    let d = p.desde, h = p.hasta;
+    if (!d || !h) {
+      const parts = (p.periodo || '').split(' → ');
+      d = parts[0]?.trim();
+      h = parts[1]?.trim();
+    }
+    if (!d || !h) return false;
+    return d <= pagoEmpHasta && h >= pagoEmpDesde;
+  });
+}
+
+// 5. Cálculo del total de pago de empleado
+function calcTotalPago(emp, desdeStr, hastaStr, empExtras){
+  const r = empRates(emp);
+  const desde = new Date(desdeStr + 'T00:00:00');
+  const hasta  = new Date(hastaStr  + 'T23:59:59');
+  let totalDias = 0, totalMin = 0;
+  const d = new Date(desde);
+  while (d <= hasta){
+    totalDias++;
+    totalMin += (empExtras[`${emp._docId}_${d.toISOString().slice(0,10)}`]?.extraMin || 0);
+    d.setDate(d.getDate() + 1);
+  }
+  const extrasVal = Math.round(r.minuto * totalMin);
+  const subtotal  = totalDias * r.diario;
+  return { totalDias, totalMin, subtotal, extrasVal, monto: subtotal + extrasVal };
+}
+
+// 6. Generación de IDs de docs para borrar extras
+function extrasAEliminarIds(empId, desdeStr, hastaStr, empExtras){
+  const ids = [];
+  const dc = new Date(desdeStr + 'T00:00:00');
+  const hh = new Date(hastaStr  + 'T23:59:59');
+  while (dc <= hh){
+    const fecha = dc.toISOString().slice(0,10);
+    const docId = `${empId}_${fecha}`;
+    if (empExtras[docId]?._docId) ids.push(docId);
+    dc.setDate(dc.getDate() + 1);
+  }
+  return ids;
+}
+
+// 7. Regex de clave de fecha
+const DATE_KEY_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+
+// ══════════════════════════════════════════
+//  FRAMEWORK DE TEST MINIMALISTA
+// ══════════════════════════════════════════
+const suites = [];
+let currentSuite = null;
+
+function describe(name, fn){
+  currentSuite = { name, tests: [] };
+  suites.push(currentSuite);
+  fn();
+}
+
+function it(name, fn){
+  try {
+    fn();
+    currentSuite.tests.push({ name, pass: true, detail: 'OK' });
+  } catch(e) {
+    currentSuite.tests.push({ name, pass: false, detail: e.message });
+  }
+}
+
+function expect(val){
+  return {
+    toBe(expected){
+      if (val !== expected)
+        throw new Error(`Esperado: ${JSON.stringify(expected)}\nObtenido: ${JSON.stringify(val)}`);
+    },
+    toEqual(expected){
+      if (JSON.stringify(val) !== JSON.stringify(expected))
+        throw new Error(`Esperado: ${JSON.stringify(expected)}\nObtenido: ${JSON.stringify(val)}`);
+    },
+    toBeGreaterThan(n){
+      if (!(val > n)) throw new Error(`${val} no es > ${n}`);
+    },
+    toBeLessThan(n){
+      if (!(val < n)) throw new Error(`${val} no es < ${n}`);
+    },
+    toContain(item){
+      if (!val.includes(item)) throw new Error(`${JSON.stringify(val)} no contiene ${JSON.stringify(item)}`);
+    },
+    toBeTruthy(){
+      if (!val) throw new Error(`Se esperaba un valor truthy, pero: ${JSON.stringify(val)}`);
+    },
+    toBeFalsy(){
+      if (val) throw new Error(`Se esperaba un valor falsy, pero: ${JSON.stringify(val)}`);
+    },
+    toHaveLength(n){
+      if (val.length !== n) throw new Error(`Largo esperado: ${n}, obtenido: ${val.length}`);
+    },
+    toMatch(re){
+      if (!re.test(val)) throw new Error(`"${val}" no coincide con ${re}`);
+    }
+  };
+}
+
+
+// ══════════════════════════════════════════
+//  CASOS DE PRUEBA
+// ══════════════════════════════════════════
+
+describe('💰 Cálculo de tarifas de empleado (empRates)', () => {
+  it('Sueldo 350.000/semana → diario correcto', () => {
+    const r = empRates({ sueldoSemanal: 350_000 });
+    expect(r.diario).toBe(50_000);
+  });
+  it('Sueldo 350.000/semana → mensual (diario × 30)', () => {
+    const r = empRates({ sueldoSemanal: 350_000 });
+    expect(r.mensual).toBe(1_500_000);
+  });
+  it('Sueldo 350.000/semana → hora (diario / 8)', () => {
+    const r = empRates({ sueldoSemanal: 350_000 });
+    expect(r.hora).toBe(6_250);
+  });
+  it('Sueldo 350.000/semana → minuto (hora / 60)', () => {
+    const r = empRates({ sueldoSemanal: 350_000 });
+    expect(r.minuto).toBe(104);
+  });
+  it('Sueldo 0 → todos los campos son 0', () => {
+    const r = empRates({ sueldoSemanal: 0 });
+    expect(r.diario).toBe(0);
+    expect(r.mensual).toBe(0);
+    expect(r.hora).toBe(0);
+    expect(r.minuto).toBe(0);
+  });
+  it('Sin campo sueldoSemanal → no lanza error', () => {
+    const r = empRates({});
+    expect(r.diario).toBe(0);
+  });
+  it('Sueldo 700.000/semana → diario correcto', () => {
+    const r = empRates({ sueldoSemanal: 700_000 });
+    expect(r.diario).toBe(100_000);
+  });
+});
+
+
+describe('📅 Formateo de totales en celda calendario', () => {
+  it('Valor < 1.000 → muestra número directo con $', () => {
+    expect(formatCalendarTotal(500)).toBe('$500');
+  });
+  it('Valor 1.000 → muestra en k', () => {
+    expect(formatCalendarTotal(1_000)).toBe('$1k');
+  });
+  it('Valor 85.000 → muestra 85k', () => {
+    expect(formatCalendarTotal(85_000)).toBe('$85k');
+  });
+  it('Valor 1.000.000 → muestra 1.0M', () => {
+    expect(formatCalendarTotal(1_000_000)).toBe('$1.0M');
+  });
+  it('Valor 2.500.000 → muestra 2.5M', () => {
+    expect(formatCalendarTotal(2_500_000)).toBe('$2.5M');
+  });
+  it('Valor 999.999 → aún es k (no M)', () => {
+    const r = formatCalendarTotal(999_999);
+    expect(r.includes('k')).toBe(true);
+    expect(r.includes('M')).toBe(false);
+  });
+});
+
+
+describe('💸 Split de gastos efectivo vs transferencia', () => {
+  const gastos = [
+    { monto: 50_000, tipo: 'efectivo' },
+    { monto: 30_000, tipo: 'transferencia' },
+    { monto: 20_000, tipo: 'efectivo' },
+    { monto: 10_000, tipo: 'transferencia' },
+  ];
+
+  it('tgEf = suma de gastos que no son transferencia', () => {
+    const { tgEf } = splitGastos(gastos);
+    expect(tgEf).toBe(70_000);
+  });
+  it('tgTr = suma de gastos de tipo transferencia', () => {
+    const { tgTr } = splitGastos(gastos);
+    expect(tgTr).toBe(40_000);
+  });
+  it('tg = tgEf + tgTr (total gasto)', () => {
+    const { tg } = splitGastos(gastos);
+    expect(tg).toBe(110_000);
+  });
+  it('Sin gastos → todo en 0', () => {
+    const { tgEf, tgTr, tg } = splitGastos([]);
+    expect(tgEf).toBe(0); expect(tgTr).toBe(0); expect(tg).toBe(0);
+  });
+  it('Solo transferencias → tgEf = 0', () => {
+    const { tgEf, tgTr } = splitGastos([{ monto: 25_000, tipo: 'transferencia' }]);
+    expect(tgEf).toBe(0); expect(tgTr).toBe(25_000);
+  });
+});
+
+
+describe('⛔ Detección de solapamiento de períodos', () => {
+  const historial = [
+    { empleadoId: 'anderson', desde: '2026-08-15', hasta: '2026-08-21', periodo: '2026-08-15 → 2026-08-21', monto: 350_000 },
+    { empleadoId: 'anderson', desde: '2026-08-01', hasta: '2026-08-07', periodo: '2026-08-01 → 2026-08-07', monto: 350_000 },
+    { empleadoId: 'maria',    desde: '2026-08-15', hasta: '2026-08-21', periodo: '2026-08-15 → 2026-08-21', monto: 300_000 },
+  ];
+
+  it('Período exactamente ya pagado → detecta solapamiento', () => {
+    const r = verificarSolapeLogica('anderson', '2026-08-15', '2026-08-21', historial);
+    expect(r.length).toBeGreaterThan(0);
+  });
+  it('Período que cruza el inicio del ya pagado → detecta solapamiento', () => {
+    const r = verificarSolapeLogica('anderson', '2026-08-13', '2026-08-17', historial);
+    expect(r.length).toBeGreaterThan(0);
+  });
+  it('Período que cruza el fin del ya pagado → detecta solapamiento', () => {
+    const r = verificarSolapeLogica('anderson', '2026-08-19', '2026-08-25', historial);
+    expect(r.length).toBeGreaterThan(0);
+  });
+  it('Período contenido dentro del ya pagado → detecta solapamiento', () => {
+    const r = verificarSolapeLogica('anderson', '2026-08-16', '2026-08-18', historial);
+    expect(r.length).toBeGreaterThan(0);
+  });
+  it('Período DESPUÉS del ya pagado → no detecta solapamiento', () => {
+    const r = verificarSolapeLogica('anderson', '2026-08-22', '2026-08-28', historial);
+    expect(r.length).toBe(0);
+  });
+  it('Período ANTES del ya pagado → no detecta solapamiento', () => {
+    const r = verificarSolapeLogica('anderson', '2026-08-08', '2026-08-14', historial);
+    expect(r.length).toBe(0);
+  });
+  it('Otro empleado con mismo período → no detecta solapamiento', () => {
+    const r = verificarSolapeLogica('carlos', '2026-08-15', '2026-08-21', historial);
+    expect(r.length).toBe(0);
+  });
+  it('Período que toca exactamente el día siguiente al último pagado → no solapa', () => {
+    const r = verificarSolapeLogica('anderson', '2026-08-22', '2026-08-28', historial);
+    expect(r.length).toBe(0);
+  });
+  it('Historial sin campos desde/hasta usa fallback de parsear periodo string', () => {
+    const soloString = [{ empleadoId: 'pedro', periodo: '2026-08-10 → 2026-08-16', monto: 200_000 }];
+    const r = verificarSolapeLogica('pedro', '2026-08-14', '2026-08-20', soloString);
+    expect(r.length).toBeGreaterThan(0);
+  });
+  it('Empleado diferente en historial → no se detecta como solapamiento', () => {
+    const r = verificarSolapeLogica('anderson', '2026-08-15', '2026-08-21',
+      [{ empleadoId: 'maria', desde: '2026-08-15', hasta: '2026-08-21', monto: 100 }]);
+    expect(r.length).toBe(0);
+  });
+});
+
+
+describe('🧮 Cálculo total de pago de empleado', () => {
+  const emp = { _docId: 'emp1', sueldoSemanal: 350_000 };
+
+  it('7 días sin extras → monto = 7 × diario', () => {
+    const r = calcTotalPago(emp, '2026-08-15', '2026-08-21', {});
+    expect(r.totalDias).toBe(7);
+    expect(r.monto).toBe(7 * 50_000);
+  });
+  it('14 días sin extras → monto = 14 × diario', () => {
+    const r = calcTotalPago(emp, '2026-08-08', '2026-08-21', {});
+    expect(r.totalDias).toBe(14);
+    expect(r.monto).toBe(14 * 50_000);
+  });
+  it('1 día con 60 min extras → extra = minuto × 60', () => {
+    const extras = { 'emp1_2026-08-15': { _docId: 'emp1_2026-08-15', extraMin: 60 } };
+    const r = calcTotalPago(emp, '2026-08-15', '2026-08-15', extras);
+    expect(r.totalMin).toBe(60);
+    expect(r.extrasVal).toBe(Math.round(104 * 60)); // 6240
+  });
+  it('Extras de solo algunos días del período se acumulan correctamente', () => {
+    const extras = {
+      'emp1_2026-08-15': { _docId: 'emp1_2026-08-15', extraMin: 30 },
+      'emp1_2026-08-17': { _docId: 'emp1_2026-08-17', extraMin: 45 },
+    };
+    const r = calcTotalPago(emp, '2026-08-15', '2026-08-21', extras);
+    expect(r.totalMin).toBe(75);
+  });
+  it('Días con 0 extras no se suman a totalMin', () => {
+    const extras = { 'emp1_2026-08-16': { _docId: 'emp1_2026-08-16', extraMin: 0 } };
+    const r = calcTotalPago(emp, '2026-08-15', '2026-08-21', extras);
+    expect(r.totalMin).toBe(0);
+  });
+  it('Período de 1 día → totalDias = 1', () => {
+    const r = calcTotalPago(emp, '2026-08-20', '2026-08-20', {});
+    expect(r.totalDias).toBe(1);
+  });
+});
+
+
+describe('🗑 Generación de IDs de extras a eliminar', () => {
+  const empId = 'emp1';
+  const extras = {
+    'emp1_2026-08-15': { _docId: 'emp1_2026-08-15', extraMin: 30 },
+    'emp1_2026-08-17': { _docId: 'emp1_2026-08-17', extraMin: 45 },
+    'emp1_2026-08-22': { _docId: 'emp1_2026-08-22', extraMin: 10 }, // fuera del período
+  };
+
+  it('Solo incluye docs del período pagado', () => {
+    const ids = extrasAEliminarIds(empId, '2026-08-15', '2026-08-21', extras);
+    expect(ids.length).toBe(2);
+  });
+  it('No incluye extras fuera del período', () => {
+    const ids = extrasAEliminarIds(empId, '2026-08-15', '2026-08-21', extras);
+    expect(ids.includes('emp1_2026-08-22')).toBe(false);
+  });
+  it('Días sin extras no generan IDs', () => {
+    const ids = extrasAEliminarIds(empId, '2026-08-15', '2026-08-21', extras);
+    expect(ids.includes('emp1_2026-08-16')).toBe(false);
+  });
+  it('Sin extras en el período → array vacío', () => {
+    const ids = extrasAEliminarIds(empId, '2026-08-15', '2026-08-21', {});
+    expect(ids.length).toBe(0);
+  });
+  it('Los IDs tienen formato correcto empId_YYYY-MM-DD', () => {
+    const ids = extrasAEliminarIds(empId, '2026-08-15', '2026-08-21', extras);
+    ids.forEach(id => expect(id).toMatch(/^emp1_\d{4}-\d{2}-\d{2}$/));
+  });
+});
+
+
+describe('🔑 Regex DATE_KEY_RE (claves de documentos Firestore)', () => {
+  it('Fecha YYYY-MM-DD válida pasa', () => {
+    expect(DATE_KEY_RE.test('2026-08-22')).toBe(true);
+  });
+  it('Formato con slash no pasa', () => {
+    expect(DATE_KEY_RE.test('2026/08/22')).toBe(false);
+  });
+  it('Solo números sin guiones no pasa', () => {
+    expect(DATE_KEY_RE.test('20260822')).toBe(false);
+  });
+  it('String vacío no pasa', () => {
+    expect(DATE_KEY_RE.test('')).toBe(false);
+  });
+  it('Fecha con hora no pasa', () => {
+    expect(DATE_KEY_RE.test('2026-08-22T00:00:00')).toBe(false);
+  });
+  it('ID de empleado_fecha no pasa', () => {
+    expect(DATE_KEY_RE.test('emp1_2026-08-22')).toBe(false);
+  });
+});
+
+
+// ══════════════════════════════════════════
+//  RENDERIZADO
+// ══════════════════════════════════════════
+let totalPass = 0, totalFail = 0;
+const container = document.getElementById('results');
+
+suites.forEach(suite => {
+  const pass = suite.tests.filter(t => t.pass).length;
+  const fail = suite.tests.filter(t => !t.pass).length;
+  totalPass += pass; totalFail += fail;
+
+  const badge = fail === 0
+    ? `<span class="badge badge-pass">✓ ${pass} OK</span>`
+    : `<span class="badge badge-fail">✗ ${fail} FALLO${fail>1?'S':''}</span>`;
+
+  let testsHtml = suite.tests.map(t => `
+    <div class="test ${t.pass ? '' : 'test-fail'}">
+      <span class="icon">${t.pass ? '✅' : '❌'}</span>
+      <div>
+        <div class="test-name">${t.name}</div>
+        ${!t.pass ? `<div class="test-detail">${t.detail}</div>` : ''}
+      </div>
+    </div>
+  `).join('');
+
+  container.insertAdjacentHTML('beforeend', `
+    <div class="suite">
+      <div class="suite-header">${suite.name} ${badge}</div>
+      ${testsHtml}
+    </div>
+  `);
+});
+
+const total = totalPass + totalFail;
+const pct   = total > 0 ? Math.round((totalPass / total) * 100) : 0;
+
+document.getElementById('summary').innerHTML = `
+  <div><div class="summary-num num-pass">${totalPass}</div><div class="summary-label">Pasadas</div></div>
+  <div><div class="summary-num num-fail">${totalFail}</div><div class="summary-label">Fallidas</div></div>
+  <div><div class="summary-num num-total">${total}</div><div class="summary-label">Total</div></div>
+  <div style="flex:1;text-align:right">
+    <div class="summary-num" style="color:${pct===100?'#276749':pct>=80?'#d69e2e':'#c53030'}">${pct}%</div>
+    <div class="summary-label">${pct===100?'🎉 Todo OK':pct>=80?'⚠ Casi':'🔴 Revisar'}</div>
+  </div>
+`;
+document.getElementById('progress-bar').style.width = pct + '%';
+document.getElementById('progress-bar').style.background = pct===100?'#48bb78':pct>=80?'#ecc94b':'#fc8181';
+</script>
+</body>
+</html>
