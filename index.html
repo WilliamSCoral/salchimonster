@@ -5048,12 +5048,148 @@ async function guardarComandaAbierta(){
   finally{ btn.disabled=false; btn.textContent='💾 Guardar mesa abierta'; }
 }
 
-function imprimirCocina(){
-  const mesa = $('com-mesa').value.trim() || '—';
-  const hora = $('com-hora').value || new Date().toLocaleTimeString('es-CO',{hour:'2-digit',minute:'2-digit'});
+// ══════════════════════════════════════
+//   BLUETOOTH ESC/POS — IMPRESIÓN DIRECTA
+// ══════════════════════════════════════
+let btDevice = null;
+let btChar   = null;
+// UUIDs comunes en impresoras térmicas chinas (POS-5890U y similares)
+const BT_SERVICES = [
+  {svc:'000018f0-0000-1000-8000-00805f9b34fb', chr:'00002af1-0000-1000-8000-00805f9b34fb'},
+  {svc:'e7810a71-73ae-499d-8c15-faa9aef0c3f2', chr:'bef8d6c9-9c21-4c9e-b632-bd58c1009f9f'},
+  {svc:'49535343-fe7d-4ae5-8fa9-9fafd205e455', chr:'49535343-8841-43f4-a8d4-ecbe34729bb3'},
+];
+
+async function btConectar(){
+  try{
+    btDevice = await navigator.bluetooth.requestDevice({
+      acceptAllDevices:true,
+      optionalServices: BT_SERVICES.map(s=>s.svc)
+    });
+    const server = await btDevice.gatt.connect();
+    for(const {svc,chr} of BT_SERVICES){
+      try{
+        const service = await server.getPrimaryService(svc);
+        btChar = await service.getCharacteristic(chr);
+        console.log('[BT] Conectado via',svc);
+        return true;
+      }catch(e){}
+    }
+    alert('No se encontró el servicio ESC/POS en la impresora.\nVerifica que esté encendida y en modo Bluetooth.');
+    btDevice=null; btChar=null;
+    return false;
+  }catch(e){
+    if(e.name!=='NotFoundError') alert('Error Bluetooth: '+e.message);
+    return false;
+  }
+}
+
+async function btEnviar(bytes){
+  if(!btChar || !btDevice?.gatt?.connected) return false;
+  const CHUNK=512;
+  try{
+    for(let i=0;i<bytes.length;i+=CHUNK){
+      const chunk=bytes.slice(i,i+CHUNK);
+      try{ await btChar.writeValueWithoutResponse(chunk); }
+      catch{ await btChar.writeValue(chunk); }
+      if(i+CHUNK<bytes.length) await new Promise(r=>setTimeout(r,25));
+    }
+    return true;
+  }catch(e){
+    alert('Error al imprimir: '+e.message);
+    btChar=null;
+    return false;
+  }
+}
+
+// Mapeo básico de caracteres especiales españoles a CP437/latin
+const ESC_CHARMAP={á:0xE1,é:0xE9,í:0xED,ó:0xF3,ú:0xFA,ñ:0xF1,ü:0xFC,
+                   Á:0xC1,É:0xC9,Í:0xCD,Ó:0xD3,Ú:0xDA,Ñ:0xD1,
+                   '¡':0xAD,'¿':0xBF,'×':0x78};
+function escBytes(text){
+  return Array.from(String(text)).map(c=>{
+    if(ESC_CHARMAP[c]!==undefined) return ESC_CHARMAP[c];
+    const n=c.charCodeAt(0);
+    return n<256?n:63; // '?' para chars fuera de rango
+  });
+}
+
+const _E=0x1B,_G=0x1D,_LF=0x0A;
+const escInit  =()=>[_E,0x40];
+const escAlign =a=>[_E,0x61,a==='c'?1:a==='r'?2:0];
+const escBold  =b=>[_E,0x45,b?1:0];
+const escSize  =s=>[_G,0x21,s]; // 0=normal, 0x11=doble, 0x01=alto doble
+const escCut   =()=>[_G,0x56,0x42,0x05];
+const escLine  =(t,al='l',bold=false,sz=0)=>[...escAlign(al),...escBold(bold),...escSize(sz),...escBytes(t),_LF];
+const escDiv   =()=>[...escBytes('--------------------------------'),_LF];
+const padR     =(s,n)=>String(s).substring(0,n).padStart(n,' ');
+const padL     =(s,n)=>String(s).substring(0,n).padEnd(n,' ');
+
+function buildEscCocina(mesa, hora, fecha, items, mesero){
+  const b=[];
+  b.push(...escInit());
+  b.push(...escLine('SALCHIMONSTER MOCOA','c',true,0x11));
+  b.push(...escLine('-- ORDEN DE COCINA --','c',false,0));
+  b.push(...escLine(fecha+' '+hora,'c',false,0));
+  b.push(...escDiv());
+  b.push(...escLine('MESA: '+mesa,'c',true,0x01));
+  b.push(...escLine('Mesero: '+(mesero||'-'),'c',false,0));
+  b.push(...escDiv());
+  items.forEach(i=>{
+    b.push(...escBytes(padL(i.cantidad+'x ',4)+padL(i.nombre,28)),_LF);
+  });
+  b.push(...escDiv());
+  b.push(...escLine('--- Fin del pedido ---','c',false,0));
+  b.push(_LF,_LF,_LF,...escCut());
+  return new Uint8Array(b);
+}
+
+function buildEscComanda(mesa, hora, fecha, items, subtotal, descuento, total, tipoPago, mesero){
+  const b=[];
+  b.push(...escInit());
+  b.push(...escLine('SALCHIMONSTER MOCOA','c',true,0x11));
+  b.push(...escLine(fecha+' '+hora,'c',false,0));
+  b.push(...escLine(mesa,'c',true,0x01));
+  b.push(...escLine('Mesero: '+(mesero||'-'),'c',false,0));
+  b.push(...escDiv());
+  items.forEach(i=>{
+    const precio=fmtRaw(i.precio*i.cantidad);
+    const qtyNom=padL(i.cantidad+'x '+i.nombre, 32-precio.length-1);
+    b.push(...escBytes(qtyNom+' '+precio),_LF);
+  });
+  b.push(...escDiv());
+  if(descuento>0){
+    b.push(...escBytes(padL('Subtotal:',22)+padR(fmtRaw(subtotal),10)),_LF);
+    b.push(...escBytes(padL('Descuento:',22)+padR('-'+fmtRaw(descuento),10)),_LF);
+  }
+  b.push(...escBold(true),...escBytes(padL('TOTAL:',22)+padR(fmtRaw(total),10)),_LF,...escBold(false));
+  b.push(...escDiv());
+  b.push(...escLine(tipoPago,'c',false,0));
+  b.push(...escLine('iGracias por su visita!','c',false,0));
+  b.push(_LF,_LF,_LF,...escCut());
+  return new Uint8Array(b);
+}
+
+// Variable para guardar la factura activa en el modal de resumen
+let currentRF = null;
+
+async function imprimirCocina(){
+  const mesa=$('com-mesa').value.trim()||'—';
+  const hora=$('com-hora').value||new Date().toLocaleTimeString('es-CO',{hour:'2-digit',minute:'2-digit'});
   if(!comandaItems.length){ alert('Agrega platos antes de imprimir.'); return; }
-  const fecha = new Date().toLocaleDateString('es-CO',{day:'2-digit',month:'2-digit',year:'numeric'});
-  const itemsHtml = comandaItems.map(i=>`<div class="pr"><span class="pb">${i.cantidad}×</span><span style="flex:1;margin-left:6px">${i.nombre}</span></div>`).join('');
+  const fecha=new Date().toLocaleDateString('es-CO',{day:'2-digit',month:'2-digit',year:'numeric'});
+  if(navigator.bluetooth){
+    // Conectar directo aquí (gesto de usuario activo)
+    if(!btChar || !btDevice?.gatt?.connected){
+      const ok=await btConectar();
+      if(!ok){ window.print(); return; }
+    }
+    const bytes=buildEscCocina(mesa,hora,fecha,comandaItems,currentUserName);
+    const ok=await btEnviar(bytes);
+    if(ok) return;
+  }
+  // Fallback: window.print()
+  const itemsHtml=comandaItems.map(i=>`<div class="pr"><span class="pb">${i.cantidad}×</span><span style="flex:1;margin-left:6px">${i.nombre}</span></div>`).join('');
   $('print-area').innerHTML=`
     <h2>SALCHIMONSTER MOCOA</h2>
     <div class="pc" style="font-size:10px;margin-bottom:2px">ORDEN DE COCINA</div>
@@ -5068,18 +5204,43 @@ function imprimirCocina(){
   window.print();
 }
 
-function imprimirComanda(){
-  const mesa    = $('rf-titulo').textContent;
-  const hora    = $('rf-hora').textContent;
-  const subtotal= $('rf-subtotal').textContent;
-  const descRow = $('rf-desc-row').style.display!=='none';
-  const desc    = $('rf-descuento').textContent;
-  const total   = $('rf-total').textContent;
-  const pago    = $('rf-pago').textContent;
-  const fecha   = new Date().toLocaleDateString('es-CO',{day:'2-digit',month:'2-digit',year:'numeric'});
-  // Parsear items del modal de resumen
-  const tmpDiv = document.createElement('div');
-  tmpDiv.innerHTML = $('rf-items').innerHTML;
+async function imprimirComanda(){
+  const fecha=new Date().toLocaleDateString('es-CO',{day:'2-digit',month:'2-digit',year:'numeric'});
+  if(navigator.bluetooth && currentRF){
+    // Conectar directo aquí (gesto de usuario activo)
+    if(!btChar || !btDevice?.gatt?.connected){
+      const ok=await btConectar();
+      if(!ok){ /* cae al fallback abajo */ }
+    }
+    const f=currentRF;
+    const mesa=`Mesa ${f.mesa||'—'}`;
+    const hora=f.hora||'—';
+    const items=f.items||[];
+    const subtotal=f.subtotal||(f.monto||f.total||0);
+    const descuento=f.descuento||0;
+    const total=f.total||f.monto||0;
+    let tipoPago='';
+    if(f.mixto&&f.pagos?.length){
+      const ef=(f.pagos||[]).filter(p=>p.tipo==='efectivo').reduce((s,p)=>s+(p.monto||0),0);
+      const tr=(f.pagos||[]).filter(p=>p.tipo==='transferencia').reduce((s,p)=>s+(p.monto||0),0);
+      tipoPago=`Efectivo: ${fmtRaw(ef)}  Trans: ${fmtRaw(tr)}`;
+    } else {
+      tipoPago=f.tipo==='efectivo'?'Pago en efectivo':'Pago por transferencia';
+    }
+    const bytes=buildEscComanda(mesa,hora,fecha,items,subtotal,descuento,total,tipoPago,currentUserName);
+    const ok=await btEnviar(bytes);
+    if(ok) return;
+  }
+  // Fallback: window.print()
+  const mesa=$('rf-titulo').textContent;
+  const hora=$('rf-hora').textContent;
+  const subtotal=$('rf-subtotal').textContent;
+  const descRow=$('rf-desc-row').style.display!=='none';
+  const desc=$('rf-descuento').textContent;
+  const total=$('rf-total').textContent;
+  const pago=$('rf-pago').textContent;
+  const tmpDiv=document.createElement('div');
+  tmpDiv.innerHTML=$('rf-items').innerHTML;
   let itemsHtml='';
   tmpDiv.querySelectorAll('div').forEach(r=>{
     const cols=r.querySelectorAll('span');
@@ -5105,6 +5266,7 @@ function imprimirComanda(){
 
 function verResumenFactura(docId){
   const f = state.facturas.find(x=>x._docId===docId); if(!f) return;
+  currentRF = f;
   $('rf-titulo').textContent = `Mesa ${f.mesa}`;
   $('rf-hora').textContent   = f.hora || '—';
   // Items
