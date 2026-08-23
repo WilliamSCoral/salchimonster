@@ -4882,43 +4882,61 @@ function filtrarMenuComanda(){
     </div>`).join('');
 }
 
+const ES_LLEVAR = nombre => nombre.trim().toUpperCase() === 'LLEVAR';
+
 function agregarItemComanda(docId){
   const p = menuCache.find(x=>x._docId===docId); if(!p) return;
-  // Siempre agrega línea nueva independiente (para notas individuales)
-  const uid = Date.now()+Math.random();
-  comandaItems.push({uid, docId, codigo:p.codigo, nombre:p.nombre, precio:p.precio, cantidad:1, nota:''});
+  if(ES_LLEVAR(p.nombre)){
+    // LLEVAR se acumula en una sola línea
+    const exist = comandaItems.find(i=>i.docId===docId);
+    if(exist){ exist.cantidad++; }
+    else { comandaItems.push({uid:docId, docId, codigo:p.codigo, nombre:p.nombre, precio:p.precio, cantidad:1, nota:'', esLlevar:true}); }
+  } else {
+    // Resto: línea independiente con nota
+    const uid = Date.now()+Math.random();
+    comandaItems.push({uid, docId, codigo:p.codigo, nombre:p.nombre, precio:p.precio, cantidad:1, nota:'', esLlevar:false});
+  }
   renderComandaItems(); recalcComanda();
 }
 
 function quitarItemComanda(uid){
-  const idx = comandaItems.findIndex(i=>i.uid===uid); if(idx<0) return;
-  comandaItems.splice(idx,1);
+  const idx = comandaItems.findIndex(i=>String(i.uid)===String(uid)); if(idx<0) return;
+  const item = comandaItems[idx];
+  if(item.esLlevar && item.cantidad>1){ item.cantidad--; }
+  else { comandaItems.splice(idx,1); }
   renderComandaItems(); recalcComanda();
 }
 
 function actualizarNotaComanda(uid, valor){
-  const item = comandaItems.find(i=>i.uid===uid);
+  const item = comandaItems.find(i=>String(i.uid)===String(uid));
   if(item) item.nota = valor;
 }
 
 function renderComandaItems(){
   const div = $('com-items-lista'); if(!div) return;
   if(!comandaItems.length){ div.innerHTML='<div class="empty-msg" style="font-size:0.8rem;padding:6px">Sin platos agregados</div>'; return; }
-  div.innerHTML = comandaItems.map(i=>`
+  div.innerHTML = comandaItems.map(i=> i.esLlevar ? `
+    <div style="display:flex;align-items:center;gap:8px;padding:6px 4px;border-bottom:1px solid #f0f4f8">
+      <span style="font-size:0.82rem;flex:1;font-weight:600">🛍 ${i.nombre}</span>
+      <span style="font-size:0.82rem;font-weight:700;color:var(--primary)">${fmt(i.precio*i.cantidad)}</span>
+      <button onclick="quitarItemComanda('${i.uid}')" style="width:22px;height:22px;border-radius:50%;border:1.5px solid #e2e8f0;background:#fff;cursor:pointer;font-weight:700;font-size:0.85rem;line-height:1">&#8722;</button>
+      <span style="font-weight:700;min-width:20px;text-align:center">${i.cantidad}</span>
+      <button onclick="agregarItemComanda('${i.docId}')" style="width:22px;height:22px;border-radius:50%;border:1.5px solid var(--primary);background:#ebf4ff;cursor:pointer;font-weight:700;font-size:0.85rem;line-height:1;color:var(--primary)">+</button>
+    </div>` : `
     <div style="padding:6px 4px;border-bottom:1px solid #f0f4f8">
       <div style="display:flex;align-items:center;gap:8px">
         <span style="font-size:0.82rem;flex:1;font-weight:600">${i.nombre}</span>
         <span style="font-size:0.82rem;font-weight:700;color:var(--primary)">${fmt(i.precio)}</span>
-        <button onclick="quitarItemComanda(${i.uid})" style="width:22px;height:22px;border-radius:50%;border:1.5px solid #fc8181;background:#fff5f5;cursor:pointer;font-weight:700;font-size:0.85rem;line-height:1;color:#c53030">&#8722;</button>
+        <button onclick="quitarItemComanda('${i.uid}')" style="width:22px;height:22px;border-radius:50%;border:1.5px solid #fc8181;background:#fff5f5;cursor:pointer;font-weight:700;font-size:0.85rem;line-height:1;color:#c53030">&#8722;</button>
       </div>
       <input type="text" placeholder="Nota: sin queso, sin salsas..." value="${i.nota||''}"
-        oninput="actualizarNotaComanda(${i.uid}, this.value)"
+        oninput="actualizarNotaComanda('${i.uid}', this.value)"
         style="width:100%;margin-top:4px;padding:4px 8px;border:1px solid #e2e8f0;border-radius:6px;font-size:0.75rem;color:#4a5568;background:#f7fafc"/>
     </div>`).join('');
 }
 
 function recalcComanda(){
-  const subtotal = comandaItems.reduce((s,i)=>s+i.precio,0);
+  const subtotal = comandaItems.reduce((s,i)=>s+(i.esLlevar?i.precio*i.cantidad:i.precio),0);
   const desc     = moneyVal('com-descuento')||0;
   const total    = Math.max(0, subtotal-desc);
   if($('com-subtotal')) $('com-subtotal').textContent=fmt(subtotal);
@@ -4956,7 +4974,7 @@ async function guardarComandaAbierta(){
   const mesa   = $('com-mesa').value.trim();
   const hora   = $('com-hora').value;
   const desc   = moneyVal('com-descuento')||0;
-  const sub    = comandaItems.reduce((s,i)=>s+i.precio,0);
+  const sub    = comandaItems.reduce((s,i)=>s+(i.esLlevar?i.precio*i.cantidad:i.precio),0);
   const total  = Math.max(0,sub-desc);
   const docId  = $('com-docid').value;
   $('com-error').textContent='';
@@ -5163,13 +5181,14 @@ function buildEscCocina(mesa, hora, fecha, items){
   b.push(...escSize(0),...escBold(false),...escAlign('l'));
   b.push(...escDiv());
   items.forEach((i,idx)=>{
-    b.push(...escItemRow(1,i.nombre.toUpperCase(),fmtRaw(i.precio)));
-    if(i.nota) b.push(...escBytes('   ('+i.nota+')'),_LF);
+    const precio=i.esLlevar?(i.precio*i.cantidad):i.precio;
+    b.push(...escItemRow(i.esLlevar?i.cantidad:1,i.nombre.toUpperCase(),fmtRaw(precio)));
+    if(!i.esLlevar && i.nota) b.push(...escBytes('   ('+i.nota+')'),_LF);
     if(idx<items.length-1) b.push(...escDash());
   });
   b.push(...escDiv());
   b.push(...escBold(true));
-  const tot=items.reduce((s,i)=>s+i.precio,0);
+  const tot=items.reduce((s,i)=>s+(i.esLlevar?i.precio*i.cantidad:i.precio),0);
   b.push(...escBytes(pL('TOTAL PEDIDO',20)+pR('$ '+fmtRaw(tot),12)),_LF);
   b.push(...escBold(false));
   b.push(...escDiv());
@@ -5193,8 +5212,9 @@ function buildEscComanda(mesa, hora, fecha, items, subtotal, descuento, total, t
   b.push(...escSize(0),...escBold(false),...escAlign('l'));
   b.push(...escDiv());
   items.forEach((i,idx)=>{
-    b.push(...escItemRow(1,i.nombre.toUpperCase(),fmtRaw(i.precio)));
-    if(i.nota) b.push(...escBytes('   ('+i.nota+')'),_LF);
+    const precio=i.esLlevar?(i.precio*i.cantidad):i.precio;
+    b.push(...escItemRow(i.esLlevar?i.cantidad:1,i.nombre.toUpperCase(),fmtRaw(precio)));
+    if(!i.esLlevar && i.nota) b.push(...escBytes('   ('+i.nota+')'),_LF);
     if(idx<items.length-1) b.push(...escDash());
   });
   b.push(...escDiv());
