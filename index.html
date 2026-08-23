@@ -1585,9 +1585,10 @@
     </div>
 
     <div style="display:flex;gap:8px;margin-top:8px">
-      <button onclick="guardarComandaAbierta()" class="btn-ghost" style="flex:1;padding:11px;border:2px solid var(--primary);color:var(--primary);font-weight:700" id="btn-guardar-abierta">💾 Guardar mesa</button>
-      <button onclick="imprimirCocina()" class="btn-ghost" style="padding:11px 14px;border:2px solid #38a169;color:#38a169;font-weight:700;border-radius:10px;background:#fff;cursor:pointer" title="Imprimir para cocina">🖨️ Cocina</button>
+      <button onclick="guardarComandaAbierta()" class="btn-ghost" style="flex:1;padding:11px;border:2px solid var(--primary);color:var(--primary);font-weight:700" id="btn-guardar-abierta">💾 Guardar</button>
+      <button onclick="imprimirCocina()" class="btn-ghost" style="padding:11px 14px;border:2px solid #38a169;color:#38a169;font-weight:700;border-radius:10px;background:#fff;cursor:pointer" title="Imprimir para cocina">🖨️</button>
     </div>
+    <button onclick="pedidoListoImprimir()" style="width:100%;margin-top:8px;padding:13px;background:#276749;color:#fff;border:none;border-radius:12px;font-weight:800;font-size:1rem;cursor:pointer">✅ Pedido listo — Imprimir</button>
     <div id="com-error" style="color:var(--red);font-size:0.82rem;margin-top:6px;text-align:center;min-height:16px"></div>
   </div>
 </div>
@@ -4970,7 +4971,16 @@ async function lookupDiscountComanda(){
   } catch(e){ info.style.display='none'; }
 }
 
-async function guardarComandaAbierta(){
+async function pedidoListoImprimir(){
+  // 1. Guardar primero (valida campos, sube a Firestore)
+  const saved = await guardarComandaAbierta(true);
+  if(!saved) return; // Si hubo error de validación, no imprime
+  // 2. Pequeña pausa para que Firestore confirme y luego imprime
+  await new Promise(r=>setTimeout(r,300));
+  await imprimirCocina();
+}
+
+async function guardarComandaAbierta(silencioso=false){
   const mesa   = $('com-mesa').value.trim();
   const hora   = $('com-hora').value;
   const desc   = moneyVal('com-descuento')||0;
@@ -5065,8 +5075,9 @@ async function guardarComandaAbierta(){
         comandaId: comaRef.id
       });
     }
-    closeModal('modal-comanda');
-  } catch(e){ $('com-error').textContent='Error: '+e.message; }
+    if(!silencioso) closeModal('modal-comanda');
+    return true;
+  } catch(e){ $('com-error').textContent='Error: '+e.message; return false; }
   finally{ btn.disabled=false; btn.textContent='💾 Guardar mesa abierta'; }
 }
 
@@ -5114,7 +5125,7 @@ async function btEnviar(bytes){
       const chunk=bytes.slice(i,i+CHUNK);
       try{ await btChar.writeValueWithoutResponse(chunk); }
       catch{ await btChar.writeValue(chunk); }
-      if(i+CHUNK<bytes.length) await new Promise(r=>setTimeout(r,25));
+      await new Promise(r=>setTimeout(r,80));
     }
     return true;
   }catch(e){
