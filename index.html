@@ -5152,11 +5152,11 @@ function buildEscCocina(mesa, hora, fecha, items){
   b.push(...escLn('MOCOA','c',false,0));
   b.push(...escLn('COMANDA','c',false,0));
   b.push(...escDiv());
-  b.push(...escBytes('IMPRESION:  '+fecha+'  '+hora),_LF);
+  b.push(...escBytes('Fecha:  '+fecha+'  '+hora),_LF);
   b.push(_LF);
-  b.push(...escAlign('l'),...escBold(true),...escSize(0x11));
-  b.push(...escBytes(pL('MESA',16)+pR(String(mesa),16)),_LF);
-  b.push(...escSize(0),...escBold(false));
+  b.push(...escAlign('c'),...escBold(true),...escSize(0x01));
+  b.push(...escBytes('MESA '+String(mesa)),_LF);
+  b.push(...escSize(0),...escBold(false),...escAlign('l'));
   b.push(...escDiv());
   items.forEach((i,idx)=>{
     b.push(...escItemRow(i.cantidad,i.nombre.toUpperCase(),fmtRaw(i.precio*i.cantidad)));
@@ -5181,11 +5181,11 @@ function buildEscComanda(mesa, hora, fecha, items, subtotal, descuento, total, t
   b.push(...escLn('MOCOA','c',false,0));
   b.push(...escLn('COMANDA','c',false,0));
   b.push(...escDiv());
-  b.push(...escBytes('IMPRESION:  '+fecha+'  '+hora),_LF);
+  b.push(...escBytes('Fecha:  '+fecha+'  '+hora),_LF);
   b.push(_LF);
-  b.push(...escAlign('l'),...escBold(true),...escSize(0x11));
-  b.push(...escBytes(pL('MESA',16)+pR(String(mesa),16)),_LF);
-  b.push(...escSize(0),...escBold(false));
+  b.push(...escAlign('c'),...escBold(true),...escSize(0x01));
+  b.push(...escBytes('MESA '+String(mesa)),_LF);
+  b.push(...escSize(0),...escBold(false),...escAlign('l'));
   b.push(...escDiv());
   items.forEach((i,idx)=>{
     b.push(...escItemRow(i.cantidad,i.nombre.toUpperCase(),fmtRaw(i.precio*i.cantidad)));
