@@ -4972,12 +4972,19 @@ async function lookupDiscountComanda(){
 }
 
 async function pedidoListoImprimir(){
-  // 1. Guardar primero (valida campos, sube a Firestore)
+  const btn = document.querySelector('[onclick="pedidoListoImprimir()"]');
+  if(btn){ btn.disabled=true; btn.textContent='💾 Guardando...'; }
+  // 1. Guardar en Firestore (bloqueante, espera confirmación real)
   const saved = await guardarComandaAbierta(true);
-  if(!saved) return; // Si hubo error de validación, no imprime
-  // 2. Pequeña pausa para que Firestore confirme y luego imprime
-  await new Promise(r=>setTimeout(r,300));
+  if(!saved){
+    if(btn){ btn.disabled=false; btn.textContent='✅ Pedido listo — Imprimir'; }
+    return;
+  }
+  if(btn) btn.textContent='🖨️ Imprimiendo...';
+  // 2. Imprimir con los items actuales en memoria (ya guardados)
   await imprimirCocina();
+  if(btn){ btn.disabled=false; btn.textContent='✅ Pedido listo — Imprimir'; }
+  closeModal('modal-comanda');
 }
 
 async function guardarComandaAbierta(silencioso=false){
@@ -5119,13 +5126,13 @@ async function btConectar(){
 
 async function btEnviar(bytes){
   if(!btChar || !btDevice?.gatt?.connected){ btChar=null; btDevice=null; return false; }
-  const CHUNK=512;
+  const CHUNK=20;
   try{
     for(let i=0;i<bytes.length;i+=CHUNK){
       const chunk=bytes.slice(i,i+CHUNK);
       try{ await btChar.writeValueWithoutResponse(chunk); }
       catch{ await btChar.writeValue(chunk); }
-      await new Promise(r=>setTimeout(r,80));
+      await new Promise(r=>setTimeout(r,50));
     }
     return true;
   }catch(e){
