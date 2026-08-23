@@ -5085,7 +5085,7 @@ async function btConectar(){
 }
 
 async function btEnviar(bytes){
-  if(!btChar || !btDevice?.gatt?.connected) return false;
+  if(!btChar || !btDevice?.gatt?.connected){ btChar=null; btDevice=null; return false; }
   const CHUNK=512;
   try{
     for(let i=0;i<bytes.length;i+=CHUNK){
@@ -5102,70 +5102,105 @@ async function btEnviar(bytes){
   }
 }
 
-// Mapeo básico de caracteres especiales españoles a CP437/latin
+// Mapeo caracteres especiales españoles a latin-1
 const ESC_CHARMAP={á:0xE1,é:0xE9,í:0xED,ó:0xF3,ú:0xFA,ñ:0xF1,ü:0xFC,
                    Á:0xC1,É:0xC9,Í:0xCD,Ó:0xD3,Ú:0xDA,Ñ:0xD1,
                    '¡':0xAD,'¿':0xBF,'×':0x78};
 function escBytes(text){
   return Array.from(String(text)).map(c=>{
     if(ESC_CHARMAP[c]!==undefined) return ESC_CHARMAP[c];
-    const n=c.charCodeAt(0);
-    return n<256?n:63; // '?' para chars fuera de rango
+    const n=c.charCodeAt(0); return n<256?n:63;
   });
 }
 
 const _E=0x1B,_G=0x1D,_LF=0x0A;
-const escInit  =()=>[_E,0x40];
-const escAlign =a=>[_E,0x61,a==='c'?1:a==='r'?2:0];
-const escBold  =b=>[_E,0x45,b?1:0];
-const escSize  =s=>[_G,0x21,s]; // 0=normal, 0x11=doble, 0x01=alto doble
-const escCut   =()=>[_G,0x56,0x42,0x05];
-const escLine  =(t,al='l',bold=false,sz=0)=>[...escAlign(al),...escBold(bold),...escSize(sz),...escBytes(t),_LF];
-const escDiv   =()=>[...escBytes('--------------------------------'),_LF];
-const padR     =(s,n)=>String(s).substring(0,n).padStart(n,' ');
-const padL     =(s,n)=>String(s).substring(0,n).padEnd(n,' ');
+const W=32;
+const escInit =()=>[_E,0x40];
+const escAlign=a=>[_E,0x61,a==='c'?1:a==='r'?2:0];
+const escBold =b=>[_E,0x45,b?1:0];
+const escSize =s=>[_G,0x21,s];
+const escCut  =()=>[_G,0x56,0x42,0x05];
+const escLn   =(t,al='l',bold=false,sz=0)=>[...escAlign(al),...escBold(bold),...escSize(sz),...escBytes(t),_LF];
+const escDiv  =()=>[...escBytes('--------------------------------'),_LF];
+const escDash =()=>[...escBytes('- - - - - - - - - - - - - - - -'),_LF];
+const pL      =(s,n)=>String(s).substring(0,n).padEnd(n,' ');
+const pR      =(s,n)=>String(s).substring(0,n).padStart(n,' ');
 
-function buildEscCocina(mesa, hora, fecha, items, mesero){
+function escItemRow(qty, nombre, precioStr){
+  const qtyStr=qty+'x ';
+  const precioCol=' $ '+precioStr;
+  const maxNom=W-qtyStr.length-precioCol.length;
+  const rows=[];
+  if(nombre.length<=maxNom){
+    rows.push(...escBytes(qtyStr+pL(nombre,maxNom)+precioCol),_LF);
+  } else {
+    rows.push(...escBytes(qtyStr+pL(nombre.substring(0,maxNom),maxNom)+precioCol),_LF);
+    let rest=nombre.substring(maxNom);
+    const indent=' '.repeat(qtyStr.length);
+    while(rest.length){
+      rows.push(...escBytes(indent+rest.substring(0,W-qtyStr.length)),_LF);
+      rest=rest.substring(W-qtyStr.length);
+    }
+  }
+  return rows;
+}
+
+function buildEscCocina(mesa, hora, fecha, items){
   const b=[];
   b.push(...escInit());
-  b.push(...escLine('SALCHIMONSTER MOCOA','c',true,0x11));
-  b.push(...escLine('-- ORDEN DE COCINA --','c',false,0));
-  b.push(...escLine(fecha+' '+hora,'c',false,0));
+  b.push(...escLn('SALCHIMONSTER','c',true,0x11));
+  b.push(...escLn('MOCOA','c',false,0));
+  b.push(...escLn('COMANDA','c',false,0));
   b.push(...escDiv());
-  b.push(...escLine('MESA: '+mesa,'c',true,0x01));
-  b.push(...escLine('Mesero: '+(mesero||'-'),'c',false,0));
+  b.push(...escBytes('IMPRESION:  '+fecha+'  '+hora),_LF);
+  b.push(_LF);
+  b.push(...escAlign('l'),...escBold(true),...escSize(0x11));
+  b.push(...escBytes(pL('MESA',16)+pR(String(mesa),16)),_LF);
+  b.push(...escSize(0),...escBold(false));
   b.push(...escDiv());
-  items.forEach(i=>{
-    b.push(...escBytes(padL(i.cantidad+'x ',4)+padL(i.nombre,28)),_LF);
+  items.forEach((i,idx)=>{
+    b.push(...escItemRow(i.cantidad,i.nombre.toUpperCase(),fmtRaw(i.precio*i.cantidad)));
+    if(idx<items.length-1) b.push(...escDash());
   });
   b.push(...escDiv());
-  b.push(...escLine('--- Fin del pedido ---','c',false,0));
+  b.push(...escBold(true));
+  const tot=items.reduce((s,i)=>s+i.precio*i.cantidad,0);
+  b.push(...escBytes(pL('TOTAL PEDIDO',20)+pR('$ '+fmtRaw(tot),12)),_LF);
+  b.push(...escBold(false));
+  b.push(...escDiv());
+  b.push(...escLn('*** COCINA ***','c',false,0));
+  b.push(...escLn('SALCHIMONSTER MOCOA','c',false,0));
   b.push(_LF,_LF,_LF,...escCut());
   return new Uint8Array(b);
 }
 
-function buildEscComanda(mesa, hora, fecha, items, subtotal, descuento, total, tipoPago, mesero){
+function buildEscComanda(mesa, hora, fecha, items, subtotal, descuento, total, tipoPago){
   const b=[];
   b.push(...escInit());
-  b.push(...escLine('SALCHIMONSTER MOCOA','c',true,0x11));
-  b.push(...escLine(fecha+' '+hora,'c',false,0));
-  b.push(...escLine(mesa,'c',true,0x01));
-  b.push(...escLine('Mesero: '+(mesero||'-'),'c',false,0));
+  b.push(...escLn('SALCHIMONSTER','c',true,0x11));
+  b.push(...escLn('MOCOA','c',false,0));
+  b.push(...escLn('COMANDA','c',false,0));
   b.push(...escDiv());
-  items.forEach(i=>{
-    const precio=fmtRaw(i.precio*i.cantidad);
-    const qtyNom=padL(i.cantidad+'x '+i.nombre, 32-precio.length-1);
-    b.push(...escBytes(qtyNom+' '+precio),_LF);
+  b.push(...escBytes('IMPRESION:  '+fecha+'  '+hora),_LF);
+  b.push(_LF);
+  b.push(...escAlign('l'),...escBold(true),...escSize(0x11));
+  b.push(...escBytes(pL('MESA',16)+pR(String(mesa),16)),_LF);
+  b.push(...escSize(0),...escBold(false));
+  b.push(...escDiv());
+  items.forEach((i,idx)=>{
+    b.push(...escItemRow(i.cantidad,i.nombre.toUpperCase(),fmtRaw(i.precio*i.cantidad)));
+    if(idx<items.length-1) b.push(...escDash());
   });
   b.push(...escDiv());
   if(descuento>0){
-    b.push(...escBytes(padL('Subtotal:',22)+padR(fmtRaw(subtotal),10)),_LF);
-    b.push(...escBytes(padL('Descuento:',22)+padR('-'+fmtRaw(descuento),10)),_LF);
+    b.push(...escBytes(pL('SUBTOTAL',20)+pR('$ '+fmtRaw(subtotal),12)),_LF);
+    b.push(...escBytes(pL('DESCUENTO',20)+pR('- '+fmtRaw(descuento),12)),_LF);
   }
-  b.push(...escBold(true),...escBytes(padL('TOTAL:',22)+padR(fmtRaw(total),10)),_LF,...escBold(false));
+  b.push(...escBold(true),...escBytes(pL('TOTAL PEDIDO',20)+pR('$ '+fmtRaw(total),12)),_LF,...escBold(false));
   b.push(...escDiv());
-  b.push(...escLine(tipoPago,'c',false,0));
-  b.push(...escLine('iGracias por su visita!','c',false,0));
+  b.push(...escLn(tipoPago,'c',false,0));
+  b.push(...escLn('*** COCINA ***','c',false,0));
+  b.push(...escLn('SALCHIMONSTER MOCOA','c',false,0));
   b.push(_LF,_LF,_LF,...escCut());
   return new Uint8Array(b);
 }
@@ -5184,7 +5219,7 @@ async function imprimirCocina(){
       const ok=await btConectar();
       if(!ok){ window.print(); return; }
     }
-    const bytes=buildEscCocina(mesa,hora,fecha,comandaItems,currentUserName);
+    const bytes=buildEscCocina(mesa,hora,fecha,comandaItems);
     const ok=await btEnviar(bytes);
     if(ok) return;
   }
@@ -5227,7 +5262,7 @@ async function imprimirComanda(){
     } else {
       tipoPago=f.tipo==='efectivo'?'Pago en efectivo':'Pago por transferencia';
     }
-    const bytes=buildEscComanda(mesa,hora,fecha,items,subtotal,descuento,total,tipoPago,currentUserName);
+    const bytes=buildEscComanda(mesa,hora,fecha,items,subtotal,descuento,total,tipoPago);
     const ok=await btEnviar(bytes);
     if(ok) return;
   }
