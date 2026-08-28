@@ -4700,17 +4700,33 @@ function renderIngredientesTemp(){
   div.innerHTML=recetaIngredientesTemp.map((ing,idx)=>{
     const ur = ing.unidadReceta || ing.unidad;
     const cant = ing.cantidad || ing.cantMax || ing.cantMin || 0;
-    const convStr = ur !== ing.unidad
-      ? ` <span style="color:#718096">(= ${convertirABase(cant, ur, ing.unidad)} ${ing.unidad} base)</span>`
-      : '';
-    return `<div style="display:flex;align-items:center;gap:8px;padding:9px 11px;border-radius:8px;border:1px solid var(--border);background:var(--light);margin-bottom:5px">
-      <div style="flex:1;min-width:0">
-        <div style="font-weight:700;font-size:0.85rem">${ing.nombreProducto}</div>
-        <div style="font-size:0.76rem;margin-top:2px;color:#2d3748">${cant} ${ur}${convStr}</div>
+    const compatibles = unidadesEntradaCompatibles(ing.unidad||'und');
+    const optsUnidad = compatibles.map(u=>`<option value="${u.val}" ${u.val===ur?'selected':''}>${u.val}</option>`).join('');
+    return `<div style="padding:9px 11px;border-radius:8px;border:1px solid var(--border);background:var(--light);margin-bottom:6px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+        <span style="font-weight:700;font-size:0.85rem">${ing.nombreProducto}</span>
+        <button onclick="removeIngredienteTemp(${idx})" class="btn-sm btn-danger" style="padding:3px 8px">🗑</button>
       </div>
-      <button onclick="removeIngredienteTemp(${idx})" class="btn-sm btn-danger" style="padding:4px 8px;flex-shrink:0">🗑</button>
+      <div style="display:flex;gap:6px;align-items:center">
+        <input type="number" inputmode="decimal" value="${cant}" min="0.01" step="0.01"
+          style="flex:1;padding:6px 8px;border:1.5px solid var(--border);border-radius:7px;font-size:0.85rem"
+          onchange="editarCantIngTemp(${idx}, this.value)"
+          placeholder="Cantidad"/>
+        <select style="padding:6px 8px;border:1.5px solid var(--border);border-radius:7px;font-size:0.83rem"
+          onchange="editarUnidadIngTemp(${idx}, this.value)">${optsUnidad}</select>
+      </div>
     </div>`;
   }).join('');
+}
+
+function editarCantIngTemp(idx, val){
+  const v=parseFloat(val)||0;
+  if(v<=0) return;
+  recetaIngredientesTemp[idx].cantidad=v;
+}
+
+function editarUnidadIngTemp(idx, val){
+  recetaIngredientesTemp[idx].unidadReceta=val;
 }
 
 function addIngredienteReceta(){
