@@ -1,0 +1,222 @@
+[1mdiff --git a/index.html b/index.html[m
+[1mindex dfaf162..2235c6c 100644[m
+[1m--- a/index.html[m
+[1m+++ b/index.html[m
+[36m@@ -5048,12 +5048,148 @@[m [masync function guardarComandaAbierta(){[m
+   finally{ btn.disabled=false; btn.textContent='💾 Guardar mesa abierta'; }[m
+ }[m
+ [m
+[31m-function imprimirCocina(){[m
+[31m-  const mesa = $('com-mesa').value.trim() || '—';[m
+[31m-  const hora = $('com-hora').value || new Date().toLocaleTimeString('es-CO',{hour:'2-digit',minute:'2-digit'});[m
+[32m+[m[32m// ══════════════════════════════════════[m[41m[m
+[32m+[m[32m//   BLUETOOTH ESC/POS — IMPRESIÓN DIRECTA[m[41m[m
+[32m+[m[32m// ══════════════════════════════════════[m[41m[m
+[32m+[m[32mlet btDevice = null;[m[41m[m
+[32m+[m[32mlet btChar   = null;[m[41m[m
+[32m+[m[32m// UUIDs comunes en impresoras térmicas chinas (POS-5890U y similares)[m[41m[m
+[32m+[m[32mconst BT_SERVICES = [[m[41m[m
+[32m+[m[32m  {svc:'000018f0-0000-1000-8000-00805f9b34fb', chr:'00002af1-0000-1000-8000-00805f9b34fb'},[m[41m[m
+[32m+[m[32m  {svc:'e7810a71-73ae-499d-8c15-faa9aef0c3f2', chr:'bef8d6c9-9c21-4c9e-b632-bd58c1009f9f'},[m[41m[m
+[32m+[m[32m  {svc:'49535343-fe7d-4ae5-8fa9-9fafd205e455', chr:'49535343-8841-43f4-a8d4-ecbe34729bb3'},[m[41m[m
+[32m+[m[32m];[m[41m[m
+[32m+[m[41m[m
+[32m+[m[32masync function btConectar(){[m[41m[m
+[32m+[m[32m  try{[m[41m[m
+[32m+[m[32m    btDevice = await navigator.bluetooth.requestDevice({[m[41m[m
+[32m+[m[32m      acceptAllDevices:true,[m[41m[m
+[32m+[m[32m      optionalServices: BT_SERVICES.map(s=>s.svc)[m[41m[m
+[32m+[m[32m    });[m[41m[m
+[32m+[m[32m    const server = await btDevice.gatt.connect();[m[41m[m
+[32m+[m[32m    for(const {svc,chr} of BT_SERVICES){[m[41m[m
+[32m+[m[32m      try{[m[41m[m
+[32m+[m[32m        const service = await server.getPrimaryService(svc);[m[41m[m
+[32m+[m[32m        btChar = await service.getCharacteristic(chr);[m[41m[m
+[32m+[m[32m        console.log('[BT] Conectado via',svc);[m[41m[m
+[32m+[m[32m        return true;[m[41m[m
+[32m+[m[32m      }catch(e){}[m[41m[m
+[32m+[m[32m    }[m[41m[m
+[32m+[m[32m    alert('No se encontró el servicio ESC/POS en la impresora.\nVerifica que esté encendida y en modo Bluetooth.');[m[41m[m
+[32m+[m[32m    btDevice=null; btChar=null;[m[41m[m
+[32m+[m[32m    return false;[m[41m[m
+[32m+[m[32m  }catch(e){[m[41m[m
+[32m+[m[32m    if(e.name!=='NotFoundError') alert('Error Bluetooth: '+e.message);[m[41m[m
+[32m+[m[32m    return false;[m[41m[m
+[32m+[m[32m  }[m[41m[m
+[32m+[m[32m}[m[41m[m
+[32m+[m[41m[m
+[32m+[m[32masync function btEnviar(bytes){[m[41m[m
+[32m+[m[32m  if(!btChar || !btDevice?.gatt?.connected) return false;[m[41m[m
+[32m+[m[32m  const CHUNK=512;[m[41m[m
+[32m+[m[32m  try{[m[41m[m
+[32m+[m[32m    for(let i=0;i<bytes.length;i+=CHUNK){[m[41m[m
+[32m+[m[32m      const chunk=bytes.slice(i,i+CHUNK);[m[41m[m
+[32m+[m[32m      try{ await btChar.writeValueWithoutResponse(chunk); }[m[41m[m
+[32m+[m[32m      catch{ await btChar.writeValue(chunk); }[m[41m[m
+[32m+[m[32m      if(i+CHUNK<bytes.length) await new Promise(r=>setTimeout(r,25));[m[41m[m
+[32m+[m[32m    }[m[41m[m
+[32m+[m[32m    return true;[m[41m[m
+[32m+[m[32m  }catch(e){[m[41m[m
+[32m+[m[32m    alert('Error al imprimir: '+e.message);[m[41m[m
+[32m+[m[32m    btChar=null;[m[41m[m
+[32m+[m[32m    return false;[m[41m[m
+[32m+[m[32m  }[m[41m[m
+[32m+[m[32m}[m[41m[m
+[32m+[m[41m[m
+[32m+[m[32m// Mapeo básico de caracteres especiales españoles a CP437/latin[m[41m[m
+[32m+[m[32mconst ESC_CHARMAP={á:0xE1,é:0xE9,í:0xED,ó:0xF3,ú:0xFA,ñ:0xF1,ü:0xFC,[m[41m[m
+[32m+[m[32m                   Á:0xC1,É:0xC9,Í:0xCD,Ó:0xD3,Ú:0xDA,Ñ:0xD1,[m[41m[m
+[32m+[m[32m                   '¡':0xAD,'¿':0xBF,'×':0x78};[m[41m[m
+[32m+[m[32mfunction escBytes(text){[m[41m[m
+[32m+[m[32m  return Array.from(String(text)).map(c=>{[m[41m[m
+[32m+[m[32m    if(ESC_CHARMAP[c]!==undefined) return ESC_CHARMAP[c];[m[41m[m
+[32m+[m[32m    const n=c.charCodeAt(0);[m[41m[m
+[32m+[m[32m    return n<256?n:63; // '?' para chars fuera de rango[m[41m[m
+[32m+[m[32m  });[m[41m[m
+[32m+[m[32m}[m[41m[m
+[32m+[m[41m[m
+[32m+[m[32mconst _E=0x1B,_G=0x1D,_LF=0x0A;[m[41m[m
+[32m+[m[32mconst escInit  =()=>[_E,0x40];[m[41m[m
+[32m+[m[32mconst escAlign =a=>[_E,0x61,a==='c'?1:a==='r'?2:0];[m[41m[m
+[32m+[m[32mconst escBold  =b=>[_E,0x45,b?1:0];[m[41m[m
+[32m+[m[32mconst escSize  =s=>[_G,0x21,s]; // 0=normal, 0x11=doble, 0x01=alto doble[m[41m[m
+[32m+[m[32mconst escCut   =()=>[_G,0x56,0x42,0x05];[m[41m[m
+[32m+[m[32mconst escLine  =(t,al='l',bold=false,sz=0)=>[...escAlign(al),...escBold(bold),...escSize(sz),...escBytes(t),_LF];[m[41m[m
+[32m+[m[32mconst escDiv   =()=>[...escBytes('--------------------------------'),_LF];[m[41m[m
+[32m+[m[32mconst padR     =(s,n)=>String(s).substring(0,n).padStart(n,' ');[m[41m[m
+[32m+[m[32mconst padL     =(s,n)=>String(s).substring(0,n).padEnd(n,' ');[m[41m[m
+[32m+[m[41m[m
+[32m+[m[32mfunction buildEscCocina(mesa, hora, fecha, items, mesero){[m[41m[m
+[32m+[m[32m  const b=[];[m[41m[m
+[32m+[m[32m  b.push(...escInit());[m[41m[m
+[32m+[m[32m  b.push(...escLine('SALCHIMONSTER MOCOA','c',true,0x11));[m[41m[m
+[32m+[m[32m  b.push(...escLine('-- ORDEN DE COCINA --','c',false,0));[m[41m[m
+[32m+[m[32m  b.push(...escLine(fecha+' '+hora,'c',false,0));[m[41m[m
+[32m+[m[32m  b.push(...escDiv());[m[41m[m
+[32m+[m[32m  b.push(...escLine('MESA: '+mesa,'c',true,0x01));[m[41m[m
+[32m+[m[32m  b.push(...escLine('Mesero: '+(mesero||'-'),'c',false,0));[m[41m[m
+[32m+[m[32m  b.push(...escDiv());[m[41m[m
+[32m+[m[32m  items.forEach(i=>{[m[41m[m
+[32m+[m[32m    b.push(...escBytes(padL(i.cantidad+'x ',4)+padL(i.nombre,28)),_LF);[m[41m[m
+[32m+[m[32m  });[m[41m[m
+[32m+[m[32m  b.push(...escDiv());[m[41m[m
+[32m+[m[32m  b.push(...escLine('--- Fin del pedido ---','c',false,0));[m[41m[m
+[32m+[m[32m  b.push(_LF,_LF,_LF,...escCut());[m[41m[m
+[32m+[m[32m  return new Uint8Array(b);[m[41m[m
+[32m+[m[32m}[m[41m[m
+[32m+[m[41m[m
+[32m+[m[32mfunction buildEscComanda(mesa, hora, fecha, items, subtotal, descuento, total, tipoPago, mesero){[m[41m[m
+[32m+[m[32m  const b=[];[m[41m[m
+[32m+[m[32m  b.push(...escInit());[m[41m[m
+[32m+[m[32m  b.push(...escLine('SALCHIMONSTER MOCOA','c',true,0x11));[m[41m[m
+[32m+[m[32m  b.push(...escLine(fecha+' '+hora,'c',false,0));[m[41m[m
+[32m+[m[32m  b.push(...escLine(mesa,'c',true,0x01));[m[41m[m
+[32m+[m[32m  b.push(...escLine('Mesero: '+(mesero||'-'),'c',false,0));[m[41m[m
+[32m+[m[32m  b.push(...escDiv());[m[41m[m
+[32m+[m[32m  items.forEach(i=>{[m[41m[m
+[32m+[m[32m    const precio=fmtRaw(i.precio*i.cantidad);[m[41m[m
+[32m+[m[32m    const qtyNom=padL(i.cantidad+'x '+i.nombre, 32-precio.length-1);[m[41m[m
+[32m+[m[32m    b.push(...escBytes(qtyNom+' '+precio),_LF);[m[41m[m
+[32m+[m[32m  });[m[41m[m
+[32m+[m[32m  b.push(...escDiv());[m[41m[m
+[32m+[m[32m  if(descuento>0){[m[41m[m
+[32m+[m[32m    b.push(...escBytes(padL('Subtotal:',22)+padR(fmtRaw(subtotal),10)),_LF);[m[41m[m
+[32m+[m[32m    b.push(...escBytes(padL('Descuento:',22)+padR('-'+fmtRaw(descuento),10)),_LF);[m[41m[m
+[32m+[m[32m  }[m[41m[m
+[32m+[m[32m  b.push(...escBold(true),...escBytes(padL('TOTAL:',22)+padR(fmtRaw(total),10)),_LF,...escBold(false));[m[41m[m
+[32m+[m[32m  b.push(...escDiv());[m[41m[m
+[32m+[m[32m  b.push(...escLine(tipoPago,'c',false,0));[m[41m[m
+[32m+[m[32m  b.push(...escLine('iGracias por su visita!','c',false,0));[m[41m[m
+[32m+[m[32m  b.push(_LF,_LF,_LF,...escCut());[m[41m[m
+[32m+[m[32m  return new Uint8Array(b);[m[41m[m
+[32m+[m[32m}[m[41m[m
+[32m+[m[41m[m
+[32m+[m[32m// Variable para guardar la factura activa en el modal de resumen[m[41m[m
+[32m+[m[32mlet currentRF = null;[m[41m[m
+[32m+[m[41m[m
+[32m+[m[32masync function imprimirCocina(){[m[41m[m
+[32m+[m[32m  const mesa=$('com-mesa').value.trim()||'—';[m[41m[m
+[32m+[m[32m  const hora=$('com-hora').value||new Date().toLocaleTimeString('es-CO',{hour:'2-digit',minute:'2-digit'});[m[41m[m
+   if(!comandaItems.length){ alert('Agrega platos antes de imprimir.'); return; }[m
+[31m-  const fecha = new Date().toLocaleDateString('es-CO',{day:'2-digit',month:'2-digit',year:'numeric'});[m
+[31m-  const itemsHtml = comandaItems.map(i=>`<div class="pr"><span class="pb">${i.cantidad}×</span><span style="flex:1;margin-left:6px">${i.nombre}</span></div>`).join('');[m
+[32m+[m[32m  const fecha=new Date().toLocaleDateString('es-CO',{day:'2-digit',month:'2-digit',year:'numeric'});[m[41m[m
+[32m+[m[32m  if(navigator.bluetooth){[m[41m[m
+[32m+[m[32m    // Conectar directo aquí (gesto de usuario activo)[m[41m[m
+[32m+[m[32m    if(!btChar || !btDevice?.gatt?.connected){[m[41m[m
+[32m+[m[32m      const ok=await btConectar();[m[41m[m
+[32m+[m[32m      if(!ok){ window.print(); return; }[m[41m[m
+[32m+[m[32m    }[m[41m[m
+[32m+[m[32m    const bytes=buildEscCocina(mesa,hora,fecha,comandaItems,currentUserName);[m[41m[m
+[32m+[m[32m    const ok=await btEnviar(bytes);[m[41m[m
+[32m+[m[32m    if(ok) return;[m[41m[m
+[32m+[m[32m  }[m[41m[m
+[32m+[m[32m  // Fallback: window.print()[m[41m[m
+[32m+[m[32m  const itemsHtml=comandaItems.map(i=>`<div class="pr"><span class="pb">${i.cantidad}×</span><span style="flex:1;margin-left:6px">${i.nombre}</span></div>`).join('');[m[41m[m
+   $('print-area').innerHTML=`[m
+     <h2>SALCHIMONSTER MOCOA</h2>[m
+     <div class="pc" style="font-size:10px;margin-bottom:2px">ORDEN DE COCINA</div>[m
+[36m@@ -5068,18 +5204,43 @@[m [mfunction imprimirCocina(){[m
+   window.print();[m
+ }[m
+ [m
+[31m-function imprimirComanda(){[m
+[31m-  const mesa    = $('rf-titulo').textContent;[m
+[31m-  const hora    = $('rf-hora').textContent;[m
+[31m-  const subtotal= $('rf-subtotal').textContent;[m
+[31m-  const descRow = $('rf-desc-row').style.display!=='none';[m
+[31m-  const desc    = $('rf-descuento').textContent;[m
+[31m-  const total   = $('rf-total').textContent;[m
+[31m-  const pago    = $('rf-pago').textContent;[m
+[31m-  const fecha   = new Date().toLocaleDateString('es-CO',{day:'2-digit',month:'2-digit',year:'numeric'});[m
+[31m-  // Parsear items del modal de resumen[m
+[31m-  const tmpDiv = document.createElement('div');[m
+[31m-  tmpDiv.innerHTML = $('rf-items').innerHTML;[m
+[32m+[m[32masync function imprimirComanda(){[m[41m[m
+[32m+[m[32m  const fecha=new Date().toLocaleDateString('es-CO',{day:'2-digit',month:'2-digit',year:'numeric'});[m[41m[m
+[32m+[m[32m  if(navigator.bluetooth && currentRF){[m[41m[m
+[32m+[m[32m    // Conectar directo aquí (gesto de usuario activo)[m[41m[m
+[32m+[m[32m    if(!btChar || !btDevice?.gatt?.connected){[m[41m[m
+[32m+[m[32m      const ok=await btConectar();[m[41m[m
+[32m+[m[32m      if(!ok){ /* cae al fallback abajo */ }[m[41m[m
+[32m+[m[32m    }[m[41m[m
+[32m+[m[32m    const f=currentRF;[m[41m[m
+[32m+[m[32m    const mesa=`Mesa ${f.mesa||'—'}`;[m[41m[m
+[32m+[m[32m    const hora=f.hora||'—';[m[41m[m
+[32m+[m[32m    const items=f.items||[];[m[41m[m
+[32m+[m[32m    const subtotal=f.subtotal||(f.monto||f.total||0);[m[41m[m
+[32m+[m[32m    const descuento=f.descuento||0;[m[41m[m
+[32m+[m[32m    const total=f.total||f.monto||0;[m[41m[m
+[32m+[m[32m    let tipoPago='';[m[41m[m
+[32m+[m[32m    if(f.mixto&&f.pagos?.length){[m[41m[m
+[32m+[m[32m      const ef=(f.pagos||[]).filter(p=>p.tipo==='efectivo').reduce((s,p)=>s+(p.monto||0),0);[m[41m[m
+[32m+[m[32m      const tr=(f.pagos||[]).filter(p=>p.tipo==='transferencia').reduce((s,p)=>s+(p.monto||0),0);[m[41m[m
+[32m+[m[32m      tipoPago=`Efectivo: ${fmtRaw(ef)}  Trans: ${fmtRaw(tr)}`;[m[41m[m
+[32m+[m[32m    } else {[m[41m[m
+[32m+[m[32m      tipoPago=f.tipo==='efectivo'?'Pago en efectivo':'Pago por transferencia';[m[41m[m
+[32m+[m[32m    }[m[41m[m
+[32m+[m[32m    const bytes=buildEscComanda(mesa,hora,fecha,items,subtotal,descuento,total,tipoPago,currentUserName);[m[41m[m
+[32m+[m[32m    const ok=await btEnviar(bytes);[m[41m[m
+[32m+[m[32m    if(ok) return;[m[41m[m
+[32m+[m[32m  }[m[41m[m
+[32m+[m[32m  // Fallback: window.print()[m[41m[m
+[32m+[m[32m  const mesa=$('rf-titulo').textContent;[m[41m[m
+[32m+[m[32m  const hora=$('rf-hora').textContent;[m[41m[m
+[32m+[m[32m  const subtotal=$('rf-subtotal').textContent;[m[41m[m
+[32m+[m[32m  const descRow=$('rf-desc-row').style.display!=='none';[m[41m[m
+[32m+[m[32m  const desc=$('rf-descuento').textContent;[m[41m[m
+[32m+[m[32m  const total=$('rf-total').textContent;[m[41m[m
+[32m+[m[32m  const pago=$('rf-pago').textContent;[m[41m[m
+[32m+[m[32m  const tmpDiv=document.createElement('div');[m[41m[m
+[32m+[m[32m  tmpDiv.innerHTML=$('rf-items').innerHTML;[m[41m[m
+   let itemsHtml='';[m
+   tmpDiv.querySelectorAll('div').forEach(r=>{[m
+     const cols=r.querySelectorAll('span');[m
+[36m@@ -5105,6 +5266,7 @@[m [mfunction imprimirComanda(){[m
+ [m
+ function verResumenFactura(docId){[m
+   const f = state.facturas.find(x=>x._docId===docId); if(!f) return;[m
+[32m+[m[32m  currentRF = f;[m[41m[m
+   $('rf-titulo').textContent = `Mesa ${f.mesa}`;[m
+   $('rf-hora').textContent   = f.hora || '—';[m
+   // Items[m

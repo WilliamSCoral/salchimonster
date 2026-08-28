@@ -1180,6 +1180,18 @@
     <input type="hidden" id="receta-plato-nombre-val"/>
     <div style="font-size:0.78rem;color:var(--gray);margin-bottom:12px">Define los ingredientes que se descuentan del inventario cada vez que se vende este plato.</div>
 
+    <!-- Copiar ingredientes de otro plato -->
+    <div style="background:#fffbeb;border:1.5px solid #f6e05e;border-radius:10px;padding:10px 12px;margin-bottom:12px">
+      <div style="font-weight:700;font-size:0.82rem;margin-bottom:8px;color:#744210">📋 Copiar ingredientes de otro plato</div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <select id="rec-copiar-de" style="flex:1;padding:8px 10px;border:1.5px solid #f6e05e;border-radius:8px;font-size:0.85rem;background:#fff">
+          <option value="">Seleccionar plato...</option>
+        </select>
+        <button onclick="copiarIngredientesReceta()" style="padding:8px 14px;background:#d69e2e;color:#fff;border:none;border-radius:8px;font-weight:700;font-size:0.82rem;cursor:pointer;white-space:nowrap">Copiar ↓</button>
+      </div>
+      <div id="rec-copiar-info" style="font-size:0.75rem;color:#744210;margin-top:6px;min-height:14px"></div>
+    </div>
+
     <!-- Agregar ingrediente -->
     <div style="background:var(--light);border-radius:10px;padding:12px;margin-bottom:12px">
       <div style="font-weight:700;font-size:0.82rem;margin-bottom:8px;text-transform:uppercase;letter-spacing:0.04em;color:var(--gray)">➕ Agregar ingrediente</div>
@@ -4652,8 +4664,34 @@ function openModalReceta(platoNombre){
     $('rec-unidad-entrada').innerHTML=compatibles.map(u=>`<option value="${u.val}">${u.val}</option>`).join('');
     $('rec-unidad-entrada').value=unidadBase;
   };
+  // Poblar select "Copiar de"
+  const selCopiar=$('rec-copiar-de');
+  const platoActual=platoNombre;
+  selCopiar.innerHTML='<option value="">Seleccionar plato...</option>'+
+    menuCache.filter(p=>p.nombre!==platoActual && invRecetas[p.nombre]?.ingredientes?.length)
+             .map(p=>`<option value="${p.nombre.replace(/"/g,'&quot;')}">${p.nombre} (${invRecetas[p.nombre].ingredientes.length} ing.)</option>`)
+             .join('');
+  $('rec-copiar-info').textContent='';
   renderIngredientesTemp();
   openModal('modal-receta');
+}
+
+function copiarIngredientesReceta(){
+  const sel=$('rec-copiar-de');
+  const platoOrigen=sel.value;
+  if(!platoOrigen){ $('rec-copiar-info').textContent='⚠️ Selecciona un plato primero.'; return; }
+  const recetaOrigen=invRecetas[platoOrigen];
+  if(!recetaOrigen?.ingredientes?.length){ $('rec-copiar-info').textContent='⚠️ Ese plato no tiene ingredientes.'; return; }
+  const copiados=JSON.parse(JSON.stringify(recetaOrigen.ingredientes));
+  // Fusionar: agregar los que no estén ya, reemplazar los que sí
+  copiados.forEach(ing=>{
+    const idx=recetaIngredientesTemp.findIndex(x=>x.productoId===ing.productoId);
+    if(idx>=0) recetaIngredientesTemp[idx]=ing;
+    else recetaIngredientesTemp.push(ing);
+  });
+  renderIngredientesTemp();
+  $('rec-copiar-info').textContent=`✅ ${copiados.length} ingrediente${copiados.length>1?'s':''} copiados de "${platoOrigen}". Guarda para confirmar.`;
+  sel.value='';
 }
 
 function renderIngredientesTemp(){
