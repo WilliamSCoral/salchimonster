@@ -2357,6 +2357,7 @@ async function eliminarExtrasEmp(docId){
 
 // ── Grid de días en el modal de pago ──
 let pagoEmpDescansos = {}; // {fecha: bool} — solo informativo
+let pagoEmpNoPago    = {}; // {fecha: bool} — día no pagado (falta/enfermedad)
 
 function cargarExtrasEnModal(empId, desdeStr, hastaStr){
   const emp=empleadosReg.find(e=>e._docId===empId);
@@ -2373,18 +2374,22 @@ function cargarExtrasEnModal(empId, desdeStr, hastaStr){
     const diaNom=DIAS_CORTO[d.getDay()];
     const fechaLbl=`${d.getDate()} ${MESES_CORTO[d.getMonth()]}`;
     const extraMin=empExtras[`${empId}_${fecha}`]?.extraMin||0;
-    const isDesc=pagoEmpDescansos[fecha]||false;
-    const descStyle=isDesc?'background:#f7fafc;color:#a0aec0':'';
-    rows+=`<div style="display:flex;align-items:center;gap:6px;padding:6px 0;border-bottom:1px solid #f0f4f8;${descStyle}">
-      <button type="button" onclick="toggleDescModal('${fecha}')" title="Marcar descanso"
-        style="padding:2px 6px;border-radius:5px;border:1.5px solid ${isDesc?'#e53e3e':'#e2e8f0'};background:${isDesc?'#fff5f5':'#fff'};color:${isDesc?'#e53e3e':'#a0aec0'};font-size:0.68rem;cursor:pointer;font-weight:700;min-width:24px">D</button>
-      <span style="font-weight:700;font-size:0.8rem;width:26px;color:${isDesc?'#a0aec0':'var(--text)'}">${diaNom}</span>
-      <span style="font-size:0.77rem;color:var(--gray);flex:1">${fechaLbl}${isDesc?' · descanso':''}</span>
-      <input type="number" min="0" placeholder="0" value="${extraMin||''}"
-        style="width:55px;padding:4px 6px;border:1.5px solid var(--border);border-radius:6px;font-size:0.8rem;text-align:center"
+    const isDesc  = pagoEmpDescansos[fecha]||false;
+    const isNoPago= pagoEmpNoPago[fecha]||false;
+    const rowBg   = isNoPago?'background:#fff5f5':isDesc?'background:#f7fafc':'';
+    const labelExtra = isNoPago?' · ❌ no pagado':isDesc?' · descanso':'';
+    rows+=`<div style="display:flex;align-items:center;gap:5px;padding:6px 0;border-bottom:1px solid #f0f4f8;${rowBg}">
+      <button type="button" onclick="toggleDescModal('${fecha}')" title="Día de descanso (se paga)"
+        style="padding:2px 5px;border-radius:5px;border:1.5px solid ${isDesc?'#3182ce':'#e2e8f0'};background:${isDesc?'#ebf8ff':'#fff'};color:${isDesc?'#2b6cb0':'#a0aec0'};font-size:0.68rem;cursor:pointer;font-weight:700;min-width:22px">D</button>
+      <button type="button" onclick="toggleNoPagoModal('${fecha}')" title="Día no pagado (falta/enfermedad)"
+        style="padding:2px 5px;border-radius:5px;border:1.5px solid ${isNoPago?'#e53e3e':'#e2e8f0'};background:${isNoPago?'#fff5f5':'#fff'};color:${isNoPago?'#e53e3e':'#a0aec0'};font-size:0.68rem;cursor:pointer;font-weight:700;min-width:24px">NP</button>
+      <span style="font-weight:700;font-size:0.8rem;width:26px;color:${isNoPago?'#e53e3e':isDesc?'#a0aec0':'var(--text)'}">${diaNom}</span>
+      <span style="font-size:0.77rem;color:${isNoPago?'#e53e3e':'var(--gray)'};flex:1">${fechaLbl}${labelExtra}</span>
+      <input type="number" min="0" placeholder="0" value="${extraMin||''}" ${isNoPago?'disabled':''}
+        style="width:55px;padding:4px 6px;border:1.5px solid var(--border);border-radius:6px;font-size:0.8rem;text-align:center;${isNoPago?'opacity:0.35':''}"
         onchange="guardarExtrasEmp('${empId}','${fecha}',this.value);calcPagoEmpTotal()"/>
       <span style="font-size:0.7rem;color:var(--gray)">min</span>
-      <span style="font-size:0.7rem;color:#276749;font-weight:700;width:44px;text-align:right">${extraMin>0?fmt(Math.round(r.minuto*extraMin)):''}</span>
+      <span style="font-size:0.7rem;color:${isNoPago?'#e53e3e':'#276749'};font-weight:700;width:44px;text-align:right">${isNoPago?'-'+fmt(r.diario):extraMin>0?fmt(Math.round(r.minuto*extraMin)):''}</span>
     </div>`;
     d.setDate(d.getDate()+1);
   }
@@ -2395,6 +2400,14 @@ function cargarExtrasEnModal(empId, desdeStr, hastaStr){
 
 function toggleDescModal(fecha){
   pagoEmpDescansos[fecha]=!pagoEmpDescansos[fecha];
+  if(pagoEmpDescansos[fecha]) pagoEmpNoPago[fecha]=false; // D y NP son mutuamente excluyentes
+  const empId=$('pagoemp-id').value;
+  cargarExtrasEnModal(empId, pagoEmpDesde, pagoEmpHasta);
+}
+
+function toggleNoPagoModal(fecha){
+  pagoEmpNoPago[fecha]=!pagoEmpNoPago[fecha];
+  if(pagoEmpNoPago[fecha]) pagoEmpDescansos[fecha]=false; // mutuamente excluyentes
   const empId=$('pagoemp-id').value;
   cargarExtrasEnModal(empId, pagoEmpDesde, pagoEmpHasta);
 }
@@ -2612,21 +2625,23 @@ function calcPagoEmpTotal(){
   // Días totales del período (todos se pagan)
   const desde=new Date(pagoEmpDesde+'T00:00:00');
   const hasta=new Date(pagoEmpHasta+'T23:59:59');
-  let totalDias=0; const d=new Date(desde);
-  while(d<=hasta){ totalDias++; d.setDate(d.getDate()+1); }
-  // Extras del período desde DB
-  let totalMin=0;
-  const dc=new Date(desde);
-  while(dc<=hasta){
-    const fecha=dc.toISOString().slice(0,10);
-    totalMin+=(empExtras[`${empId}_${fecha}`]?.extraMin||0);
-    dc.setDate(dc.getDate()+1);
+  let totalDias=0, diasNoPago=0, totalMin=0;
+  const d=new Date(desde);
+  while(d<=hasta){
+    const fecha=d.toISOString().slice(0,10);
+    if(pagoEmpNoPago[fecha]){ diasNoPago++; }
+    else {
+      totalDias++;
+      totalMin+=(empExtras[`${empId}_${fecha}`]?.extraMin||0);
+    }
+    d.setDate(d.getDate()+1);
   }
   const extrasVal=Math.round(r.minuto*totalMin);
   const subtotal=totalDias*r.diario;
-  if($('pagoemp-dias-count')) $('pagoemp-dias-count').textContent=totalDias;
+  const descNoPago=diasNoPago*r.diario;
+  if($('pagoemp-dias-count')) $('pagoemp-dias-count').textContent=totalDias+(diasNoPago>0?` (−${diasNoPago} NP)`:'');
   if($('pagoemp-dias-label')) $('pagoemp-dias-label').textContent=totalDias;
-  if($('pagoemp-subtotal')) $('pagoemp-subtotal').textContent=fmt(subtotal);
+  if($('pagoemp-subtotal')) $('pagoemp-subtotal').textContent=fmt(subtotal)+(diasNoPago>0?` (−${fmt(descNoPago)} NP)`:'');
   if($('pagoemp-min-total')) $('pagoemp-min-total').textContent=totalMin;
   if($('pagoemp-extras-val')) $('pagoemp-extras-val').textContent=fmt(extrasVal);
   if($('pagoemp-total')) $('pagoemp-total').textContent=fmt(subtotal+extrasVal);
@@ -2651,6 +2666,7 @@ function showModalPagarEmp(empId){
   $('pagoemp-nombre').textContent=emp.nombre;
   pagoEmpPeriodo='7';
   pagoEmpDescansos={};
+  pagoEmpNoPago={};
   setPeriodoBtns('7');
   $('pagoemp-fechas').style.display='none';
   setPagoEmpTipo('efectivo');
@@ -2718,11 +2734,15 @@ async function registrarPagoEmpleado(){
   // Calcular totales desde DB
   const desde=new Date(pagoEmpDesde+'T00:00:00');
   const hasta=new Date(pagoEmpHasta+'T23:59:59');
-  let totalDias=0, totalMin=0;
+  let totalDias=0, diasNoPago=0, totalMin=0;
   const d=new Date(desde);
   while(d<=hasta){
-    totalDias++;
-    totalMin+=(empExtras[`${empId}_${d.toISOString().slice(0,10)}`]?.extraMin||0);
+    const fecha=d.toISOString().slice(0,10);
+    if(pagoEmpNoPago[fecha]){ diasNoPago++; }
+    else {
+      totalDias++;
+      totalMin+=(empExtras[`${empId}_${fecha}`]?.extraMin||0);
+    }
     d.setDate(d.getDate()+1);
   }
   const extrasVal=Math.round(r.minuto*totalMin);
