@@ -1500,13 +1500,20 @@
       </div>
     </div>
 
-    <!-- Total -->
-    <div style="background:linear-gradient(135deg,#276749,#2f855a);color:#fff;border-radius:12px;padding:14px;text-align:center;margin-bottom:10px">
-      <div style="font-size:0.72rem;opacity:0.8;margin-bottom:4px">TOTAL A PAGAR</div>
+    <!-- Total calculado -->
+    <div style="background:linear-gradient(135deg,#276749,#2f855a);color:#fff;border-radius:12px;padding:14px;text-align:center;margin-bottom:8px">
+      <div style="font-size:0.72rem;opacity:0.8;margin-bottom:4px">TOTAL CALCULADO</div>
       <div style="font-size:1.5rem;font-weight:800" id="pagoemp-total">$0</div>
     </div>
 
-    <!-- Saldo disponible -->
+    <!-- Campo abono -->
+    <div style="background:#fffbeb;border:1.5px solid #f6e05e;border-radius:10px;padding:10px 12px;margin-bottom:8px">
+      <label style="font-size:0.75rem;font-weight:700;color:#744210;display:block;margin-bottom:4px">💸 Monto a pagar ahora (abono o pago completo)</label>
+      <input type="text" inputmode="numeric" id="pagoemp-monto-abono" placeholder="0" oninput="moneyFmt(this);actualizarAbonoInfo()" style="width:100%;padding:10px;border-radius:8px;border:1.5px solid #d69e2e;font-size:1rem;font-weight:700;text-align:right;box-sizing:border-box"/>
+      <div id="pagoemp-abono-saldo" style="font-size:0.78rem;color:#744210;margin-top:5px;text-align:right;display:none"></div>
+    </div>
+
+    <!-- Saldo disponible caja -->
     <div style="font-size:0.75rem;color:var(--gray);margin-bottom:10px;text-align:center;background:#f7fafc;border-radius:8px;padding:6px" id="pagoemp-saldo-info"></div>
 
     <!-- Tipo -->
@@ -1515,11 +1522,18 @@
       <button id="btn-pagoemp-tr" onclick="setPagoEmpTipo('transferencia')" style="flex:1;padding:10px;border-radius:10px;border:2px solid #e2e8f0;background:#fff;color:#4a5568;font-weight:700;cursor:pointer;font-size:0.88rem">🏦 Transferencia</button>
     </div>
 
-    <!-- Error solapamiento -->
+    <!-- Error solapamiento (pago completo) -->
     <div id="pagoemp-overlap-error" style="display:none;background:#fff5f5;border:2px solid #fc8181;border-radius:12px;padding:14px 16px;margin-bottom:12px;text-align:center">
       <div style="font-size:1.3rem;margin-bottom:4px">⛔</div>
       <div style="font-weight:800;color:#c53030;font-size:0.95rem;margin-bottom:4px">Período ya pagado</div>
       <div id="pagoemp-overlap-detail" style="font-size:0.8rem;color:#742a2a;line-height:1.5"></div>
+    </div>
+
+    <!-- Info abono pendiente -->
+    <div id="pagoemp-abono-info" style="display:none;background:#fffbeb;border:2px solid #d69e2e;border-radius:12px;padding:14px 16px;margin-bottom:12px;text-align:center">
+      <div style="font-size:1.3rem;margin-bottom:4px">💰</div>
+      <div style="font-weight:800;color:#744210;font-size:0.95rem;margin-bottom:4px">Abono pendiente en este período</div>
+      <div id="pagoemp-abono-detail" style="font-size:0.82rem;color:#744210;line-height:1.6"></div>
     </div>
 
     <button id="btn-registrar-pago-emp" class="btn-green" style="width:100%;font-size:0.95rem;padding:13px;border-radius:12px" onclick="registrarPagoEmpleado()">✅ Registrar pago</button>
@@ -2490,11 +2504,18 @@ function renderHistorialPagos(){
     const delBtn=currentRole==='admin'
       ?`<button onclick="delPagoEmpleado('${p._docId}')" style="padding:4px 9px;border-radius:7px;border:none;background:#fff5f5;color:#e53e3e;font-weight:700;cursor:pointer;font-size:0.8rem;border:1.5px solid #fed7d7">✕</button>`
       :'';
-    return `<div style="background:#fff;border:1.5px solid var(--border);border-radius:10px;padding:11px 14px;margin-bottom:8px">
+    const esAbono=p.estado==='abono';
+    const abonoBadge=esAbono
+      ?`<span style="background:#fffbeb;color:#744210;border:1.5px solid #d69e2e;border-radius:6px;padding:2px 7px;font-size:0.72rem;font-weight:700;margin-left:4px">⚠️ ABONO</span>`
+      :(p.estado==='completo'||!p.estado)?''
+      :'';
+    const saldoInfo=esAbono&&p.saldo
+      ?`<div style="color:#c05621;font-weight:700">⏳ Saldo pendiente: ${fmt(p.saldo)} (total: ${fmt(p.totalCalculado||0)})</div>`:''
+    return `<div style="background:#fff;border:1.5px solid ${esAbono?'#d69e2e':'var(--border)'};border-radius:10px;padding:11px 14px;margin-bottom:8px">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px">
-        <div style="font-weight:700;font-size:0.92rem">${p.nombreEmpleado||'—'}</div>
+        <div style="font-weight:700;font-size:0.92rem">${p.nombreEmpleado||'—'}${abonoBadge}</div>
         <div style="display:flex;align-items:center;gap:8px">
-          <div style="font-weight:800;font-size:1rem;color:#276749">${fmt(p.monto||0)}</div>
+          <div style="font-weight:800;font-size:1rem;color:#276749">${fmt(p.montoPagado||p.monto||0)}</div>
           ${delBtn}
         </div>
       </div>
@@ -2503,6 +2524,7 @@ function renderHistorialPagos(){
           <div>📅 <strong>Pagado:</strong> ${fechaPago}</div>
           <div>🗓 <strong>Período:</strong> ${periodoStr}${diasStr?' ('+diasStr+')':''}</div>
           ${p.extrasMin?`<div>⏱ <strong>Extras:</strong> ${p.extrasMin} min = ${fmt(p.extrasVal||0)}</div>`:''}
+          ${saldoInfo}
         </div>
         <div>${tipoBadge}</div>
       </div>
@@ -2644,7 +2666,39 @@ function calcPagoEmpTotal(){
   if($('pagoemp-subtotal')) $('pagoemp-subtotal').textContent=fmt(subtotal)+(diasNoPago>0?` (−${fmt(descNoPago)} NP)`:'');
   if($('pagoemp-min-total')) $('pagoemp-min-total').textContent=totalMin;
   if($('pagoemp-extras-val')) $('pagoemp-extras-val').textContent=fmt(extrasVal);
-  if($('pagoemp-total')) $('pagoemp-total').textContent=fmt(subtotal+extrasVal);
+  const totalFinal=subtotal+extrasVal;
+  if($('pagoemp-total')) $('pagoemp-total').textContent=fmt(totalFinal);
+  // Pre-rellenar campo de abono con el total completo (solo si está vacío o era igual al total anterior)
+  const abonoInput=$('pagoemp-monto-abono');
+  if(abonoInput){
+    const raw=parseInt((abonoInput.value||'0').replace(/\./g,''),10)||0;
+    if(raw===0||abonoInput.dataset.autoFilled==='1'){
+      abonoInput.value=totalFinal>0?totalFinal.toString().replace(/\B(?=(\d{3})+(?!\d))/g,'.'):'';
+      abonoInput.dataset.autoFilled='1';
+    }
+    actualizarAbonoInfo();
+  }
+}
+
+function actualizarAbonoInfo(){
+  const abonoInput=$('pagoemp-monto-abono');
+  if(!abonoInput) return;
+  abonoInput.dataset.autoFilled='0'; // usuario editó manualmente
+  const totalEl=$('pagoemp-total');
+  if(!totalEl) return;
+  const totalTexto=totalEl.textContent.replace(/[^0-9]/g,'');
+  const totalCalculado=parseInt(totalTexto,10)||0;
+  const montoIngresado=parseInt((abonoInput.value||'0').replace(/\./g,''),10)||0;
+  const saldoDiv=$('pagoemp-abono-saldo');
+  if(saldoDiv){
+    if(montoIngresado>0 && montoIngresado<totalCalculado){
+      const saldo=totalCalculado-montoIngresado;
+      saldoDiv.style.display='block';
+      saldoDiv.innerHTML=`⚠️ Quedaría un saldo pendiente de <strong>${fmt(saldo)}</strong>`;
+    } else {
+      saldoDiv.style.display='none';
+    }
+  }
 }
 
 function setPagoEmpTipo(tipo){
@@ -2667,6 +2721,9 @@ function showModalPagarEmp(empId){
   pagoEmpPeriodo='7';
   pagoEmpDescansos={};
   pagoEmpNoPago={};
+  const _ai=$('pagoemp-monto-abono'); if(_ai){_ai.value='';_ai.dataset.autoFilled='1';}
+  if($('pagoemp-abono-saldo')) $('pagoemp-abono-saldo').style.display='none';
+  if($('pagoemp-abono-info')) $('pagoemp-abono-info').style.display='none';
   setPeriodoBtns('7');
   $('pagoemp-fechas').style.display='none';
   setPagoEmpTipo('efectivo');
@@ -2685,43 +2742,73 @@ function verificarSolapePeriodo(){
   const empId=$('pagoemp-id').value;
   const errDiv=$('pagoemp-overlap-error');
   const detDiv=$('pagoemp-overlap-detail');
+  const abonoInfoDiv=$('pagoemp-abono-info');
+  const abonoDetDiv=$('pagoemp-abono-detail');
   const btn=$('btn-registrar-pago-emp');
-  if(!errDiv||!empId||!pagoEmpDesde||!pagoEmpHasta){ if(errDiv) errDiv.style.display='none'; return false; }
-  // Buscar pagos anteriores del mismo empleado
-  const solapados=historialPagosEmp.filter(p=>{
-    if(p.empleadoId!==empId) return false;
-    // Obtener desde/hasta del pago histórico
-    let d=p.desde, h=p.hasta;
-    if(!d||!h){
-      // Parsear del string "YYYY-MM-DD → YYYY-MM-DD"
-      const parts=(p.periodo||'').split(' → ');
-      d=parts[0]?.trim(); h=parts[1]?.trim();
-    }
-    if(!d||!h) return false;
-    // Hay solapamiento si: d <= pagoEmpHasta  Y  h >= pagoEmpDesde
-    return d<=pagoEmpHasta && h>=pagoEmpDesde;
-  });
-  if(solapados.length){
-    const detalles=solapados.map(p=>{
-      const d=p.desde||p.periodo?.split(' → ')[0]?.trim()||'';
-      const h=p.hasta||p.periodo?.split(' → ')[1]?.trim()||'';
-      const fmt=s=>{ if(!s) return ''; const [y,m,dd]=s.split('-'); return `${dd}/${m}/${y}`; };
-      const mf=new Intl.NumberFormat('es-CO',{style:'currency',currency:'COP',maximumFractionDigits:0}).format(p.monto||0);
-      return `${fmt(d)} al ${fmt(h)} — pagado ${mf}`;
-    }).join('<br>');
-    detDiv.innerHTML=`A <strong>${historialPagosEmp.find(p=>p.empleadoId===empId)?.nombreEmpleado||'este empleado'}</strong> ya se le pagó por días que se cruzan con este período:<br><br><em>${detalles}</em>`;
-    errDiv.style.display='block';
-    btn.disabled=true;
-    btn.style.opacity='0.45';
-    btn.style.cursor='not-allowed';
-    return true;
-  } else {
-    errDiv.style.display='none';
-    btn.disabled=false;
-    btn.style.opacity='1';
-    btn.style.cursor='pointer';
+  if(!errDiv||!empId||!pagoEmpDesde||!pagoEmpHasta){
+    if(errDiv) errDiv.style.display='none';
+    if(abonoInfoDiv) abonoInfoDiv.style.display='none';
     return false;
   }
+  const fmtFecha=s=>{ if(!s) return ''; const [y,m,dd]=s.split('-'); return `${dd}/${m}/${y}`; };
+  // Clasificar solapados en completos vs abonos
+  const solapados=historialPagosEmp.filter(p=>{
+    if(p.empleadoId!==empId) return false;
+    let d=p.desde, h=p.hasta;
+    if(!d||!h){ const parts=(p.periodo||'').split(' → '); d=parts[0]?.trim(); h=parts[1]?.trim(); }
+    if(!d||!h) return false;
+    return d<=pagoEmpHasta && h>=pagoEmpDesde;
+  });
+  const solapCompletos=solapados.filter(p=>p.estado!=='abono');
+  const solapAbonos=solapados.filter(p=>p.estado==='abono');
+
+  if(solapCompletos.length){
+    // Bloquear: pago completo ya registrado
+    const detalles=solapCompletos.map(p=>{
+      const d=p.desde||p.periodo?.split(' → ')[0]?.trim()||'';
+      const h=p.hasta||p.periodo?.split(' → ')[1]?.trim()||'';
+      const mf=fmt(p.monto||0);
+      return `${fmtFecha(d)} al ${fmtFecha(h)} — pagado ${mf}`;
+    }).join('<br>');
+    detDiv.innerHTML=`A <strong>${solapCompletos[0].nombreEmpleado||'este empleado'}</strong> ya se le pagó por días que se cruzan con este período:<br><br><em>${detalles}</em>`;
+    errDiv.style.display='block';
+    abonoInfoDiv.style.display='none';
+    btn.disabled=true; btn.style.opacity='0.45'; btn.style.cursor='not-allowed';
+    return true;
+  }
+
+  errDiv.style.display='none';
+
+  if(solapAbonos.length){
+    // Mostrar info de abono pendiente y pre-rellenar monto con el saldo
+    const detalles=solapAbonos.map(p=>{
+      const d=p.desde||p.periodo?.split(' → ')[0]?.trim()||'';
+      const h=p.hasta||p.periodo?.split(' → ')[1]?.trim()||'';
+      const abonado=fmt(p.montoPagado||p.monto||0);
+      const saldo=fmt(p.saldo||0);
+      const total=fmt(p.totalCalculado||0);
+      return `Del ${fmtFecha(d)} al ${fmtFecha(h)}:<br>Total: <strong>${total}</strong> · Abonado: <strong>${abonado}</strong> · <span style="color:#c05621;font-weight:800">Pendiente: ${saldo}</span>`;
+    }).join('<br><br>');
+    abonoDetDiv.innerHTML=detalles;
+    abonoInfoDiv.style.display='block';
+    // Pre-rellenar input con el saldo más reciente
+    const primerAbono=solapAbonos[0];
+    const saldoPendiente=primerAbono.saldo||0;
+    const abonoInput=$('pagoemp-monto-abono');
+    if(abonoInput && saldoPendiente>0){
+      abonoInput.value=saldoPendiente.toString().replace(/\B(?=(\d{3})+(?!\d))/g,'.');
+      abonoInput.dataset.autoFilled='0';
+      actualizarAbonoInfo();
+    }
+    btn.disabled=false; btn.style.opacity='1'; btn.style.cursor='pointer';
+    btn.textContent='💰 Registrar abono / completar pago';
+    return false; // No bloquear, permitir pago
+  }
+
+  abonoInfoDiv.style.display='none';
+  btn.disabled=false; btn.style.opacity='1'; btn.style.cursor='pointer';
+  btn.textContent='✅ Registrar pago';
+  return false;
 }
 
 async function registrarPagoEmpleado(){
@@ -2731,7 +2818,7 @@ async function registrarPagoEmpleado(){
   if(!pagoEmpDesde||!pagoEmpHasta){ alert('Selecciona el período.'); return; }
   if(verificarSolapePeriodo()){ return; }
   const r=empRates(emp);
-  // Calcular totales desde DB
+  // Calcular totales
   const desde=new Date(pagoEmpDesde+'T00:00:00');
   const hasta=new Date(pagoEmpHasta+'T23:59:59');
   let totalDias=0, diasNoPago=0, totalMin=0;
@@ -2739,41 +2826,76 @@ async function registrarPagoEmpleado(){
   while(d<=hasta){
     const fecha=d.toISOString().slice(0,10);
     if(pagoEmpNoPago[fecha]){ diasNoPago++; }
-    else {
-      totalDias++;
-      totalMin+=(empExtras[`${empId}_${fecha}`]?.extraMin||0);
-    }
+    else { totalDias++; totalMin+=(empExtras[`${empId}_${fecha}`]?.extraMin||0); }
     d.setDate(d.getDate()+1);
   }
   const extrasVal=Math.round(r.minuto*totalMin);
   const subtotal=totalDias*r.diario;
-  const monto=subtotal+extrasVal;
+  const totalCalculado=subtotal+extrasVal;
   const tipo=$('pagoemp-tipo').value;
-  if(monto<=0){ alert('El monto calculado es 0.'); return; }
+  if(totalCalculado<=0){ alert('El monto calculado es 0.'); return; }
+  // Monto a pagar ahora (abono o completo)
+  const montoAhora=parseInt((($('pagoemp-monto-abono')?.value)||'0').replace(/\./g,''),10)||totalCalculado;
+  if(montoAhora<=0){ alert('El monto a pagar debe ser mayor a 0.'); return; }
+  if(montoAhora>totalCalculado){ alert(`El monto (${fmt(montoAhora)}) supera el total calculado (${fmt(totalCalculado)}).`); return; }
+  const esAbono=montoAhora<totalCalculado;
+  const saldo=esAbono ? totalCalculado-montoAhora : 0;
   const hoy=new Date().toISOString().slice(0,10);
-  const pagoData={ nombre:emp.nombre, pago:monto, tipo, createdAt:TS(), createdBy:currentUser?.uid||'', empleadoId:empId, esOcasional:false, periodo:`${pagoEmpDesde} → ${pagoEmpHasta}`, diasPagados:totalDias, extrasMin:totalMin, extrasVal };
-  const histData={ empleadoId:empId, nombreEmpleado:emp.nombre, monto, tipo, periodo:`${pagoEmpDesde} → ${pagoEmpHasta}`, desde:pagoEmpDesde, hasta:pagoEmpHasta, diasPagados:totalDias, extrasMin:totalMin, extrasVal, fecha:hoy, creadoAt:TS(), creadoPor:currentUser?.uid||'' };
+
+  // Detectar si hay un abono previo en este período
+  const abonoExistente=historialPagosEmp.find(p=>{
+    if(p.empleadoId!==empId||p.estado!=='abono') return false;
+    let dd=p.desde, hh=p.hasta;
+    if(!dd||!hh){ const pts=(p.periodo||'').split(' → '); dd=pts[0]?.trim(); hh=pts[1]?.trim(); }
+    return dd&&hh && dd<=pagoEmpHasta && hh>=pagoEmpDesde;
+  });
+
   try{
-    // 1. Registrar el pago
     const batch=db.batch();
-    batch.set(DRAFT().doc('current').collection('empleados').doc(), pagoData);
-    batch.set(EMP_PAGO().doc(), histData);
-    await batch.commit();
-    closeModal('modal-pagar-emp');
-    // 2. Eliminar todos los extras del período (en batch separado)
-    const extrasAEliminar=[];
-    const dc=new Date(pagoEmpDesde+'T00:00:00');
-    const hh=new Date(pagoEmpHasta+'T23:59:59');
-    while(dc<=hh){
-      const fecha=dc.toISOString().slice(0,10);
-      const docId=`${empId}_${fecha}`;
-      if(empExtras[docId]?._docId) extrasAEliminar.push(docId);
-      dc.setDate(dc.getDate()+1);
-    }
-    if(extrasAEliminar.length){
-      const b2=db.batch();
-      extrasAEliminar.forEach(id=>b2.delete(EMP_EXTRAS().doc(id)));
-      await b2.commit();
+
+    if(abonoExistente){
+      // Actualizar el registro del abono existente
+      const nuevoMontoPagado=(abonoExistente.montoPagado||abonoExistente.monto||0)+montoAhora;
+      const nuevoSaldo=totalCalculado-nuevoMontoPagado;
+      const nuevoEstado=nuevoSaldo<=0?'completo':'abono';
+      batch.update(EMP_PAGO().doc(abonoExistente._docId),{
+        montoPagado:nuevoMontoPagado,
+        saldo:Math.max(0,nuevoSaldo),
+        estado:nuevoEstado,
+        ultimoPagoFecha:hoy,
+        ultimoPagoTipo:tipo,
+      });
+      // Registrar movimiento de caja por el monto de este abono
+      batch.set(DRAFT().doc('current').collection('empleados').doc(),{
+        nombre:emp.nombre, pago:montoAhora, tipo, createdAt:TS(), createdBy:currentUser?.uid||'',
+        empleadoId:empId, esOcasional:false, periodo:`${pagoEmpDesde} → ${pagoEmpHasta}`,
+        diasPagados:totalDias, extrasMin:totalMin, extrasVal, esAbono:true,
+        abonoNum:(abonoExistente.abonoNum||1)+1,
+      });
+      await batch.commit();
+      closeModal('modal-pagar-emp');
+      // Eliminar extras solo si quedó completo
+      if(nuevoEstado==='completo'){
+        const extrasAEliminar=[];
+        const dc=new Date(pagoEmpDesde+'T00:00:00'); const hc=new Date(pagoEmpHasta+'T23:59:59');
+        while(dc<=hc){ const fe=dc.toISOString().slice(0,10); const di=`${empId}_${fe}`; if(empExtras[di]?._docId) extrasAEliminar.push(di); dc.setDate(dc.getDate()+1); }
+        if(extrasAEliminar.length){ const b2=db.batch(); extrasAEliminar.forEach(id=>b2.delete(EMP_EXTRAS().doc(id))); await b2.commit(); }
+      }
+    } else {
+      // Pago nuevo (completo o primer abono)
+      const pagoData={ nombre:emp.nombre, pago:montoAhora, tipo, createdAt:TS(), createdBy:currentUser?.uid||'', empleadoId:empId, esOcasional:false, periodo:`${pagoEmpDesde} → ${pagoEmpHasta}`, diasPagados:totalDias, extrasMin:totalMin, extrasVal, esAbono };
+      const histData={ empleadoId:empId, nombreEmpleado:emp.nombre, totalCalculado, montoPagado:montoAhora, saldo, estado:esAbono?'abono':'completo', monto:montoAhora, tipo, periodo:`${pagoEmpDesde} → ${pagoEmpHasta}`, desde:pagoEmpDesde, hasta:pagoEmpHasta, diasPagados:totalDias, extrasMin:totalMin, extrasVal, fecha:hoy, creadoAt:TS(), creadoPor:currentUser?.uid||'', abonoNum:1 };
+      batch.set(DRAFT().doc('current').collection('empleados').doc(), pagoData);
+      batch.set(EMP_PAGO().doc(), histData);
+      await batch.commit();
+      closeModal('modal-pagar-emp');
+      // Eliminar extras solo si es pago completo
+      if(!esAbono){
+        const extrasAEliminar=[];
+        const dc=new Date(pagoEmpDesde+'T00:00:00'); const hc=new Date(pagoEmpHasta+'T23:59:59');
+        while(dc<=hc){ const fe=dc.toISOString().slice(0,10); const di=`${empId}_${fe}`; if(empExtras[di]?._docId) extrasAEliminar.push(di); dc.setDate(dc.getDate()+1); }
+        if(extrasAEliminar.length){ const b2=db.batch(); extrasAEliminar.forEach(id=>b2.delete(EMP_EXTRAS().doc(id))); await b2.commit(); }
+      }
     }
   } catch(e){ alert('Error: '+e.message); }
 }
