@@ -1868,7 +1868,7 @@ function setupListeners() {
 
   unsubs.push(draftRef.collection('facturas').onSnapshot(snap => {
     state.facturas = snap.docs.map(d => ({...d.data(), _docId: d.id}));
-    state.facturas.sort(tsSort);
+    state.facturas.sort((a,b)=>(parseInt(a.num)||0)-(parseInt(b.num)||0));
     renderFacturas();
     updateFacturaNumField();
   }, e => console.error(e)));
@@ -2136,6 +2136,20 @@ async function addFactura() {
   catch(e){ alert('Error al guardar: '+e.message); }
 }
 
+async function editarNumFactura(docId, numActual){
+  if(locked) return;
+  const nuevo=prompt(`Número actual: ${numActual}\nIngresa el nuevo número de factura:`, numActual);
+  if(nuevo===null||nuevo.trim()==='') return;
+  const n=parseInt(nuevo.trim(),10);
+  if(isNaN(n)||n<=0){ alert('Número inválido.'); return; }
+  // Advertir si ya existe ese número
+  const duplicado=state.facturas.find(f=>parseInt(f.num)===n && f._docId!==docId);
+  if(duplicado && !confirm(`⚠️ La factura #${n} ya existe. ¿Continuar de todas formas?`)) return;
+  try{
+    await DRAFT().doc('current').collection('facturas').doc(docId).update({num:String(n)});
+  } catch(e){ alert('Error: '+e.message); }
+}
+
 async function delFactura(docId){
   if(currentRole !== 'admin'){ alert('⛔ Solo los administradores pueden eliminar facturas.'); return; }
   if(locked) return;
@@ -2170,18 +2184,19 @@ function renderFacturas(){
     const seq=idx+1, did=f._docId;
     // Etiqueta extra para facturas con detalle
     const mesaTag=f.modoDetalle&&f.mesa?`<span onclick="verResumenFactura('${did}')" style="font-size:0.68rem;background:#fef3c7;color:#92400e;padding:1px 7px;border-radius:4px;margin-left:4px;cursor:pointer;border:1px solid #f6d860" title="Ver detalle">Mesa ${f.mesa} ${f.hora?'⏰'+f.hora:''} 🔍</span>`:'';
+    const editBtn=currentRole==='admin'?`<button class="btn-sm" onclick="editarNumFactura('${did}','${f.num}')" style="padding:2px 6px;font-size:0.72rem;background:#ebf8ff;color:#2b6cb0;border:1px solid #bee3f8;border-radius:5px;cursor:pointer;margin-left:4px" title="Editar número">✏️</button>`:'';
     if(!f.mixto){
       const badge=f.tipo==='efectivo'?'<span class="badge badge-ef">Ef</span>':'<span class="badge badge-tr">Tr</span>';
-      html+=`<tr><td style="color:#a0aec0;font-size:0.75rem">${seq}</td><td><strong>${f.num}</strong>${mesaTag}${f.desc?`<br><span style="font-size:0.7rem;color:var(--gray)">${f.desc}</span>`:''}</td><td><strong>${fmt(f.monto||f.total||0)}</strong></td><td>${badge}</td><td>${currentRole==='admin'?`<button class="btn-sm btn-danger" onclick="delFactura('${did}')">✕</button>`:''}</td></tr>`;
+      html+=`<tr><td style="color:#a0aec0;font-size:0.75rem">${seq}</td><td><strong>${f.num}</strong>${editBtn}${mesaTag}${f.desc?`<br><span style="font-size:0.7rem;color:var(--gray)">${f.desc}</span>`:''}</td><td><strong>${fmt(f.monto||f.total||0)}</strong></td><td>${badge}</td><td>${currentRole==='admin'?`<button class="btn-sm btn-danger" onclick="delFactura('${did}')">✕</button>`:''}</td></tr>`;
     } else {
       const pagos=f.pagos||[];
       const efTotal=pagos.filter(p=>p.tipo==='efectivo').reduce((s,p)=>s+(p.monto||0),0);
       const transfers=pagos.filter(p=>p.tipo==='transferencia');
       let first=true;
       const delBtn = currentRole==='admin' ? `<button class="btn-sm btn-danger" onclick="delFactura('${did}')">✕</button>` : '';
-      if(efTotal>0){ html+=`<tr><td style="color:#a0aec0;font-size:0.75rem">${seq}</td><td><strong>${f.num}</strong>${mesaTag}${f.desc?`<br><span style="font-size:0.7rem;color:var(--gray)">${f.desc}</span>`:''}</td><td><strong>${fmt(efTotal)}</strong></td><td><span class="badge badge-ef">Ef</span></td><td>${first?delBtn:''}</td></tr>`; first=false; }
+      if(efTotal>0){ html+=`<tr><td style="color:#a0aec0;font-size:0.75rem">${seq}</td><td><strong>${f.num}</strong>${editBtn}${mesaTag}${f.desc?`<br><span style="font-size:0.7rem;color:var(--gray)">${f.desc}</span>`:''}</td><td><strong>${fmt(efTotal)}</strong></td><td><span class="badge badge-ef">Ef</span></td><td>${first?delBtn:''}</td></tr>`; first=false; }
       transfers.forEach((p,ti)=>{ html+=`<tr><td></td><td><strong>${f.num}-${ti+1}</strong>${f.desc?`<br><span style="font-size:0.7rem;color:var(--gray)">${f.desc}</span>`:''}</td><td><strong>${fmt(p.monto||0)}</strong></td><td><span class="badge badge-tr">Tr</span></td><td>${first?delBtn:''}</td></tr>`; first=false; });
-      if(!efTotal&&!transfers.length){ html+=`<tr><td style="color:#a0aec0;font-size:0.75rem">${seq}</td><td><strong>${f.num}</strong>${mesaTag}${f.desc?`<br><span style="font-size:0.7rem;color:var(--gray)">${f.desc}</span>`:''}</td><td><strong>${fmt(f.total||f.monto||0)}</strong></td><td><span class="badge badge-ef">Ef</span></td><td>${delBtn}</td></tr>`; }
+      if(!efTotal&&!transfers.length){ html+=`<tr><td style="color:#a0aec0;font-size:0.75rem">${seq}</td><td><strong>${f.num}</strong>${editBtn}${mesaTag}${f.desc?`<br><span style="font-size:0.7rem;color:var(--gray)">${f.desc}</span>`:''}</td><td><strong>${fmt(f.total||f.monto||0)}</strong></td><td><span class="badge badge-ef">Ef</span></td><td>${delBtn}</td></tr>`; }
     }
   });
   const t=totals();
