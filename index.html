@@ -5402,10 +5402,10 @@ function buildEscCocina(mesa, hora, fecha, items){
     if(idx<items.length-1) b.push(...escDash());
   });
   b.push(...escDiv());
-  b.push(...escBold(true));
   const tot=items.reduce((s,i)=>s+(i.esLlevar?i.precio*i.cantidad:i.precio),0);
-  b.push(...escBytes(pL('TOTAL PEDIDO',20)+pR('$ '+fmtRaw(tot),12)),_LF);
-  b.push(...escBold(false));
+  b.push(...escLn('TOTAL PEDIDO','c',true,0x11));
+  b.push(...escLn('$'+fmtRaw(tot),'c',true,0x11));
+  b.push(...escSize(0),...escBold(false));
   b.push(...escDiv());
   b.push(...escLn('*** COCINA ***','c',false,0));
   b.push(...escLn('SALCHIMONSTER MOCOA','c',false,0));
@@ -5437,7 +5437,9 @@ function buildEscComanda(mesa, hora, fecha, items, subtotal, descuento, total, t
     b.push(...escBytes(pL('SUBTOTAL',20)+pR('$ '+fmtRaw(subtotal),12)),_LF);
     b.push(...escBytes(pL('DESCUENTO',20)+pR('- '+fmtRaw(descuento),12)),_LF);
   }
-  b.push(...escBold(true),...escBytes(pL('TOTAL PEDIDO',20)+pR('$ '+fmtRaw(total),12)),_LF,...escBold(false));
+  b.push(...escLn('TOTAL PEDIDO','c',true,0x11));
+  b.push(...escLn('$'+fmtRaw(total),'c',true,0x11));
+  b.push(...escSize(0),...escBold(false));
   b.push(...escDiv());
   b.push(...escLn(tipoPago,'c',false,0));
   b.push(...escLn('*** COCINA ***','c',false,0));
@@ -5489,7 +5491,7 @@ async function imprimirComanda(){
       if(!ok){ /* cae al fallback abajo */ }
     }
     const f=currentRF;
-    const mesa=`Mesa ${f.mesa||'—'}`;
+    const mesa=String(f.mesa||'—');
     const hora=f.hora||'—';
     const items=f.items||[];
     const subtotal=f.subtotal||(f.monto||f.total||0);
