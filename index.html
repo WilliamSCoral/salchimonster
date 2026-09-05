@@ -5227,27 +5227,6 @@ async function guardarComandaAbierta(silencioso=false){
     const ref = DRAFT().doc('current').collection('comandas');
     const itemsCocina = itemsParaCocina.map(i=>({cantidad:i.cantidad, nombre:i.nombre, codigo:i.codigo||''}));
     if(docId){
-      // ── Validar: solo se pueden AGREGAR ítems, nunca reducir ni quitar ──
-      const originalDoc = await ref.doc(docId).get();
-      const originalItems = originalDoc.data()?.items || [];
-      const originalCount = {};
-      originalItems.forEach(it=>{
-        originalCount[it.nombre] = (originalCount[it.nombre]||0) + (Number(it.cantidad)||1);
-      });
-      const newCount = {};
-      itemsParaCocina.forEach(it=>{
-        const cant = Number(it.cantidad);
-        if(cant > 0) newCount[it.nombre] = (newCount[it.nombre]||0) + cant;
-      });
-      const reducidos = Object.entries(originalCount)
-        .filter(([nombre, cantOrig])=>(newCount[nombre]||0) < cantOrig)
-        .map(([nombre])=>nombre);
-      if(reducidos.length > 0){
-        $('com-error').textContent = `⛔ No se puede quitar: ${reducidos.join(', ')}. Usa el descuento para ajustes.`;
-        btn.disabled=false; btn.textContent='💾 Guardar mesa abierta';
-        return;
-      }
-
       await ref.doc(docId).update(data);
 
       // ── Sincronizar cocina ──
