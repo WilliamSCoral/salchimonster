@@ -5054,10 +5054,11 @@ function renderComandasAbiertas(){
       : esRecoger
       ? `<span style="background:#eff6ff;color:#1d4ed8;font-weight:800;font-size:0.72rem;padding:3px 10px;border-radius:20px;border:1px solid #93c5fd">🏃 PARA LLEVAR</span>`
       : '';
-    // Color naranja para domicilios siempre, independiente del estado cocina
-    const borderColor = esDomicilio ? '#fb923c' : despachada ? '#68d391' : parcial ? '#f6e05e' : '#f6e05e';
-    const bgColor     = esDomicilio ? '#fff7ed' : despachada ? '#f0fff4' : '#fffbeb';
-    return `<div style="background:${bgColor};border:1.5px solid ${borderColor};border-radius:10px;padding:10px 12px;margin-bottom:8px">
+    // Color fuerte para domicilios y para llevar, siempre independiente del estado cocina
+    const borderWidth = esDomicilio ? '3px' : esRecoger ? '3px' : '1.5px';
+    const borderColor = esDomicilio ? '#ea580c' : esRecoger ? '#1d4ed8' : despachada ? '#68d391' : parcial ? '#f6e05e' : '#f6e05e';
+    const bgColor     = esDomicilio ? '#fed7aa' : esRecoger ? '#bfdbfe' : despachada ? '#f0fff4' : '#fffbeb';
+    return `<div style="background:${bgColor};border:${borderWidth} solid ${borderColor};border-radius:10px;padding:10px 12px;margin-bottom:8px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
         <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
           <span style="font-weight:800;font-size:0.95rem">Mesa ${c.mesa||'—'}</span>
@@ -5073,7 +5074,7 @@ function renderComandasAbiertas(){
           <button class="btn-sm btn-ghost" onclick="editarComanda('${c._docId}')">✏️ Editar</button>
           <button class="btn-sm btn-blue" onclick="abrirCobro('${c._docId}')">💳 Cobrar</button>
           ${!despachada ? `<button class="btn-sm btn-green" onclick="despacharDesdeMesa('${c.mesa||''}')" title="Marcar como despachado en cocina">🍳 Despachado</button>` : ''}
-          <button class="btn-sm btn-danger" onclick="eliminarComanda('${c._docId}','${c.mesa||''}')">🗑️</button>
+          ${!despachada ? `<button class="btn-sm btn-danger" onclick="eliminarComanda('${c._docId}','${c.mesa||''}')" title="Eliminar comanda">🗑️</button>` : ''}
         </div>
       </div>
     </div>`;
@@ -5648,20 +5649,14 @@ function verResumenFactura(docId){
 }
 
 async function eliminarComanda(docId, mesa){
-  if(!confirm(`¿Eliminar la comanda de la Mesa ${mesa}?\nEsto no registra ningún cobro.`)) return;
+  if(!confirm(`⚠️ ¿Eliminar la comanda de la Mesa ${mesa}?\n\nSe borrará el pedido completo sin registrar cobro. Esta acción no se puede deshacer.`)) return;
   try{
-    // Buscar pedidos_cocina por comandaId y por mesa (fallback para docs viejos sin comandaId)
-    const [snapId, snapMesa] = await Promise.all([
-      db.collection('pedidos_cocina').where('comandaId','==',docId).get(),
-      db.collection('pedidos_cocina').where('mesa','==',mesa).get()
-    ]);
-    // Unir resultados sin duplicados
-    const docsMap = {};
-    [...snapId.docs, ...snapMesa.docs].forEach(d => { docsMap[d.id] = d; });
-    const todosDocs = Object.values(docsMap);
+    // Buscar pedidos_cocina solo por comandaId (evita falsos positivos de mesas anteriores)
+    const snapId = await db.collection('pedidos_cocina').where('comandaId','==',docId).get();
+    const todosDocs = snapId.docs;
     const hayDesp = todosDocs.some(d => d.data().estado === 'despachado');
     if(hayDesp){
-      alert(`⛔ No se puede eliminar la Mesa ${mesa}: ya hay productos entregados en cocina. Usa el descuento para ajustes.`);
+      alert(`⛔ No se puede eliminar la Mesa ${mesa}: ya fue despachada en cocina.`);
       return;
     }
     // Eliminar comanda y todos los pedidos_cocina vinculados
