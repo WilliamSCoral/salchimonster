@@ -4804,14 +4804,35 @@ async function cargarCuadreSemanal() {
         if(!doc.exists){ diasData.push({fecha, ventasBrutas:0, gastos:0, neto:0, compras:[], totalCompras:0, sinDatos:true}); continue; }
         const r = doc.data();
         const t = r.totals || {};
-        ventasBrutas = t.bruto || 0;
-        gastosTot    = t.tg   || 0;
-        comprasTot   = t.tc   || 0;
-        comprasDia   = (r.state && r.state.compras) ? r.state.compras : [];
+        comprasDia = (r.state && r.state.compras) ? r.state.compras : [];
+        // Si totals tiene valores, usarlos; si no, calcular desde r.state (docs viejos)
+        if(t.bruto !== undefined || t.tg !== undefined){
+          ventasBrutas = t.bruto || 0;
+          gastosTot    = t.tg   || 0;
+          comprasTot   = t.tc   || 0;
+        } else {
+          // Fallback: calcular desde state guardado
+          const st = r.state || {};
+          const facts = st.facturas || [];
+          const gasts = st.gastos   || [];
+          const comps = st.compras  || [];
+          let brutoCalc = 0;
+          facts.forEach(f => {
+            if(f.mixto){ (f.pagos||[]).forEach(p => { brutoCalc += (p.monto||0); }); }
+            else { brutoCalc += (f.monto || f.total || 0); }
+          });
+          const tgCalc = gasts.reduce((s,g) => s + (g.monto||0), 0);
+          const tcCalc = comps.reduce((s,c) => s + (c.monto||0), 0);
+          ventasBrutas = brutoCalc;
+          gastosTot    = tgCalc;
+          comprasTot   = tcCalc;
+        }
       }
 
       const neto = ventasBrutas - gastosTot;
-      diasData.push({ fecha, ventasBrutas, gastos: gastosTot, neto, compras: comprasDia, totalCompras: comprasTot });
+      // Anotar la fecha en cada compra para mostrarla en la tabla
+      const comprasConFecha = comprasDia.map(c => ({...c, _fecha: fecha}));
+      diasData.push({ fecha, ventasBrutas, gastos: gastosTot, neto, compras: comprasConFecha, totalCompras: comprasTot });
     }
 
     // Consultar pagos de empleados en el rango
@@ -4857,7 +4878,7 @@ async function cargarCuadreSemanal() {
     $('sem-total-ventas').textContent = fmt(totalVentasNetas);
 
     // Renderizar compras
-    const todasCompras = diasData.flatMap(d => d.compras);
+    const todasCompras = diasData.filter(d => !d.sinDatos).flatMap(d => d.compras||[]);
     $('sem-compras-lista').innerHTML = todasCompras.length === 0
       ? '<p class="empty-msg">Sin compras en el período</p>'
       : `<table style="width:100%;font-size:0.82rem;border-collapse:collapse">
@@ -4889,7 +4910,7 @@ async function cargarCuadreSemanal() {
             : '';
           return `<div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid #f0f4f8">
             <div>
-              <span style="font-weight:700">${p.nombre||p.empleado||'—'}</span>${badge}
+              <span style="font-weight:700">${p.nombreEmpleado||p.nombre||'—'}</span>${badge}
               <div style="font-size:0.75rem;color:var(--gray)">${p.periodo||p.fecha||''}</div>
             </div>
             <span style="font-weight:800;color:#c05621">${fmt(monto)}</span>
