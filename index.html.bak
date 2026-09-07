@@ -270,7 +270,7 @@
   <div class="tab" id="tab-4" onclick="goTab(4)"><span class="tab-icon">📈</span>Resumen</div>
   <div class="tab" id="tab-5" onclick="goTab(5)"><span class="tab-icon">📅</span>Historial</div>
   <div class="tab" id="tab-6" onclick="goTab(6)"><span class="tab-icon">👥</span>Usuarios</div>
-  <div class="tab" id="tab-7" onclick="goTab(7)"><span class="tab-icon">📊</span>Semanal</div>
+  <div class="tab" id="tab-7" onclick="goTab(7)"><span class="tab-icon">🧊</span>Granizados</div>
   <div class="tab" id="tab-8" onclick="goTab(8)"><span class="tab-icon">🍽️</span>Menú</div>
   <div class="tab" id="tab-9" onclick="goTab(9)"><span class="tab-icon">📦</span>Inventario</div>
 </div>
@@ -649,56 +649,383 @@
   </div>
 </div>
 
-<!-- ═══ PAGE 7: CUADRE SEMANAL ═══ -->
+<!-- ═══ PAGE 7: GRANIZADOS ═══ -->
 <div class="page" id="page-7">
+
+  <!-- Ventas -->
   <div class="card">
-    <div class="card-title">📊 Cuadre semanal</div>
-    <div class="form-row" style="margin-bottom:10px">
-      <div class="fg"><label style="font-size:0.75rem">Desde</label><input type="date" id="sem-desde"/></div>
-      <div class="fg"><label style="font-size:0.75rem">Hasta</label><input type="date" id="sem-hasta"/></div>
+    <div class="card-title">🧊 Ventas del día</div>
+    <div style="font-size:0.78rem;color:var(--gray);margin-bottom:12px;background:var(--light);padding:6px 10px;border-radius:8px">
+      💡 Precio: <strong>9oz = $10.000</strong> · <strong>12oz = $12.000</strong>
     </div>
-    <button onclick="cargarCuadreSemanal()" class="btn-blue" style="width:100%;padding:12px">🔍 Cargar período</button>
+
+    <div style="font-weight:700;font-size:0.82rem;margin-bottom:6px;color:#2b6cb0">🥤 Vasos 9 oz</div>
+    <div class="form-row">
+      <div class="fg">
+        <label>💵 Cantidad efectivo</label>
+        <input type="number" inputmode="numeric" id="g9ef" placeholder="0" min="0" oninput="scheduleGranUpdate()"/>
+      </div>
+      <div class="fg">
+        <label>🏦 Cantidad transferencia</label>
+        <input type="number" inputmode="numeric" id="g9tr" placeholder="0" min="0" oninput="scheduleGranUpdate()"/>
+      </div>
+    </div>
+
+    <div style="font-weight:700;font-size:0.82rem;margin:14px 0 6px;color:#553c9a">🥤 Vasos 12 oz</div>
+    <div class="form-row">
+      <div class="fg">
+        <label>💵 Cantidad efectivo</label>
+        <input type="number" inputmode="numeric" id="g12ef" placeholder="0" min="0" oninput="scheduleGranUpdate()"/>
+      </div>
+      <div class="fg">
+        <label>🏦 Cantidad transferencia</label>
+        <input type="number" inputmode="numeric" id="g12tr" placeholder="0" min="0" oninput="scheduleGranUpdate()"/>
+      </div>
+    </div>
+
+    <div style="font-weight:700;font-size:0.82rem;margin:14px 0 6px;color:#276749">🍦 Cremosos</div>
+    <div class="form-row">
+      <div class="fg">
+        <label>💵 Cantidad efectivo</label>
+        <input type="number" inputmode="numeric" id="gcremef" placeholder="0" min="0" oninput="scheduleGranUpdate()"/>
+      </div>
+      <div class="fg">
+        <label>🏦 Cantidad transferencia</label>
+        <input type="number" inputmode="numeric" id="gcremtr" placeholder="0" min="0" oninput="scheduleGranUpdate()"/>
+      </div>
+    </div>
+
+    <div style="margin-top:14px;border-top:1.5px dashed var(--border);padding-top:12px">
+      <div style="display:flex;justify-content:space-between;font-size:0.83rem;margin-bottom:4px">
+        <span style="color:#2b6cb0">🥤 9oz — <span id="gr-tot9">0</span> vasos</span>
+        <span id="gr-val9" style="font-weight:700;color:#2b6cb0">$ 0</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:0.83rem;margin-bottom:4px">
+        <span style="color:#553c9a">🥤 12oz — <span id="gr-tot12">0</span> vasos</span>
+        <span id="gr-val12" style="font-weight:700;color:#553c9a">$ 0</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:0.83rem;margin-bottom:10px">
+        <span style="color:#276749">🍦 Cremosos — <span id="gr-tot-crem">0</span> und.</span>
+        <span id="gr-val-crem" style="font-weight:700;color:#276749">$ 0</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:0.83rem;margin-bottom:3px">
+        <span>💵 Efectivo ingresado</span><span id="gr-ef" style="font-weight:700;color:#276749">$ 0</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:0.83rem;margin-bottom:10px">
+        <span>🏦 Transferencias</span><span id="gr-tr" style="font-weight:700;color:#2b6cb0">$ 0</span>
+      </div>
+      <div class="neto-box neto-pos" style="margin:0">
+        <span class="neto-label">🧊 Total bruto</span>
+        <span class="neto-value" id="gr-bruto">$ 0</span>
+      </div>
+    </div>
   </div>
-  <div id="sem-resultado" style="display:none">
-    <!-- Ventas netas del período -->
-    <div class="card">
-      <div class="card-title">💰 Ventas netas del período</div>
-      <div id="sem-dias-lista"></div>
-      <div style="display:flex;justify-content:space-between;font-weight:800;font-size:1rem;border-top:2px solid var(--border);padding-top:10px;margin-top:8px">
-        <span>Total ventas netas</span><span id="sem-total-ventas" style="color:#276749">$0</span>
+
+  <!-- Descuento granizados (justo después de las cantidades) -->
+  <div class="card">
+    <div class="card-title">🏷️ Descuento granizados</div>
+    <div class="form-row">
+      <div class="fg">
+        <label>Monto descuento</label>
+        <input type="text" inputmode="numeric" id="gr-desc-monto" placeholder="0" oninput="moneyFmt(this);scheduleGranUpdate()"/>
+      </div>
+      <div class="fg">
+        <label>Código (quien aplica)</label>
+        <input type="password" id="gr-desc-codigo" placeholder="Código secreto" autocomplete="off" oninput="scheduleGranUpdate();lookupDiscountCode()"/>
       </div>
     </div>
-    <!-- Compras del período -->
-    <div class="card">
-      <div class="card-title">🛒 Compras del período</div>
-      <div id="sem-compras-lista"></div>
-      <div style="display:flex;justify-content:space-between;font-weight:800;font-size:1rem;border-top:2px solid var(--border);padding-top:10px;margin-top:8px">
-        <span>Total compras</span><span id="sem-total-compras" style="color:var(--red)">$0</span>
+    <div id="gr-desc-info" style="display:none;margin-top:8px;padding:8px 12px;border-radius:8px;font-size:0.8rem"></div>
+    <button onclick="clearDescuento()" class="btn-sm btn-danger" style="margin-top:10px;width:100%">🗑 Eliminar descuento</button>
+    <div style="display:flex;justify-content:space-between;font-size:0.85rem;margin-top:8px;color:var(--red)">
+      <span>(−) Descuento aplicado</span><span id="gr-desc-val" style="font-weight:700">$ 0</span>
+    </div>
+    <div style="display:flex;justify-content:space-between;font-size:0.88rem;font-weight:800;background:#f0fff4;padding:8px 10px;border-radius:8px;margin-top:6px;color:#276749">
+      <span>= Total neto granizados</span><span id="gr-neto">$ 0</span>
+    </div>
+  </div>
+
+  <!-- Sodas -->
+  <div class="card">
+    <div class="card-title">🥤 Sodas <span style="font-size:0.75rem;font-weight:400;color:var(--gray)">$8.000 c/u</span></div>
+    <div class="form-row">
+      <div class="fg">
+        <label>💵 Cantidad efectivo</label>
+        <input type="number" inputmode="numeric" id="soda-ef" placeholder="0" min="0" oninput="scheduleGranUpdate()"/>
+      </div>
+      <div class="fg">
+        <label>🏦 Cantidad transferencia</label>
+        <input type="number" inputmode="numeric" id="soda-tr" placeholder="0" min="0" oninput="scheduleGranUpdate()"/>
       </div>
     </div>
-    <!-- Dinero que debería haber -->
-    <div class="card">
-      <div class="neto-box neto-pos">
-        <span class="neto-label">💼 Dinero que debería haber<br><small style="font-weight:400;font-size:0.75rem">(ventas netas − compras)</small></span>
-        <span class="neto-value" id="sem-deberia-haber">$0</span>
+    <div style="margin-top:12px;border-top:1.5px dashed var(--border);padding-top:10px">
+      <div style="display:flex;justify-content:space-between;font-size:0.83rem;margin-bottom:3px">
+        <span style="color:#276749">💵 Sodas efectivo</span><span id="soda-val-ef" style="font-weight:700;color:#276749">$ 0</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:0.83rem;margin-bottom:8px">
+        <span style="color:#2b6cb0">🏦 Sodas transferencia</span><span id="soda-val-tr" style="font-weight:700;color:#2b6cb0">$ 0</span>
       </div>
     </div>
-    <!-- Pagos de empleados -->
-    <div class="card">
-      <div class="card-title">👷 Pagos de empleados del período</div>
-      <div id="sem-empleados-lista"></div>
-      <div style="display:flex;justify-content:space-between;font-weight:800;font-size:1rem;border-top:2px solid var(--border);padding-top:10px;margin-top:8px">
-        <span>Total empleados</span><span id="sem-total-empleados" style="color:#c05621">$0</span>
+    <!-- Descuento sodas -->
+    <div style="background:#fffbeb;border:1px solid #fef08a;border-radius:10px;padding:10px 12px">
+      <div style="font-weight:700;font-size:0.8rem;margin-bottom:6px;color:#78350f">🏷️ Descuento sodas (requiere código)</div>
+      <div class="form-row" style="margin-bottom:6px">
+        <div class="fg"><label style="font-size:0.75rem">Monto descuento</label>
+          <input type="text" inputmode="numeric" id="soda-desc-monto" placeholder="0" oninput="moneyFmt(this);scheduleGranUpdate()" style="background:#fff"/>
+        </div>
+        <div class="fg"><label style="font-size:0.75rem">Código secreto</label>
+          <input type="password" id="soda-desc-codigo" placeholder="••••" autocomplete="off" style="background:#fff" oninput="scheduleGranUpdate();lookupDiscountSoda()"/>
+        </div>
+      </div>
+      <div id="soda-desc-info" style="display:none;font-size:0.78rem;padding:5px 8px;border-radius:6px"></div>
+      <button onclick="clearDescuentoSoda()" class="btn-sm btn-danger" style="margin-top:8px;width:100%">🗑 Eliminar descuento sodas</button>
+      <div style="display:flex;justify-content:space-between;font-size:0.85rem;margin-top:8px;color:var(--red)">
+        <span>(−) Descuento sodas</span><span id="soda-desc-val" style="font-weight:700">$ 0</span>
       </div>
     </div>
-    <!-- Utilidad -->
-    <div class="card">
-      <div class="neto-box" id="sem-utilidad-box">
-        <span class="neto-label">📈 Utilidad del período<br><small style="font-weight:400;font-size:0.75rem">(debería haber − pagos empleados)</small></span>
-        <span class="neto-value" id="sem-utilidad">$0</span>
+    <div style="display:flex;justify-content:space-between;font-size:0.88rem;font-weight:800;background:#f0fff4;padding:8px 10px;border-radius:8px;margin-top:10px;color:#276749">
+      <span>= Total neto sodas</span><span id="soda-neto">$ 0</span>
+    </div>
+  </div>
+
+  <!-- Micheladas -->
+  <div class="card">
+    <div class="card-title">🍺 Micheladas <span style="font-size:0.75rem;font-weight:400;color:var(--gray)">precio libre</span></div>
+    <div class="form-row">
+      <div class="fg" style="max-width:90px">
+        <label>Cantidad</label>
+        <input type="number" inputmode="numeric" id="mich-cant" placeholder="0" min="1" oninput="recalcMich()"/>
+      </div>
+      <div class="fg">
+        <label>Precio unitario</label>
+        <input type="text" inputmode="numeric" id="mich-precio" placeholder="0" oninput="moneyFmt(this);recalcMich()"/>
+      </div>
+    </div>
+    <div style="margin-top:10px">
+      <label style="font-size:0.8rem;color:var(--gray);display:block;margin-bottom:6px">Método de pago</label>
+      <div style="display:flex;gap:8px">
+        <button id="mich-btn-ef" onclick="setMichTipo('efectivo')" style="flex:1;padding:10px;border-radius:10px;border:2px solid #48bb78;background:#f0fff4;color:#276749;font-weight:700;cursor:pointer;font-size:0.88rem">💵 Efectivo</button>
+        <button id="mich-btn-tr" onclick="setMichTipo('transferencia')" style="flex:1;padding:10px;border-radius:10px;border:2px solid #e2e8f0;background:#fff;color:#4a5568;font-weight:700;cursor:pointer;font-size:0.88rem">🏦 Transferencia</button>
+      </div>
+    </div>
+    <div style="margin-top:10px;padding:8px 12px;background:var(--light);border-radius:8px;display:flex;justify-content:space-between;align-items:center">
+      <span style="font-size:0.83rem;color:var(--gray)">Subtotal a agregar</span>
+      <span id="mich-subtotal" style="font-weight:800;font-size:1rem;color:#276749">$ 0</span>
+    </div>
+    <button class="btn-orange mt8" style="width:100%" id="btn-add-mich" onclick="addMichVenta()">+ Agregar venta</button>
+    <div style="margin-top:12px;border-top:1.5px dashed var(--border);padding-top:10px">
+      <div style="display:flex;justify-content:space-between;font-size:0.83rem;margin-bottom:3px">
+        <span style="color:#276749">💵 Micheladas efectivo</span><span id="mich-tot-ef" style="font-weight:700;color:#276749">$ 0</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:0.83rem;margin-bottom:8px">
+        <span style="color:#2b6cb0">🏦 Micheladas transferencia</span><span id="mich-tot-tr" style="font-weight:700;color:#2b6cb0">$ 0</span>
+      </div>
+    </div>
+    <!-- Lista de ventas -->
+    <div style="margin-top:4px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+        <span style="font-size:0.78rem;font-weight:700;color:var(--gray);text-transform:uppercase">Ventas registradas</span>
+        <button class="btn-sm btn-danger" onclick="clearMichVentas()">🗑 Limpiar</button>
+      </div>
+      <table>
+        <thead><tr><th>#</th><th>Cant.</th><th>P. Unit.</th><th>Total</th><th>Tipo</th><th></th></tr></thead>
+        <tbody id="tb-micheladas"><tr><td colspan="6" class="empty-msg">Sin ventas registradas</td></tr></tbody>
+      </table>
+    </div>
+    <!-- Descuento micheladas -->
+    <div style="background:#fffbeb;border:1px solid #fef08a;border-radius:10px;padding:10px 12px;margin-top:12px">
+      <div style="font-weight:700;font-size:0.8rem;margin-bottom:6px;color:#78350f">🏷️ Descuento micheladas (requiere código)</div>
+      <div class="form-row" style="margin-bottom:6px">
+        <div class="fg"><label style="font-size:0.75rem">Monto descuento</label>
+          <input type="text" inputmode="numeric" id="mich-desc-monto" placeholder="0" oninput="moneyFmt(this);saveMichDiscount()" style="background:#fff"/>
+        </div>
+        <div class="fg"><label style="font-size:0.75rem">Código secreto</label>
+          <input type="password" id="mich-desc-codigo" placeholder="••••" autocomplete="off" style="background:#fff" oninput="saveMichDiscount();lookupDiscountMich()"/>
+        </div>
+      </div>
+      <div id="mich-desc-info" style="display:none;font-size:0.78rem;padding:5px 8px;border-radius:6px"></div>
+      <button onclick="clearDescuentoMich()" class="btn-sm btn-danger" style="margin-top:8px;width:100%">🗑 Eliminar descuento micheladas</button>
+      <div style="display:flex;justify-content:space-between;font-size:0.85rem;margin-top:8px;color:var(--red)">
+        <span>(−) Descuento micheladas</span><span id="mich-desc-val" style="font-weight:700">$ 0</span>
+      </div>
+    </div>
+    <div style="display:flex;justify-content:space-between;font-size:0.88rem;font-weight:800;background:#fff7ed;padding:8px 10px;border-radius:8px;margin-top:10px;color:#c05621">
+      <span>= Total neto micheladas</span><span id="mich-neto">$ 0</span>
+    </div>
+  </div>
+
+  <!-- Limonadas -->
+  <div class="card">
+    <div class="card-title">🍋 Limonadas <span style="font-size:0.75rem;font-weight:400;color:var(--gray)">individual o jarra</span></div>
+
+    <!-- Tipo: Individual / Jarra -->
+    <label style="font-size:0.8rem;color:var(--gray);display:block;margin-bottom:6px">Tipo de venta</label>
+    <div style="display:flex;gap:8px;margin-bottom:12px">
+      <button id="limon-btn-ind" onclick="setLimonTipoVenta('individual')" style="flex:1;padding:10px;border-radius:10px;border:2px solid #f6ad55;background:#fffaf0;color:#c05621;font-weight:700;cursor:pointer;font-size:0.88rem">🥤 Individual</button>
+      <button id="limon-btn-jarra" onclick="setLimonTipoVenta('jarra')" style="flex:1;padding:10px;border-radius:10px;border:2px solid #e2e8f0;background:#fff;color:#4a5568;font-weight:700;cursor:pointer;font-size:0.88rem">🫙 Jarra</button>
+    </div>
+
+    <!-- Selector de precio -->
+    <label style="font-size:0.8rem;color:var(--gray);display:block;margin-bottom:6px">Precio unitario</label>
+    <div id="limon-precios-ind" style="display:flex;gap:8px;margin-bottom:12px">
+      <button class="limon-precio-btn" onclick="setLimonPrecio(9000)" id="lp-9000" style="flex:1;padding:9px 4px;border-radius:10px;border:2px solid #f6ad55;background:#fffaf0;color:#c05621;font-weight:700;cursor:pointer;font-size:0.82rem">$ 9.000</button>
+      <button class="limon-precio-btn" onclick="setLimonPrecio(11000)" id="lp-11000" style="flex:1;padding:9px 4px;border-radius:10px;border:2px solid #e2e8f0;background:#fff;color:#4a5568;font-weight:700;cursor:pointer;font-size:0.82rem">$ 11.000</button>
+      <button class="limon-precio-btn" onclick="setLimonPrecio(12000)" id="lp-12000" style="flex:1;padding:9px 4px;border-radius:10px;border:2px solid #e2e8f0;background:#fff;color:#4a5568;font-weight:700;cursor:pointer;font-size:0.82rem">$ 12.000</button>
+    </div>
+    <div id="limon-precios-jarra" style="display:none;gap:8px;margin-bottom:12px">
+      <button class="limon-precio-btn" onclick="setLimonPrecio(20000)" id="lp-20000" style="flex:1;padding:9px 4px;border-radius:10px;border:2px solid #e2e8f0;background:#fff;color:#4a5568;font-weight:700;cursor:pointer;font-size:0.82rem">$ 20.000</button>
+      <button class="limon-precio-btn" onclick="setLimonPrecio(22000)" id="lp-22000" style="flex:1;padding:9px 4px;border-radius:10px;border:2px solid #e2e8f0;background:#fff;color:#4a5568;font-weight:700;cursor:pointer;font-size:0.82rem">$ 22.000</button>
+      <button class="limon-precio-btn" onclick="setLimonPrecio(24000)" id="lp-24000" style="flex:1;padding:9px 4px;border-radius:10px;border:2px solid #e2e8f0;background:#fff;color:#4a5568;font-weight:700;cursor:pointer;font-size:0.82rem">$ 24.000</button>
+    </div>
+
+    <!-- Cantidad -->
+    <div class="fg" style="margin-bottom:10px">
+      <label>Cantidad</label>
+      <input type="number" inputmode="numeric" id="limon-cant" placeholder="0" min="1" oninput="recalcLimon()"/>
+    </div>
+
+    <!-- Método de pago -->
+    <label style="font-size:0.8rem;color:var(--gray);display:block;margin-bottom:6px">Método de pago</label>
+    <div style="display:flex;gap:8px">
+      <button id="limon-btn-ef" onclick="setLimonTipo('efectivo')" style="flex:1;padding:10px;border-radius:10px;border:2px solid #48bb78;background:#f0fff4;color:#276749;font-weight:700;cursor:pointer;font-size:0.88rem">💵 Efectivo</button>
+      <button id="limon-btn-tr" onclick="setLimonTipo('transferencia')" style="flex:1;padding:10px;border-radius:10px;border:2px solid #e2e8f0;background:#fff;color:#4a5568;font-weight:700;cursor:pointer;font-size:0.88rem">🏦 Transferencia</button>
+    </div>
+    <div style="margin-top:10px;padding:8px 12px;background:var(--light);border-radius:8px;display:flex;justify-content:space-between;align-items:center">
+      <span style="font-size:0.83rem;color:var(--gray)">Subtotal a agregar</span>
+      <span id="limon-subtotal" style="font-weight:800;font-size:1rem;color:#276749">$ 0</span>
+    </div>
+    <button class="btn-orange mt8" style="width:100%" id="btn-add-limon" onclick="addLimonVenta()">+ Agregar venta</button>
+
+    <!-- Totales rápidos -->
+    <div style="margin-top:12px;border-top:1.5px dashed var(--border);padding-top:10px">
+      <div style="display:flex;justify-content:space-between;font-size:0.83rem;margin-bottom:3px">
+        <span style="color:#276749">💵 Limonadas efectivo</span><span id="limon-tot-ef" style="font-weight:700;color:#276749">$ 0</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:0.83rem;margin-bottom:8px">
+        <span style="color:#2b6cb0">🏦 Limonadas transferencia</span><span id="limon-tot-tr" style="font-weight:700;color:#2b6cb0">$ 0</span>
+      </div>
+    </div>
+
+    <!-- Lista de ventas -->
+    <div style="margin-top:4px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+        <span style="font-size:0.78rem;font-weight:700;color:var(--gray);text-transform:uppercase">Ventas registradas</span>
+        <button class="btn-sm btn-danger" onclick="clearLimonVentas()">🗑 Limpiar</button>
+      </div>
+      <table>
+        <thead><tr><th>#</th><th>Tipo</th><th>Cant.</th><th>P. Unit.</th><th>Total</th><th>Pago</th><th></th></tr></thead>
+        <tbody id="tb-limonadas"><tr><td colspan="7" class="empty-msg">Sin ventas registradas</td></tr></tbody>
+      </table>
+    </div>
+
+    <!-- Descuento limonadas -->
+    <div style="background:#fffbeb;border:1px solid #fef08a;border-radius:10px;padding:10px 12px;margin-top:12px">
+      <div style="font-weight:700;font-size:0.8rem;margin-bottom:6px;color:#78350f">🏷️ Descuento limonadas (requiere código)</div>
+      <div class="form-row" style="margin-bottom:6px">
+        <div class="fg"><label style="font-size:0.75rem">Monto descuento</label>
+          <input type="text" inputmode="numeric" id="limon-desc-monto" placeholder="0" oninput="moneyFmt(this);saveLimonDiscount()" style="background:#fff"/>
+        </div>
+        <div class="fg"><label style="font-size:0.75rem">Código secreto</label>
+          <input type="password" id="limon-desc-codigo" placeholder="••••" autocomplete="off" style="background:#fff" oninput="saveLimonDiscount();lookupDiscountLimon()"/>
+        </div>
+      </div>
+      <div id="limon-desc-info" style="display:none;font-size:0.78rem;padding:5px 8px;border-radius:6px"></div>
+      <button onclick="clearDescuentoLimon()" class="btn-sm btn-danger" style="margin-top:8px;width:100%">🗑 Eliminar descuento limonadas</button>
+      <div style="display:flex;justify-content:space-between;font-size:0.85rem;margin-top:8px;color:var(--red)">
+        <span>(−) Descuento limonadas</span><span id="limon-desc-val" style="font-weight:700">$ 0</span>
+      </div>
+    </div>
+    <div style="display:flex;justify-content:space-between;font-size:0.88rem;font-weight:800;background:#fffff0;padding:8px 10px;border-radius:8px;margin-top:10px;color:#b7791f">
+      <span>= Total neto limonadas</span><span id="limon-neto">$ 0</span>
+    </div>
+  </div>
+
+  <!-- Caja granizados -->
+  <div class="card">
+    <div class="card-title">💰 Base caja granizados</div>
+    <div class="form-row">
+      <div class="fg">
+        <label>💵 Base Efectivo</label>
+        <input type="text" inputmode="numeric" id="gr-base-ef" placeholder="0" oninput="moneyFmt(this);scheduleGranUpdate()"/>
+      </div>
+      <div class="fg">
+        <label>🏦 Base Transferencias</label>
+        <input type="text" inputmode="numeric" id="gr-base-tr" placeholder="0" oninput="moneyFmt(this);scheduleGranUpdate()"/>
       </div>
     </div>
   </div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+    <div class="caja-saldo" style="margin:0">
+      <div class="saldo-label">💵 Saldo ef. caja</div>
+      <div class="saldo-value" id="gr-saldo-ef">$ 0</div>
+      <div class="saldo-sub" id="gr-sub-ef">Base: $0 — Compras: $0</div>
+    </div>
+    <div class="caja-saldo" style="margin:0;background:linear-gradient(135deg,#2b6cb0,#2c5282)">
+      <div class="saldo-label">🏦 Saldo tr. caja</div>
+      <div class="saldo-value" id="gr-saldo-tr">$ 0</div>
+      <div class="saldo-sub" id="gr-sub-tr">Base: $0 — Compras: $0</div>
+    </div>
+  </div>
+  <div class="caja-saldo" style="background:linear-gradient(135deg,#553c9a,#44337a);margin-bottom:10px">
+    <div class="saldo-label">🏧 Total saldo caja granizados</div>
+    <div class="saldo-value" id="gr-saldo-total">$ 0</div>
+  </div>
+
+  <!-- Compras granizados -->
+  <div class="card">
+    <div class="card-title">🛒 Compras granizados</div>
+    <div class="form-row">
+      <div class="fg">
+        <label>Ítem</label>
+        <input type="text" id="gr-c-desc" placeholder="Ej: Hielo, jarabe, vasos..."/>
+      </div>
+      <div class="fg" style="max-width:130px">
+        <label>Valor</label>
+        <input type="text" inputmode="numeric" id="gr-c-monto" placeholder="0" oninput="moneyFmt(this)"/>
+      </div>
+    </div>
+    <div style="margin-top:8px">
+      <label style="font-size:0.8rem;color:var(--gray);display:block;margin-bottom:6px">¿De dónde sale el pago?</label>
+      <div style="display:flex;gap:8px">
+        <button id="gr-btn-tipo-ef" onclick="setGranCompraTipo('efectivo')" style="flex:1;padding:10px;border-radius:10px;border:2px solid #48bb78;background:#f0fff4;color:#276749;font-weight:700;cursor:pointer;font-size:0.88rem">💵 Efectivo</button>
+        <button id="gr-btn-tipo-tr" onclick="setGranCompraTipo('transferencia')" style="flex:1;padding:10px;border-radius:10px;border:2px solid #e2e8f0;background:#fff;color:#4a5568;font-weight:700;cursor:pointer;font-size:0.88rem">🏦 Transferencia</button>
+      </div>
+    </div>
+    <button class="btn-purple mt8" style="width:100%" id="btn-add-gc" onclick="addCompraGran()">+ Agregar compra</button>
+  </div>
+  <div class="card">
+    <div class="card-title">
+      Lista de compras
+      <button class="btn-sm btn-danger" onclick="clearComprasGran()">🗑 Limpiar</button>
+    </div>
+    <table>
+      <thead><tr><th>#</th><th>Ítem</th><th>Valor</th><th>Tipo</th><th></th></tr></thead>
+      <tbody id="tb-compras-gran"><tr><td colspan="5" class="empty-msg">Sin compras</td></tr></tbody>
+    </table>
+  </div>
+
+  <!-- Total disponible granizados -->
+  <div class="card">
+    <div class="card-title">💼 Total disponible granizados</div>
+    <div style="display:flex;justify-content:space-between;font-size:0.85rem;margin-bottom:3px;color:#276749"><span>💵 Ef. neto granizados</span><span id="gr4-efneto" style="font-weight:700">$ 0</span></div>
+    <div style="display:flex;justify-content:space-between;font-size:0.85rem;margin-bottom:3px;color:#276749"><span>&nbsp;&nbsp;(+) Sodas efectivo</span><span id="gr4-soda-ef" style="font-weight:700">$ 0</span></div>
+    <div style="display:flex;justify-content:space-between;font-size:0.85rem;margin-bottom:3px;color:#276749"><span>&nbsp;&nbsp;(+) Micheladas efectivo</span><span id="gr4-mich-ef" style="font-weight:700">$ 0</span></div>
+    <div style="display:flex;justify-content:space-between;font-size:0.85rem;margin-bottom:3px;color:#276749"><span>&nbsp;&nbsp;(+) Limonadas efectivo</span><span id="gr4-limon-ef" style="font-weight:700">$ 0</span></div>
+    <div style="display:flex;justify-content:space-between;font-size:0.85rem;margin-bottom:3px;color:#276749"><span>&nbsp;&nbsp;(+) Saldo caja efectivo</span><span id="gr4-saldo-ef" style="font-weight:700">$ 0</span></div>
+    <div style="display:flex;justify-content:space-between;font-size:0.88rem;font-weight:800;background:#f0fff4;padding:7px 10px;border-radius:8px;margin-bottom:10px;color:#276749"><span>💵 Disponible efectivo</span><span id="gr4-disp-ef">$ 0</span></div>
+    <div style="display:flex;justify-content:space-between;font-size:0.85rem;margin-bottom:3px;color:#2b6cb0"><span>🏦 Tr. netas granizados</span><span id="gr4-trneto" style="font-weight:700">$ 0</span></div>
+    <div style="display:flex;justify-content:space-between;font-size:0.85rem;margin-bottom:3px;color:#2b6cb0"><span>&nbsp;&nbsp;(+) Sodas transferencia</span><span id="gr4-soda-tr" style="font-weight:700">$ 0</span></div>
+    <div style="display:flex;justify-content:space-between;font-size:0.85rem;margin-bottom:3px;color:#2b6cb0"><span>&nbsp;&nbsp;(+) Micheladas transferencia</span><span id="gr4-mich-tr" style="font-weight:700">$ 0</span></div>
+    <div style="display:flex;justify-content:space-between;font-size:0.85rem;margin-bottom:3px;color:#2b6cb0"><span>&nbsp;&nbsp;(+) Limonadas transferencia</span><span id="gr4-limon-tr" style="font-weight:700">$ 0</span></div>
+    <div style="display:flex;justify-content:space-between;font-size:0.85rem;margin-bottom:3px;color:#2b6cb0"><span>&nbsp;&nbsp;(+) Saldo caja transferencias</span><span id="gr4-saldo-tr" style="font-weight:700">$ 0</span></div>
+    <div style="display:flex;justify-content:space-between;font-size:0.88rem;font-weight:800;background:#ebf8ff;padding:7px 10px;border-radius:8px;margin-bottom:10px;color:#2b6cb0"><span>🏦 Disponible transferencias</span><span id="gr4-disp-tr">$ 0</span></div>
+    <div class="divider"></div>
+    <div class="neto-box neto-pos" id="gr-total-box" style="margin:0">
+      <span class="neto-label">💼 Total disponible</span>
+      <span class="neto-value" id="gr-total">$ 0</span>
+    </div>
+  </div>
+  <div style="height:10px"></div>
 </div>
 
 <!-- ═══ MODAL: Nueva categoría inventario ═══ -->
@@ -1396,10 +1723,26 @@ let currentHistKey    = null;
 let currentHistRecord = null;
 
 // ── Granizados state ──
+const PRECIO_9OZ  = 10000;
+const PRECIO_12OZ = 12000;
+const PRECIO_CREMOSO = 13000;
+let stateGran = { oz9ef:0, oz9tr:0, oz12ef:0, oz12tr:0, cremEf:0, cremTr:0, descuentoMonto:0, descuentoCodigo:'', sodaEf:0, sodaTr:0, sodaDescMonto:0, sodaDescCodigo:'', baseEf:0, baseTr:0, compras:[] };
+let granCompraTipo = 'efectivo';
+let granUpdateTimer = null;
 
 // ── Micheladas state ──
+let stateMich = { ventas: [], michDescMonto: 0, michDescCodigo: '' };
+let michTipo = 'efectivo';
+let michDiscountTimer = null;
 
 // ── Limonadas state ──
+const PRECIOS_LIMON_IND  = [9000, 11000, 12000];
+const PRECIOS_LIMON_JARRA = [20000, 22000, 24000];
+let stateLimon = { ventas: [], limonDescMonto: 0, limonDescCodigo: '' };
+let limonTipo = 'efectivo';
+let limonTipoVenta = 'individual';
+let limonPrecioSel = 9000;
+let limonDiscountTimer = null;
 
 // Auth state
 let currentUser  = null;
@@ -1576,6 +1919,81 @@ function setupListeners() {
     renderCaja();
   }, e => console.error(e)));
 
+  // ── Granizados ──
+  const granRef = DRAFT().doc('granizados');
+  unsubs.push(granRef.onSnapshot(snap => {
+    const d = snap.data() || {};
+    stateGran.oz9ef  = d.oz9ef  || 0;
+    stateGran.oz9tr  = d.oz9tr  || 0;
+    stateGran.oz12ef = d.oz12ef || 0;
+    stateGran.oz12tr = d.oz12tr || 0;
+    stateGran.cremEf = d.cremEf || 0;
+    stateGran.cremTr = d.cremTr || 0;
+    stateGran.descuentoMonto  = d.descuentoMonto  || 0;
+    stateGran.descuentoCodigo = d.descuentoCodigo || '';
+    stateGran.sodaEf          = d.sodaEf          || 0;
+    stateGran.sodaTr          = d.sodaTr          || 0;
+    stateGran.sodaDescMonto   = d.sodaDescMonto   || 0;
+    stateGran.sodaDescCodigo  = d.sodaDescCodigo  || '';
+    stateGran.baseEf = d.baseEf || 0;
+    stateGran.baseTr = d.baseTr || 0;
+    // Actualizar inputs solo si no están en foco
+    const setIfBlurred = (id, val) => { const el=$(id); if(el && el!==document.activeElement) el.value = val||0 ? String(val) : ''; };
+    setIfBlurred('g9ef',    stateGran.oz9ef);
+    setIfBlurred('g9tr',    stateGran.oz9tr);
+    setIfBlurred('g12ef',   stateGran.oz12ef);
+    setIfBlurred('g12tr',   stateGran.oz12tr);
+    setIfBlurred('gcremef', stateGran.cremEf);
+    setIfBlurred('gcremtr', stateGran.cremTr);
+    setIfBlurred('soda-ef', stateGran.sodaEf);
+    setIfBlurred('soda-tr',stateGran.sodaTr);
+    if(stateGran.descuentoMonto>0 && $('gr-desc-monto')!==document.activeElement)
+      $('gr-desc-monto').value = fmtRaw(stateGran.descuentoMonto);
+    // No restaurar el código en el input (es secreto, tipo password)
+    if(stateGran.baseEf>0 && $('gr-base-ef')!==document.activeElement)
+      $('gr-base-ef').value = fmtRaw(stateGran.baseEf);
+    if(stateGran.baseTr>0 && $('gr-base-tr')!==document.activeElement)
+      $('gr-base-tr').value = fmtRaw(stateGran.baseTr);
+    renderGranizados();
+  }, e => console.error(e)));
+
+  unsubs.push(granRef.collection('compras').onSnapshot(snap => {
+    stateGran.compras = snap.docs.map(d => ({...d.data(), _docId: d.id}));
+    stateGran.compras.sort((a,b)=>(a.createdAt?.toMillis?.()??0)-(b.createdAt?.toMillis?.()??0));
+    renderGranizados();
+  }, e => console.error(e)));
+
+  // ── Micheladas ──
+  const michRef = DRAFT().doc('micheladas');
+  unsubs.push(michRef.onSnapshot(snap => {
+    const d = snap.data() || {};
+    stateMich.michDescMonto  = d.michDescMonto  || 0;
+    stateMich.michDescCodigo = d.michDescCodigo || '';
+    if(stateMich.michDescMonto>0 && $('mich-desc-monto')!==document.activeElement)
+      $('mich-desc-monto').value = fmtRaw(stateMich.michDescMonto);
+    renderMicheladas();
+  }, e => console.error(e)));
+  unsubs.push(michRef.collection('ventas').onSnapshot(snap => {
+    stateMich.ventas = snap.docs.map(d => ({...d.data(), _docId: d.id}));
+    stateMich.ventas.sort((a,b)=>(a.createdAt?.toMillis?.()??0)-(b.createdAt?.toMillis?.()??0));
+    renderMicheladas();
+  }, e => console.error(e)));
+
+  // ── Limonadas ──
+  const limonRef = DRAFT().doc('limonadas');
+  unsubs.push(limonRef.onSnapshot(snap => {
+    const d = snap.data() || {};
+    stateLimon.limonDescMonto  = d.limonDescMonto  || 0;
+    stateLimon.limonDescCodigo = d.limonDescCodigo || '';
+    if(stateLimon.limonDescMonto>0 && $('limon-desc-monto')!==document.activeElement)
+      $('limon-desc-monto').value = fmtRaw(stateLimon.limonDescMonto);
+    renderLimonadas();
+  }, e => console.error(e)));
+  unsubs.push(limonRef.collection('ventas').onSnapshot(snap => {
+    stateLimon.ventas = snap.docs.map(d => ({...d.data(), _docId: d.id}));
+    stateLimon.ventas.sort((a,b)=>(a.createdAt?.toMillis?.()??0)-(b.createdAt?.toMillis?.()??0));
+    renderLimonadas();
+  }, e => console.error(e)));
 
   // ── Comandas abiertas ──
   setupComandasListener();
@@ -2629,10 +3047,19 @@ async function saveDay(){
   const diaStr=diaNum.toString().padStart(2,'0');
   const key=`${year}-${mesNum}-${diaStr}`;
   const nombre=`${diaNombre} ${diaNum} de ${mesNombre} ${year}`;
+  const tg = totalsGran();
+  const tm = totalsMich();
+  const tl = totalLimon();
   const record={
     fecha:nombre,
     state:JSON.parse(JSON.stringify(state)),
     totals:totals(),
+    granizados: JSON.parse(JSON.stringify(stateGran)),
+    totalsGran: tg,
+    micheladas: JSON.parse(JSON.stringify(stateMich)),
+    totalsMich: tm,
+    limonadas: JSON.parse(JSON.stringify(stateLimon)),
+    totalsLimon: tl,
     savedAt:new Date().toISOString(),
     savedBy:currentUser.uid,
     savedByName:currentUserName
@@ -2653,16 +3080,27 @@ async function newDay(){
   if(!confirm('¿Iniciar un nuevo día?\n\nEsto eliminará todos los datos actuales del día.\n\nAsegúrate de haber guardado primero.')) return;
   try{
     const draftRef=DRAFT().doc('current');
-    const [fS,gS,eS,cS]=await Promise.all([
+    const granRef=DRAFT().doc('granizados');
+    const michRef2=DRAFT().doc('micheladas');
+    const limonRef2=DRAFT().doc('limonadas');
+    const [fS,gS,eS,cS,gcS,mvS,lvS]=await Promise.all([
       draftRef.collection('facturas').get(),
       draftRef.collection('gastos').get(),
       draftRef.collection('empleados').get(),
-      draftRef.collection('compras').get()
+      draftRef.collection('compras').get(),
+      granRef.collection('compras').get(),
+      michRef2.collection('ventas').get(),
+      limonRef2.collection('ventas').get()
     ]);
     const batch=db.batch();
-    [...fS.docs,...gS.docs,...eS.docs,...cS.docs].forEach(d=>batch.delete(d.ref));
+    [...fS.docs,...gS.docs,...eS.docs,...cS.docs,...gcS.docs,...mvS.docs,...lvS.docs].forEach(d=>batch.delete(d.ref));
     batch.set(draftRef,{baseEfectivo:0,baseTr:0,locked:false});
+    batch.set(granRef,{oz9ef:0,oz9tr:0,oz12ef:0,oz12tr:0,cremEf:0,cremTr:0,descuentoMonto:0,descuentoCodigo:'',sodaEf:0,sodaTr:0,sodaDescMonto:0,sodaDescCodigo:'',baseEf:0,baseTr:0});
+    batch.set(michRef2,{michDescMonto:0,michDescCodigo:''},{merge:true});
+    batch.set(limonRef2,{limonDescMonto:0,limonDescCodigo:''},{merge:true});
     await batch.commit();
+    // Limpiar inputs granizados, micheladas y limonadas
+    ['g9ef','g9tr','g12ef','g12tr','gcremef','gcremtr','gr-desc-monto','gr-desc-codigo','gr-base-ef','gr-base-tr','soda-ef','soda-tr','soda-desc-monto','soda-desc-codigo','mich-desc-monto','mich-desc-codigo','limon-desc-monto','limon-desc-codigo','limon-cant'].forEach(id=>{const el=$(id);if(el)el.value='';});
     $('base-efectivo').value=''; $('base-tr').value='';
     unlockUI();
     locked=false;
@@ -2695,7 +3133,8 @@ async function loadCalendarRecords(){
     snap.docs.forEach(d=>{
       if(DATE_KEY_RE.test(d.id)){
         const t=d.data().totals||{};
-        calRecords[d.id]={ total:(t.total||0) };
+        const tg=d.data().totalsGran||{}, tm=d.data().totalsMich||{}, tl=d.data().totalsLimon||{};
+        calRecords[d.id]={ total:(t.total||0)+(tg.neto||0)+(tg.sodaNeto||0)+(tm.total||0)+(tl.total||0) };
       } else {
         calLegacyRecords.push({id:d.id, ...d.data()});
       }
@@ -2715,7 +3154,8 @@ function renderLegacyList(){
   card.style.display='block';
   list.innerHTML=calLegacyRecords.map(r=>{
     const t=r.totals||{};
-    const ventaTotal=(t.ventaDia||t.bruto||0);
+    const tg=r.totalsGran||{}; const tm=r.totalsMich||{}; const tl=r.totalsLimon||{};
+    const ventaTotal=(t.ventaDia||t.bruto||0)+(tg.neto||0)+(tg.sodaNeto||0)+(tm.total||0)+(tl.total||0);
     const fecha=r.fecha||r.id||'Registro';
     return `<div onclick="showRecord('${r.id}')" class="hist-item">
       <div class="hist-fecha">📅 ${fecha}</div>
@@ -2785,7 +3225,8 @@ async function showRecord(docId){
     const r=doc.data();
     currentHistRecord=r;
     const t=r.totals;
-    const ventaDiaTotal=(t.ventaDia||0);
+    const tgS=r.totalsGran||{}; const tmS=r.totalsMich||{}; const tlS=r.totalsLimon||{};
+    const ventaDiaTotal=(t.ventaDia||0)+(tgS.neto||0)+(tgS.sodaNeto||0)+(tmS.total||0)+(tlS.total||0);
     $('hist-modal-fecha').textContent=r.fecha;
     const rows=(items,cols)=>items.length
       ?`<table style="width:100%;font-size:0.82rem;border-collapse:collapse"><thead><tr>${cols.map(c=>`<th style="padding:4px 6px;text-align:left;color:var(--gray);font-size:0.7rem;text-transform:uppercase">${c}</th>`).join('')}</tr></thead><tbody>${items.map(row=>`<tr>${row.map(c=>`<td style="padding:5px 6px;border-bottom:1px solid #f0f4f8">${c}</td>`).join('')}</tr>`).join('')}</tbody></table>`
@@ -2823,6 +3264,14 @@ async function showRecord(docId){
           <div style="display:flex;justify-content:space-between;font-size:0.83rem;margin-bottom:6px"><span style="color:#2b6cb0">🏦 Transferencias</span><strong style="color:#2b6cb0">${fmt(t.tr)}</strong></div>
           <div style="display:flex;justify-content:space-between;font-weight:800;font-size:0.9rem;border-top:1px dashed #c6f6d5;padding-top:6px"><span>Total facturas</span><span style="color:#276749">${fmt(t.ventaDia||t.bruto)}</span></div>
         </div>
+        <div style="background:#e6fffa;border:1.5px solid #81e6d9;border-radius:10px;padding:10px 12px;margin-bottom:6px">
+          <div style="font-size:0.78rem;font-weight:700;color:#234e52;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:6px">🧊 Módulo Granizados</div>
+          ${(tgS.efBruto||0)+(tgS.trBruto||0)>0?`<div style="display:flex;justify-content:space-between;font-size:0.83rem;margin-bottom:3px"><span>🧊 Granizados</span><span>${fmt((tgS.efBruto||0)+(tgS.trBruto||0))}</span></div>`:''}
+          ${(tgS.sodaEfVal||0)+(tgS.sodaTrVal||0)>0?`<div style="display:flex;justify-content:space-between;font-size:0.83rem;margin-bottom:3px"><span>🥤 Sodas</span><span>${fmt((tgS.sodaEfVal||0)+(tgS.sodaTrVal||0))}</span></div>`:''}
+          ${(tmS.ef||0)+(tmS.tr||0)>0?`<div style="display:flex;justify-content:space-between;font-size:0.83rem;margin-bottom:3px"><span>🍺 Micheladas</span><span>${fmt((tmS.ef||0)+(tmS.tr||0))}</span></div>`:''}
+          ${(tlS.ef||0)+(tlS.tr||0)>0?`<div style="display:flex;justify-content:space-between;font-size:0.83rem;margin-bottom:3px"><span>🍋 Limonadas</span><span>${fmt((tlS.ef||0)+(tlS.tr||0))}</span></div>`:''}
+          <div style="display:flex;justify-content:space-between;font-weight:800;font-size:0.9rem;border-top:1px dashed #81e6d9;padding-top:6px;color:#234e52"><span>Total granizados</span><span>${fmt((tgS.efBruto||0)+(tgS.trBruto||0)+(tgS.sodaEfVal||0)+(tgS.sodaTrVal||0)+(tmS.ef||0)+(tmS.tr||0)+(tlS.ef||0)+(tlS.tr||0))}</span></div>
+        </div>
         <div style="font-weight:700;color:#4a5568;margin-top:10px;margin-bottom:2px">📊 Neto del día</div>
         <div style="display:flex;justify-content:space-between"><span>💵 Efectivo ingresado</span><span>${fmt(t.ef)}</span></div>
         <div style="display:flex;justify-content:space-between;color:var(--red)"><span>&nbsp;&nbsp;(−) Gastos</span><span>${fmt(t.tg)}</span></div>
@@ -2845,7 +3294,52 @@ async function showRecord(docId){
         <div style="display:flex;justify-content:space-between;color:#2b6cb0"><span>&nbsp;&nbsp;(+) Saldo caja tr.</span><span>${fmt(t.saldoCajaTr||0)}</span></div>
         <div style="display:flex;justify-content:space-between;font-weight:800;background:#ebf8ff;padding:6px 10px;border-radius:8px;margin-bottom:8px;color:#2b6cb0"><span>🏦 Disponible transferencias</span><span>${fmt(t.dispTr||0)}</span></div>
         <div style="display:flex;justify-content:space-between;font-size:1rem;font-weight:800;border-top:2px solid var(--border);padding-top:8px;color:${t.total>=0?'#276749':'var(--red)'}"><span>💼 Total disponible</span><span>${fmt(t.total)}</span></div>
-      </div>`;
+      </div>
+      ${(()=>{
+        const sm=r.micheladas||null; const tm=r.totalsMich||null;
+        let michHtml='';
+        if(sm && tm && (sm.ventas||[]).length){
+          michHtml=`<hr class="divider"/>
+          <div style="font-weight:700;margin-bottom:6px;font-size:0.9rem">🍺 Micheladas</div>
+          <div style="font-size:0.84rem;display:flex;flex-direction:column;gap:4px">
+            ${rows((sm.ventas||[]).map(v=>[v.cantidad,fmt(v.precioUnitario),fmt(v.total),v.tipo==='efectivo'?'💵 Ef':'🏦 Tr']),['Cant.','P. Unit.','Total','Tipo'])}
+            <div style="display:flex;justify-content:space-between;margin-top:4px;color:#276749"><span>💵 Total efectivo</span><span style="font-weight:700">${fmt(tm.ef||0)}</span></div>
+            <div style="display:flex;justify-content:space-between;color:#2b6cb0"><span>🏦 Total transferencias</span><span style="font-weight:700">${fmt(tm.tr||0)}</span></div>
+            <div style="display:flex;justify-content:space-between;font-weight:800;font-size:0.92rem;background:#fff7ed;padding:7px 10px;border-radius:8px;margin-top:2px;color:#c05621"><span>🍺 Total micheladas</span><span>${fmt(tm.total||0)}</span></div>
+          </div>`;
+        }
+        const sl=r.limonadas||null; const tl=r.totalsLimon||null;
+        let limonHtml='';
+        if(sl && tl && (sl.ventas||[]).length){
+          limonHtml=`<hr class="divider"/>
+          <div style="font-weight:700;margin-bottom:6px;font-size:0.9rem">🍋 Limonadas</div>
+          <div style="font-size:0.84rem;display:flex;flex-direction:column;gap:4px">
+            ${rows((sl.ventas||[]).map(v=>[v.tipoVenta||'Ind.',v.cantidad,fmt(v.precioUnitario),fmt(v.total),v.tipo==='efectivo'?'💵 Ef':'🏦 Tr']),['Tipo','Cant.','P. Unit.','Total','Pago'])}
+            <div style="display:flex;justify-content:space-between;margin-top:4px;color:#276749"><span>💵 Total efectivo</span><span style="font-weight:700">${fmt(tl.ef||0)}</span></div>
+            <div style="display:flex;justify-content:space-between;color:#2b6cb0"><span>🏦 Total transferencias</span><span style="font-weight:700">${fmt(tl.tr||0)}</span></div>
+            <div style="display:flex;justify-content:space-between;font-weight:800;font-size:0.92rem;background:#fffff0;padding:7px 10px;border-radius:8px;margin-top:2px;color:#744210"><span>🍋 Total limonadas</span><span>${fmt(tl.total||0)}</span></div>
+          </div>`;
+        }
+        const sg=r.granizados||null; const tg=r.totalsGran||null;
+        if(!sg||!tg) return michHtml+limonHtml;
+        const comprasGran=sg.compras||[];
+        return `<hr class="divider"/>
+        <div style="font-weight:700;margin-bottom:6px;font-size:0.9rem">🧊 Granizados</div>
+        <div style="font-size:0.84rem;display:flex;flex-direction:column;gap:4px">
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:3px;font-size:0.78rem;margin-bottom:2px"><span></span><span style="text-align:right;font-weight:700;color:#276749">💵 Ef.</span><span style="text-align:right;font-weight:700;color:#2b6cb0">🏦 Tr.</span></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:3px"><span style="color:var(--gray)">Vasos 9oz</span><span style="text-align:right">${tg.oz9ef}</span><span style="text-align:right">${tg.oz9tr}</span></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:3px"><span style="color:var(--gray)">Vasos 12oz</span><span style="text-align:right">${tg.oz12ef}</span><span style="text-align:right">${tg.oz12tr}</span></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:3px"><span style="color:var(--gray)">Cremosos</span><span style="text-align:right">${tg.cremEf||0}</span><span style="text-align:right">${tg.cremTr||0}</span></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:3px;border-top:1px dashed #c6f6d5;padding-top:4px"><span style="font-weight:700">Venta bruta</span><span style="text-align:right;color:#276749;font-weight:700">${fmt(tg.efBruto)}</span><span style="text-align:right;color:#2b6cb0;font-weight:700">${fmt(tg.trBruto)}</span></div>
+          ${tg.desc>0?`<div style="display:flex;justify-content:space-between;color:var(--red)"><span>(−) Descuento</span><span>${fmt(tg.desc)}</span></div>`:''}
+          <div style="display:flex;justify-content:space-between;font-weight:800;background:#e6fffa;padding:6px 10px;border-radius:8px"><span>Venta neta granizados</span><span style="color:#234e52">${fmt(tg.neto)}</span></div>
+          ${comprasGran.length?`<div style="font-weight:700;margin-top:6px;font-size:0.78rem;color:var(--gray)">COMPRAS GRANIZADOS</div>${rows(comprasGran.map(c=>[c.desc,fmt(c.monto),c.tipo==='efectivo'?'💵 Ef':'🏦 Tr']),['Ítem','Valor','Tipo'])}`:''}
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:3px;margin-top:4px"><span style="color:var(--gray)">Base caja</span><span style="text-align:right;color:#276749">${fmt(tg.baseEf)}</span><span style="text-align:right;color:#2b6cb0">${fmt(tg.baseTr)}</span></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:3px"><span style="color:var(--red)">Compras</span><span style="text-align:right;color:var(--red)">${fmt(tg.tcEf)}</span><span style="text-align:right;color:var(--red)">${fmt(tg.tcTr)}</span></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:3px"><span style="font-weight:700">Saldo caja</span><span style="text-align:right;color:#276749;font-weight:700">${fmt(tg.saldoEf)}</span><span style="text-align:right;color:#2b6cb0;font-weight:700">${fmt(tg.saldoTr)}</span></div>
+          <div style="display:flex;justify-content:space-between;font-size:1rem;font-weight:800;background:#e6fffa;padding:7px 10px;border-radius:8px;color:#234e52"><span>🧊 Total disponible granizados</span><span>${fmt(tg.total)}</span></div>
+        </div>${michHtml}${limonHtml}`;
+      })()}`;
     openModal('modal-hist');
   } catch(e){ alert('Error al cargar el registro: '+e.message); }
 }
@@ -2859,7 +3353,7 @@ async function deleteRecord(){
 // ══════════════════════════════════════
 //   EXCEL EXPORT / IMPORT
 // ══════════════════════════════════════
-function buildExcelData(st, t, fecha) {
+function buildExcelData(st, t, fecha, sg, tg, sm, tm, sl, tl) {
   const data=[];
   data.push(['CONTROL DE FACTURAS — '+fecha]);
   data.push([]);
@@ -2893,13 +3387,45 @@ function buildExcelData(st, t, fecha) {
   data.push(['Transferencias ingresadas',t.tr]); data.push(['(−) Empleados transferencias',t.teTr]); data.push(['= Transferencias netas',t.trNeto]); data.push(['NETO DEL DÍA',t.netoDia]); data.push([]);
   data.push(['--- Total disponible ---']); data.push(['Efectivo neto',t.efNeto]); data.push(['(+) Saldo caja efectivo',t.saldoCajaEf]); data.push(['= Disponible efectivo',t.dispEf]);
   data.push(['Transferencias netas',t.trNeto]); data.push(['(+) Saldo caja transferencias',t.saldoCajaTr]); data.push(['= Disponible transferencias',t.dispTr]); data.push(['TOTAL DISPONIBLE',t.total]);
+  if(sg && tg){
+    data.push([]); data.push(['GRANIZADOS']); data.push([]);
+    data.push(['VENTAS GRANIZADOS']); data.push(['Producto','Efectivo (vasos)','Transferencia (vasos)','Total vasos','Valor']);
+    data.push(['9 oz',tg.oz9ef,tg.oz9tr,tg.oz9ef+tg.oz9tr,(tg.oz9ef+tg.oz9tr)*10000]);
+    data.push(['12 oz',tg.oz12ef,tg.oz12tr,tg.oz12ef+tg.oz12tr,(tg.oz12ef+tg.oz12tr)*12000]);
+    data.push(['Cremosos',tg.cremEf||0,tg.cremTr||0,(tg.cremEf||0)+(tg.cremTr||0),((tg.cremEf||0)+(tg.cremTr||0))*13000]);
+    data.push(['Efectivo bruto',tg.efBruto]); data.push(['Transferencias brutas',tg.trBruto]); data.push(['VENTA BRUTA GRANIZADOS',tg.bruto]);
+    if(tg.desc>0) data.push(['(−) Descuento',tg.desc]);
+    data.push(['VENTA NETA GRANIZADOS',tg.neto]); data.push([]);
+    data.push(['CAJA GRANIZADOS']); data.push(['Base efectivo',tg.baseEf]); data.push(['Base transferencias',tg.baseTr]);
+    if((sg.compras||[]).length){ data.push(['Ítem','Valor','Tipo']); (sg.compras||[]).forEach(c=>data.push([c.desc,c.monto,c.tipo==='efectivo'?'Efectivo':'Transferencia'])); }
+    data.push(['TOTAL COMPRAS EFECTIVO',tg.tcEf]); data.push(['TOTAL COMPRAS TRANSFERENCIAS',tg.tcTr]);
+    data.push(['SALDO CAJA EF.',tg.saldoEf]); data.push(['SALDO CAJA TR.',tg.saldoTr]);
+    data.push(['DISPONIBLE EF.',tg.dispEf]); data.push(['DISPONIBLE TR.',tg.dispTr]);
+    data.push(['TOTAL DISPONIBLE GRANIZADOS',tg.total]);
+  }
+  if(sm && tm && (sm.ventas||[]).length){
+    data.push([]); data.push(['MICHELADAS']); data.push([]);
+    data.push(['VENTAS MICHELADAS']); data.push(['Cantidad','Precio Unit.','Total','Tipo']);
+    (sm.ventas||[]).forEach(v=>data.push([v.cantidad,v.precioUnitario,v.total,v.tipo==='efectivo'?'Efectivo':'Transferencia']));
+    data.push(['TOTAL EFECTIVO MICHELADAS',tm.ef]);
+    data.push(['TOTAL TRANSFERENCIAS MICHELADAS',tm.tr]);
+    data.push(['TOTAL MICHELADAS',tm.total]);
+  }
+  if(sl && tl && (sl.ventas||[]).length){
+    data.push([]); data.push(['LIMONADAS']); data.push([]);
+    data.push(['VENTAS LIMONADAS']); data.push(['Tipo','Cantidad','Precio Unit.','Total','Pago']);
+    (sl.ventas||[]).forEach(v=>data.push([v.tipoVenta||'Individual',v.cantidad,v.precioUnitario,v.total,v.tipo==='efectivo'?'Efectivo':'Transferencia']));
+    data.push(['TOTAL EFECTIVO LIMONADAS',tl.ef]);
+    data.push(['TOTAL TRANSFERENCIAS LIMONADAS',tl.tr]);
+    data.push(['TOTAL LIMONADAS',tl.total]);
+  }
   return data;
 }
 
 function exportExcel(){
   const nombre=prompt('¿Con qué nombre quieres guardar el archivo Excel?','facturas_'+today());
   if(!nombre) return;
-  const t=totals(), data=buildExcelData(state,t,nombre);
+  const t=totals(), tg=totalsGran(), tm=totalsMich(), tl=totalLimon(), data=buildExcelData(state,t,nombre,stateGran,tg,stateMich,tm,stateLimon,tl);
   const wb=XLSX.utils.book_new(), ws=XLSX.utils.aoa_to_sheet(data);
   ws['!cols']=[{wch:32},{wch:18},{wch:14},{wch:14}];
   XLSX.utils.book_append_sheet(wb,ws,'Resumen');
@@ -2915,9 +3441,12 @@ function exportExcelFromRecord(){
   if(!savedState.baseEfectivo) savedState.baseEfectivo=0;
   if(!savedState.baseTr) savedState.baseTr=0;
   const origState=state; state=savedState; const t=totals(); state=origState;
+  const savedGran=r.granizados||null; const savedTg=r.totalsGran||null;
+  const savedMich=r.micheladas||null; const savedTm=r.totalsMich||null;
+  const savedLimon=r.limonadas||null; const savedTl=r.totalsLimon||null;
   const nombre=prompt('¿Con qué nombre quieres guardar el Excel?', r.fecha.replace(/[\/\\:*?"<>|]/g,'_'));
   if(!nombre) return;
-  const data=buildExcelData(savedState,t,r.fecha);
+  const data=buildExcelData(savedState,t,r.fecha,savedGran,savedTg,savedMich,savedTm,savedLimon,savedTl);
   const wb=XLSX.utils.book_new(), ws=XLSX.utils.aoa_to_sheet(data);
   ws['!cols']=[{wch:32},{wch:18},{wch:14},{wch:14}];
   XLSX.utils.book_append_sheet(wb,ws,'Resumen');
@@ -2950,20 +3479,569 @@ async function parseImport(rows){
   const newEmpleados=[]; getRows(iE,iC>0?iC:iR>0?iR:rows.length).forEach(r=>{ const nombre=String(r[0]||'').trim(),pago=parseVal(r[1]),tipoStr=String(r[2]||'').toLowerCase(); if(!nombre||pago<=0||nombre.toUpperCase().startsWith('TOTAL')) return; newEmpleados.push({nombre,pago,tipo:tipoStr.includes('trans')?'transferencia':'efectivo'}); });
   let newBaseEf=0,newBaseTr=0; const newCompras=[];
   if(iC>=0){ const r1=rows[iC+1]||[],r2=rows[iC+2]||[]; if(String(r1[0]||'').toLowerCase().includes('efectivo')) newBaseEf=parseVal(r1[1]); if(String(r2[0]||'').toLowerCase().includes('transfer')) newBaseTr=parseVal(r2[1]); const end=iR>0?iR:rows.length; const skip=['total compras','saldo caja','--- saldo']; for(let i=iC+4;i<end;i++){ const r=rows[i],desc=String(r[0]||'').trim(),monto=parseVal(r[1]),tipoStr=String(r[2]||'').toLowerCase(); if(!desc||monto<=0) continue; if(skip.some(s=>desc.toLowerCase().startsWith(s))) continue; newCompras.push({desc,monto,tipo:tipoStr.includes('trans')?'transferencia':'efectivo'}); } }
+  // Granizados
+  const iGran=findSec('GRANIZADOS');
+  let newGranizados=null;
+  if(iGran>=0){
+    const iVG=rows.findIndex((r,i)=>i>iGran&&String(r[0]||'').trim().toUpperCase()==='VENTAS GRANIZADOS');
+    const iCG=rows.findIndex((r,i)=>i>iGran&&String(r[0]||'').trim().toUpperCase()==='CAJA GRANIZADOS');
+    let oz9ef=0,oz9tr=0,oz12ef=0,oz12tr=0,baseGranEf=0,baseGranTr=0; const comprasGran=[];
+    if(iVG>=0){ for(let i=iVG+2;i<(iCG>0?iCG:rows.length);i++){ const r0=String(rows[i][0]||'').trim(); if(r0==='9 oz'){oz9ef=parseVal(rows[i][1]);oz9tr=parseVal(rows[i][2]);} if(r0==='12 oz'){oz12ef=parseVal(rows[i][1]);oz12tr=parseVal(rows[i][2]);} } }
+    if(iCG>=0){ const r1=rows[iCG+1]||[],r2=rows[iCG+2]||[]; if(String(r1[0]||'').toLowerCase().includes('efectivo')) baseGranEf=parseVal(r1[1]); if(String(r2[0]||'').toLowerCase().includes('transfer')) baseGranTr=parseVal(r2[1]); const skipGran=['total compras','saldo caja','disponible','total disponible']; for(let i=iCG+4;i<rows.length;i++){ const r=rows[i],desc=String(r[0]||'').trim(),monto=parseVal(r[1]),tipoStr=String(r[2]||'').toLowerCase(); if(!desc||monto<=0) continue; if(skipGran.some(s=>desc.toLowerCase().startsWith(s))) continue; if(['ítem','item'].includes(desc.toLowerCase())) continue; comprasGran.push({desc,monto,tipo:tipoStr.includes('trans')?'transferencia':'efectivo'}); } }
+    newGranizados={oz9ef,oz9tr,oz12ef,oz12tr,descuentoMonto:0,descuentoCodigo:'',baseEf:baseGranEf,baseTr:baseGranTr,compras:comprasGran};
+  }
   if(!newFacturas.length&&!newGastos.length&&!newEmpleados.length){ alert('No se encontraron datos en el archivo.'); return; }
   try{
     const draftRef=DRAFT().doc('current');
-    const [fS,gS,eS,cS]=await Promise.all([draftRef.collection('facturas').get(),draftRef.collection('gastos').get(),draftRef.collection('empleados').get(),draftRef.collection('compras').get()]);
+    const granRef=DRAFT().doc('granizados');
+    const [fS,gS,eS,cS,gcS]=await Promise.all([draftRef.collection('facturas').get(),draftRef.collection('gastos').get(),draftRef.collection('empleados').get(),draftRef.collection('compras').get(),granRef.collection('compras').get()]);
     const batch=db.batch();
-    [...fS.docs,...gS.docs,...eS.docs,...cS.docs].forEach(d=>batch.delete(d.ref));
+    [...fS.docs,...gS.docs,...eS.docs,...cS.docs,...gcS.docs].forEach(d=>batch.delete(d.ref));
     batch.set(draftRef,{baseEfectivo:newBaseEf,baseTr:newBaseTr,locked:false},{merge:true});
     newFacturas.forEach(f=>batch.set(draftRef.collection('facturas').doc(),{...f,createdAt:TS(),createdBy:currentUser.uid}));
     newGastos.forEach(g=>batch.set(draftRef.collection('gastos').doc(),{...g,createdAt:TS(),createdBy:currentUser.uid}));
     newEmpleados.forEach(e=>batch.set(draftRef.collection('empleados').doc(),{...e,createdAt:TS(),createdBy:currentUser.uid}));
     newCompras.forEach(c=>batch.set(draftRef.collection('compras').doc(),{...c,createdAt:TS(),createdBy:currentUser.uid}));
+    if(newGranizados){ const {compras:gc,...granBase}=newGranizados; batch.set(granRef,granBase,{merge:false}); gc.forEach(c=>batch.set(granRef.collection('compras').doc(),{...c,createdAt:TS(),createdBy:currentUser.uid})); }
     await batch.commit();
-    alert(`✅ Importado:\n• ${newFacturas.length} facturas\n• ${newGastos.length} gastos\n• ${newEmpleados.length} empleados\n• ${newCompras.length} compras`);
+    alert(`✅ Importado:\n• ${newFacturas.length} facturas\n• ${newGastos.length} gastos\n• ${newEmpleados.length} empleados\n• ${newCompras.length} compras${newGranizados?'\n• Datos de granizados':''}`);
   } catch(e){ alert('Error al importar: '+e.message); }
+}
+
+// ══════════════════════════════════════
+//   GRANIZADOS
+// ══════════════════════════════════════
+const PRECIO_SODA = 8000;
+
+function totalsGran() {
+  const {oz9ef,oz9tr,oz12ef,oz12tr,cremEf,cremTr,descuentoMonto,sodaEf,sodaTr,sodaDescMonto,baseEf,baseTr,compras} = stateGran;
+  // Granizados
+  const efBruto  = oz9ef*PRECIO_9OZ  + oz12ef*PRECIO_12OZ  + (cremEf||0)*PRECIO_CREMOSO;
+  const trBruto  = oz9tr*PRECIO_9OZ  + oz12tr*PRECIO_12OZ  + (cremTr||0)*PRECIO_CREMOSO;
+  const bruto    = efBruto + trBruto;
+  const desc     = descuentoMonto || 0;
+  const efNeto   = efBruto - desc;
+  const trNeto   = trBruto;
+  const neto     = efNeto + trNeto;
+  // Sodas
+  const sodaEfVal  = (sodaEf||0) * PRECIO_SODA;
+  const sodaTrVal  = (sodaTr||0) * PRECIO_SODA;
+  const sodaDesc   = sodaDescMonto || 0;
+  const sodaEfNeto = sodaEfVal - sodaDesc;
+  const sodaTrNeto = sodaTrVal;
+  const sodaNeto   = sodaEfNeto + sodaTrNeto;
+  // Compras caja
+  const tcEf  = compras.filter(c=>c.tipo==='efectivo').reduce((s,c)=>s+c.monto,0);
+  const tcTr  = compras.filter(c=>c.tipo==='transferencia').reduce((s,c)=>s+c.monto,0);
+  const saldoEf = Math.max(0, baseEf-tcEf);
+  const saldoTr = Math.max(0, baseTr-tcTr);
+  const saldo   = saldoEf + saldoTr;
+  // Micheladas (usa totalsMich para incluir el descuento)
+  const tmCalc    = totalsMich();
+  const michEf    = tmCalc.ef;
+  const michTr    = tmCalc.tr;
+  const michDesc  = tmCalc.desc;
+  const michEfNeto = tmCalc.efNeto;
+  const michTrNeto = tmCalc.trNeto;
+  // Limonadas (usa totalLimon para incluir el descuento)
+  const tlCalc    = totalLimon();
+  const limonEf    = tlCalc.ef;
+  const limonTr    = tlCalc.tr;
+  const limonDesc  = tlCalc.desc;
+  const limonEfNeto = tlCalc.efNeto;
+  const limonTrNeto = tlCalc.trNeto;
+  // Totales combinados
+  const dispEf = efNeto + sodaEfNeto + michEfNeto + limonEfNeto + saldoEf;
+  const dispTr = trNeto + sodaTrNeto + michTrNeto + limonTrNeto + saldoTr;
+  const total  = dispEf + dispTr;
+  return {oz9ef,oz9tr,oz12ef,oz12tr,cremEf:cremEf||0,cremTr:cremTr||0,efBruto,trBruto,bruto,desc,efNeto,trNeto,neto,
+          sodaEf:sodaEf||0,sodaTr:sodaTr||0,sodaEfVal,sodaTrVal,sodaDesc,sodaEfNeto,sodaTrNeto,sodaNeto,
+          michEf,michTr,michDesc,michEfNeto,michTrNeto,
+          limonEf,limonTr,limonDesc,limonEfNeto,limonTrNeto,
+          tcEf,tcTr,saldoEf,saldoTr,saldo,dispEf,dispTr,total,baseEf,baseTr};
+}
+
+function renderGranizados() {
+  const t = totalsGran();
+  $('gr-tot9').textContent  = t.oz9ef+t.oz9tr;
+  $('gr-tot12').textContent = t.oz12ef+t.oz12tr;
+  $('gr-val9').textContent  = fmt((t.oz9ef+t.oz9tr)*PRECIO_9OZ);
+  $('gr-val12').textContent = fmt((t.oz12ef+t.oz12tr)*PRECIO_12OZ);
+  if($('gr-tot-crem')) $('gr-tot-crem').textContent = t.cremEf+t.cremTr;
+  if($('gr-val-crem')) $('gr-val-crem').textContent = fmt((t.cremEf+t.cremTr)*PRECIO_CREMOSO);
+  $('gr-ef').textContent    = fmt(t.efBruto);
+  $('gr-tr').textContent    = fmt(t.trBruto);
+  $('gr-bruto').textContent = fmt(t.bruto);
+  // Sodas
+  if($('soda-val-ef'))  $('soda-val-ef').textContent  = fmt(t.sodaEfVal);
+  if($('soda-val-tr'))  $('soda-val-tr').textContent  = fmt(t.sodaTrVal);
+  if($('soda-desc-val'))$('soda-desc-val').textContent= fmt(t.sodaDesc);
+  if($('soda-neto'))    $('soda-neto').textContent    = fmt(t.sodaNeto);
+  $('gr-desc-val').textContent = fmt(t.desc);
+  $('gr-neto').textContent     = fmt(t.neto);
+  $('gr-saldo-ef').textContent  = fmt(t.saldoEf);
+  $('gr-sub-ef').textContent    = `Base: ${fmt(t.baseEf)} — Compras: ${fmt(t.tcEf)}`;
+  $('gr-saldo-tr').textContent  = fmt(t.saldoTr);
+  $('gr-sub-tr').textContent    = `Base: ${fmt(t.baseTr)} — Compras: ${fmt(t.tcTr)}`;
+  $('gr-saldo-total').textContent = fmt(t.saldo);
+  $('gr4-efneto').textContent   = fmt(t.efNeto);
+  $('gr4-soda-ef').textContent  = fmt(t.sodaEfNeto);
+  if($('gr4-mich-ef'))  $('gr4-mich-ef').textContent  = fmt(t.michEfNeto);
+  if($('gr4-limon-ef')) $('gr4-limon-ef').textContent = fmt(t.limonEfNeto);
+  $('gr4-saldo-ef').textContent = fmt(t.saldoEf);
+  $('gr4-disp-ef').textContent  = fmt(t.dispEf);
+  $('gr4-trneto').textContent   = fmt(t.trNeto);
+  $('gr4-soda-tr').textContent  = fmt(t.sodaTrNeto);
+  if($('gr4-mich-tr'))  $('gr4-mich-tr').textContent  = fmt(t.michTrNeto);
+  if($('gr4-limon-tr')) $('gr4-limon-tr').textContent = fmt(t.limonTrNeto);
+  $('gr4-saldo-tr').textContent = fmt(t.saldoTr);
+  $('gr4-disp-tr').textContent  = fmt(t.dispTr);
+  $('gr-total').textContent     = fmt(t.total);
+  $('gr-total-box').className   = 'neto-box '+(t.total>=0?'neto-pos':'neto-neg');
+  const tb = $('tb-compras-gran');
+  if(!stateGran.compras.length){ tb.innerHTML='<tr><td colspan="5" class="empty-msg">Sin compras</td></tr>'; return; }
+  tb.innerHTML = stateGran.compras.map((c,i)=>{
+    const badge=c.tipo==='efectivo'?'<span class="badge badge-ef">💵</span>':'<span class="badge badge-tr">🏦</span>';
+    return `<tr><td>${i+1}</td><td>${c.desc}</td><td><strong>${fmt(c.monto)}</strong></td><td>${badge}</td><td><button class="btn-sm btn-danger" onclick="delCompraGran('${c._docId}')">✕</button></td></tr>`;
+  }).join('')+`<tr class="compra-total-row"><td colspan="2" style="text-align:right;font-weight:700;color:var(--gray)">Total compras:</td><td colspan="3"><strong>${fmt(t.tcEf+t.tcTr)}</strong></td></tr>`;
+}
+
+function scheduleGranUpdate(){
+  clearTimeout(granUpdateTimer);
+  granUpdateTimer = setTimeout(updateGranFirestore, 800);
+}
+
+async function updateGranFirestore(){
+  const oz9ef  = parseInt($('g9ef').value)||0;
+  const oz9tr  = parseInt($('g9tr').value)||0;
+  const oz12ef = parseInt($('g12ef').value)||0;
+  const oz12tr = parseInt($('g12tr').value)||0;
+  const cremEf = parseInt($('gcremef').value)||0;
+  const cremTr = parseInt($('gcremtr').value)||0;
+  const descMonto = moneyVal('gr-desc-monto');
+  const descCod   = $('gr-desc-codigo').value.trim();
+  const sodaEf  = parseInt($('soda-ef').value)||0;
+  const sodaTr  = parseInt($('soda-tr').value)||0;
+  const sodaDescMonto = moneyVal('soda-desc-monto');
+  const sodaDescCodigo= $('soda-desc-codigo').value.trim();
+  const baseEf = moneyVal('gr-base-ef');
+  const baseTr = moneyVal('gr-base-tr');
+  stateGran.oz9ef=oz9ef; stateGran.oz9tr=oz9tr; stateGran.oz12ef=oz12ef; stateGran.oz12tr=oz12tr;
+  stateGran.cremEf=cremEf; stateGran.cremTr=cremTr;
+  stateGran.descuentoMonto=descMonto; stateGran.descuentoCodigo=descCod;
+  stateGran.sodaEf=sodaEf; stateGran.sodaTr=sodaTr;
+  stateGran.sodaDescMonto=sodaDescMonto; stateGran.sodaDescCodigo=sodaDescCodigo;
+  stateGran.baseEf=baseEf; stateGran.baseTr=baseTr;
+  renderGranizados();
+  try{
+    await DRAFT().doc('granizados').set({oz9ef,oz9tr,oz12ef,oz12tr,cremEf,cremTr,descuentoMonto:descMonto,descuentoCodigo:descCod,sodaEf,sodaTr,sodaDescMonto,sodaDescCodigo,baseEf,baseTr},{merge:true});
+  } catch(e){ console.error('Gran update error:',e); }
+}
+
+async function lookupDiscountSoda(){
+  const code = $('soda-desc-codigo').value.trim();
+  const info = $('soda-desc-info');
+  if(!code){ info.style.display='none'; return; }
+  try{
+    const snap = await db.collection('usuarios').where('codigoDescuento','==',code).get();
+    if(!snap.empty){
+      const u = snap.docs[0].data();
+      info.textContent='✅ Código válido — '+u.nombre;
+      info.style.background='#f0fdf4'; info.style.color='#276749'; info.style.display='block';
+    } else {
+      info.textContent='❌ Código incorrecto';
+      info.style.background='#fff5f5'; info.style.color='var(--red)'; info.style.display='block';
+      $('soda-desc-monto').value='';
+      scheduleGranUpdate();
+    }
+  } catch(e){ info.style.display='none'; }
+}
+
+async function clearDescuentoSoda(){
+  if(!confirm('¿Eliminar el descuento de sodas?')) return;
+  $('soda-desc-monto').value=''; $('soda-desc-codigo').value='';
+  $('soda-desc-info').style.display='none';
+  stateGran.sodaDescMonto=0; stateGran.sodaDescCodigo='';
+  renderGranizados();
+  try{ await DRAFT().doc('granizados').set({sodaDescMonto:0,sodaDescCodigo:''},{merge:true}); }
+  catch(e){ alert('Error: '+e.message); }
+}
+
+async function lookupDiscountCode(){
+  const code=$('gr-desc-codigo').value.trim();
+  if(!code){ $('gr-desc-info').style.display='none'; return; }
+  try{
+    const snap=await db.collection('usuarios').where('codigoDescuento','==',code).get();
+    if(!snap.empty){
+      const u=snap.docs[0].data();
+      $('gr-desc-info').textContent='✅ Código válido — '+u.nombre;
+      $('gr-desc-info').style.display='block';
+      $('gr-desc-info').style.color='#276749';
+    } else {
+      $('gr-desc-info').textContent='❌ Código no encontrado';
+      $('gr-desc-info').style.display='block';
+      $('gr-desc-info').style.color='var(--red)';
+    }
+  } catch(e){}
+}
+
+async function clearDescuento(){
+  if(!confirm('¿Eliminar el descuento aplicado?')) return;
+  $('gr-desc-monto').value = '';
+  $('gr-desc-codigo').value = '';
+  $('gr-desc-info').style.display = 'none';
+  stateGran.descuentoMonto  = 0;
+  stateGran.descuentoCodigo = '';
+  renderGranizados();
+  try{ await DRAFT().doc('granizados').set({descuentoMonto:0, descuentoCodigo:''},{merge:true}); }
+  catch(e){ alert('Error: '+e.message); }
+}
+
+function setGranCompraTipo(tipo){
+  granCompraTipo=tipo;
+  const ef=$('gr-btn-tipo-ef'); const tr=$('gr-btn-tipo-tr');
+  if(ef){ ef.style.borderColor=tipo==='efectivo'?'#48bb78':'#e2e8f0'; ef.style.background=tipo==='efectivo'?'#f0fff4':'#fff'; ef.style.color=tipo==='efectivo'?'#276749':'#4a5568'; }
+  if(tr){ tr.style.borderColor=tipo==='transferencia'?'#4299e1':'#e2e8f0'; tr.style.background=tipo==='transferencia'?'#ebf8ff':'#fff'; tr.style.color=tipo==='transferencia'?'#2b6cb0':'#4a5568'; }
+}
+
+function clearComprasGran(){ clearGranCompras(); }
+
+async function addGranCompra(){
+  const desc=$('gr-c-desc').value.trim();
+  const monto=moneyVal('gr-c-monto');
+  if(!desc||!monto){ alert('Ingresa descripción y monto.'); return; }
+  try{
+    await DRAFT().doc('granizados').collection('compras').add({desc,monto,tipo:granCompraTipo,createdAt:TS(),createdBy:currentUser.uid});
+    $('gr-c-desc').value=''; $('gr-c-monto').value='';
+  } catch(e){ alert('Error: '+e.message); }
+}
+
+function addCompraGran(){ addGranCompra(); }
+
+async function delCompraGran(docId){
+  try{ await DRAFT().doc('granizados').collection('compras').doc(docId).delete(); }
+  catch(e){ alert('Error: '+e.message); }
+}
+
+async function clearGranCompras(){
+  if(!confirm('¿Eliminar todas las compras de granizados?')) return;
+  const snap=await DRAFT().doc('granizados').collection('compras').get();
+  const batch=db.batch(); snap.docs.forEach(d=>batch.delete(d.ref)); await batch.commit();
+}
+
+// ══════════════════════════════════════
+//   MICHELADAS
+// ══════════════════════════════════════
+function totalsMich() {
+  const ventas = stateMich.ventas || [];
+  const ef   = ventas.filter(v=>v.tipo==='efectivo').reduce((s,v)=>s+(v.total||0),0);
+  const tr   = ventas.filter(v=>v.tipo==='transferencia').reduce((s,v)=>s+(v.total||0),0);
+  const desc = stateMich.michDescMonto || 0;
+  const efNeto = ef - desc;
+  const trNeto = tr;
+  const total  = efNeto + trNeto;
+  return { ef, tr, efNeto, trNeto, desc, total, ventas };
+}
+
+function setMichTipo(tipo) {
+  michTipo = tipo;
+  const ef=$('mich-btn-ef'), tr=$('mich-btn-tr');
+  if(ef){ ef.style.borderColor=tipo==='efectivo'?'#48bb78':'#e2e8f0'; ef.style.background=tipo==='efectivo'?'#f0fff4':'#fff'; ef.style.color=tipo==='efectivo'?'#276749':'#4a5568'; }
+  if(tr){ tr.style.borderColor=tipo==='transferencia'?'#4299e1':'#e2e8f0'; tr.style.background=tipo==='transferencia'?'#ebf8ff':'#fff'; tr.style.color=tipo==='transferencia'?'#2b6cb0':'#4a5568'; }
+}
+
+function recalcMich() {
+  const cant  = parseInt($('mich-cant').value)||0;
+  const precio= moneyVal('mich-precio');
+  const sub   = cant * precio;
+  if($('mich-subtotal')) $('mich-subtotal').textContent = fmt(sub);
+}
+
+async function addMichVenta() {
+  const cant   = parseInt($('mich-cant').value)||0;
+  const precio = moneyVal('mich-precio');
+  if(cant<=0){ alert('Ingresa una cantidad válida.'); return; }
+  if(precio<=0){ alert('Ingresa un precio unitario válido.'); return; }
+  const total = cant * precio;
+  const btn=$('btn-add-mich'); btn.disabled=true; btn.textContent='Guardando...';
+  try{
+    await DRAFT().doc('micheladas').collection('ventas').add({
+      cantidad: cant,
+      precioUnitario: precio,
+      total,
+      tipo: michTipo,
+      createdAt: TS(),
+      createdBy: currentUser.uid
+    });
+    $('mich-cant').value='';
+    $('mich-precio').value='';
+    if($('mich-subtotal')) $('mich-subtotal').textContent='$ 0';
+  } catch(e){ alert('Error: '+e.message); }
+  finally{ btn.disabled=false; btn.textContent='+ Agregar venta'; }
+}
+
+async function delMichVenta(docId) {
+  try{ await DRAFT().doc('micheladas').collection('ventas').doc(docId).delete(); }
+  catch(e){ alert('Error: '+e.message); }
+}
+
+async function clearMichVentas() {
+  if(!confirm('¿Eliminar todas las ventas de micheladas?')) return;
+  const snap = await DRAFT().doc('micheladas').collection('ventas').get();
+  const batch = db.batch();
+  snap.docs.forEach(d=>batch.delete(d.ref));
+  await batch.commit();
+}
+
+function saveMichDiscount() {
+  clearTimeout(michDiscountTimer);
+  michDiscountTimer = setTimeout(async () => {
+    const monto  = moneyVal('mich-desc-monto');
+    const codigo = $('mich-desc-codigo') ? $('mich-desc-codigo').value.trim() : '';
+    stateMich.michDescMonto  = monto;
+    stateMich.michDescCodigo = codigo;
+    renderMicheladas();
+    try { await DRAFT().doc('micheladas').set({michDescMonto:monto, michDescCodigo:codigo},{merge:true}); }
+    catch(e){ console.error(e); }
+  }, 800);
+}
+
+async function lookupDiscountMich() {
+  const code  = $('mich-desc-codigo') ? $('mich-desc-codigo').value.trim() : '';
+  const info  = $('mich-desc-info');
+  if(!info) return;
+  if(!code){ info.style.display='none'; return; }
+  info.textContent='Verificando...'; info.style.background='#eff6ff'; info.style.color='#1e40af'; info.style.display='block';
+  try {
+    const snap = await db.collection('usuarios').where('codigoDescuento','==',code).get();
+    if(!snap.empty){
+      const u = snap.docs[0].data();
+      info.textContent='✅ Código válido — '+(u.nombre||u.email||'usuario');
+      info.style.background='#f0fdf4'; info.style.color='#276749'; info.style.display='block';
+    } else {
+      info.textContent='❌ Código incorrecto';
+      info.style.background='#fff5f5'; info.style.color='var(--red)'; info.style.display='block';
+      if($('mich-desc-monto')) $('mich-desc-monto').value='';
+      saveMichDiscount();
+    }
+  } catch(e){ info.style.display='none'; }
+}
+
+async function clearDescuentoMich(){
+  if(!confirm('¿Eliminar el descuento de micheladas?')) return;
+  if($('mich-desc-monto'))  $('mich-desc-monto').value='';
+  if($('mich-desc-codigo')) $('mich-desc-codigo').value='';
+  if($('mich-desc-info'))   $('mich-desc-info').style.display='none';
+  stateMich.michDescMonto=0; stateMich.michDescCodigo='';
+  renderMicheladas();
+  try{ await DRAFT().doc('micheladas').set({michDescMonto:0,michDescCodigo:''},{merge:true}); }
+  catch(e){ alert('Error: '+e.message); }
+}
+
+function renderMicheladas() {
+  const tm = totalsMich();
+  // Totales brutos en la card de micheladas
+  if($('mich-tot-ef'))   $('mich-tot-ef').textContent   = fmt(tm.ef);
+  if($('mich-tot-tr'))   $('mich-tot-tr').textContent   = fmt(tm.tr);
+  // Descuento y neto
+  if($('mich-desc-val')) $('mich-desc-val').textContent = fmt(tm.desc);
+  if($('mich-neto'))     $('mich-neto').textContent     = fmt(tm.total);
+  // Refrescar el desglose total de granizados (ya que incluye micheladas)
+  renderGranizados();
+  // Tabla
+  const tb=$('tb-micheladas'); if(!tb) return;
+  if(!stateMich.ventas.length){ tb.innerHTML='<tr><td colspan="6" class="empty-msg">Sin ventas registradas</td></tr>'; return; }
+  const totalGeneral = stateMich.ventas.reduce((s,v)=>s+(v.total||0),0);
+  tb.innerHTML = stateMich.ventas.map((v,i)=>{
+    const badge=v.tipo==='efectivo'?'<span class="badge badge-ef">💵 Ef</span>':'<span class="badge badge-tr">🏦 Tr</span>';
+    return `<tr>
+      <td style="color:#a0aec0;font-size:0.75rem">${i+1}</td>
+      <td style="font-weight:700">${v.cantidad}</td>
+      <td>${fmt(v.precioUnitario)}</td>
+      <td><strong>${fmt(v.total)}</strong></td>
+      <td>${badge}</td>
+      <td><button class="btn-sm btn-danger" onclick="delMichVenta('${v._docId}')">✕</button></td>
+    </tr>`;
+  }).join('')+`<tr class="total-row"><td colspan="3">TOTAL</td><td>${fmt(totalGeneral)}</td><td colspan="2" style="font-size:0.7rem;color:var(--gray)">💵${fmt(tm.ef)} 🏦${fmt(tm.tr)}</td></tr>`;
+}
+
+// ══════════════════════════════════════
+//   LIMONADAS
+// ══════════════════════════════════════
+function setLimonTipoVenta(tipo) {
+  limonTipoVenta = tipo;
+  // Toggle botones de tipo
+  const ind  = $('limon-btn-ind');
+  const jarra = $('limon-btn-jarra');
+  if(ind && jarra) {
+    if(tipo === 'individual') {
+      ind.style.borderColor='#f6ad55'; ind.style.background='#fffaf0'; ind.style.color='#c05621';
+      jarra.style.borderColor='#e2e8f0'; jarra.style.background='#fff'; jarra.style.color='#4a5568';
+    } else {
+      jarra.style.borderColor='#f6ad55'; jarra.style.background='#fffaf0'; jarra.style.color='#c05621';
+      ind.style.borderColor='#e2e8f0'; ind.style.background='#fff'; ind.style.color='#4a5568';
+    }
+  }
+  // Mostrar/ocultar grillas de precio
+  const pInd   = $('limon-precios-ind');
+  const pJarra = $('limon-precios-jarra');
+  if(pInd)   pInd.style.display   = tipo==='individual' ? 'flex' : 'none';
+  if(pJarra) pJarra.style.display = tipo==='jarra'       ? 'flex' : 'none';
+  // Seleccionar el primer precio del tipo elegido
+  const primerPrecio = tipo==='individual' ? PRECIOS_LIMON_IND[0] : PRECIOS_LIMON_JARRA[0];
+  setLimonPrecio(primerPrecio);
+}
+
+function setLimonPrecio(precio) {
+  limonPrecioSel = precio;
+  // Resaltar botón seleccionado
+  [...PRECIOS_LIMON_IND, ...PRECIOS_LIMON_JARRA].forEach(p => {
+    const btn = $('lp-'+p);
+    if(!btn) return;
+    if(p === precio) {
+      btn.style.borderColor='#f6ad55'; btn.style.background='#fffaf0'; btn.style.color='#c05621';
+    } else {
+      btn.style.borderColor='#e2e8f0'; btn.style.background='#fff'; btn.style.color='#4a5568';
+    }
+  });
+  recalcLimon();
+}
+
+function setLimonTipo(tipo) {
+  limonTipo = tipo;
+  const ef = $('limon-btn-ef'), tr = $('limon-btn-tr');
+  if(!ef||!tr) return;
+  if(tipo==='efectivo'){
+    ef.style.borderColor='#48bb78'; ef.style.background='#f0fff4'; ef.style.color='#276749';
+    tr.style.borderColor='#e2e8f0'; tr.style.background='#fff';    tr.style.color='#4a5568';
+  } else {
+    tr.style.borderColor='#4299e1'; tr.style.background='#ebf8ff'; tr.style.color='#2b6cb0';
+    ef.style.borderColor='#e2e8f0'; ef.style.background='#fff';    ef.style.color='#4a5568';
+  }
+}
+
+function recalcLimon() {
+  const cant  = parseInt($('limon-cant')?.value) || 0;
+  const sub   = cant * limonPrecioSel;
+  if($('limon-subtotal')) $('limon-subtotal').textContent = fmt(sub);
+}
+
+async function addLimonVenta() {
+  const cant = parseInt($('limon-cant').value) || 0;
+  if(cant <= 0){ alert('Ingresa una cantidad válida.'); return; }
+  const total = cant * limonPrecioSel;
+  const btn = $('btn-add-limon'); btn.disabled=true; btn.textContent='Guardando...';
+  try {
+    await DRAFT().doc('limonadas').collection('ventas').add({
+      tipoVenta:   limonTipoVenta,
+      precio:      limonPrecioSel,
+      cantidad:    cant,
+      total,
+      tipo:        limonTipo,
+      createdAt:   TS(),
+      createdBy:   currentUser.uid
+    });
+    $('limon-cant').value = '';
+    if($('limon-subtotal')) $('limon-subtotal').textContent = '$ 0';
+  } catch(e){ alert('Error: '+e.message); }
+  finally{ btn.disabled=false; btn.textContent='+ Agregar venta'; }
+}
+
+async function delLimonVenta(docId) {
+  try { await DRAFT().doc('limonadas').collection('ventas').doc(docId).delete(); }
+  catch(e){ alert('Error: '+e.message); }
+}
+
+async function clearLimonVentas() {
+  if(!confirm('¿Eliminar todas las ventas de limonadas?')) return;
+  const snap = await DRAFT().doc('limonadas').collection('ventas').get();
+  const batch = db.batch();
+  snap.docs.forEach(d=>batch.delete(d.ref));
+  await batch.commit();
+}
+
+function totalLimon() {
+  const ventas = stateLimon.ventas || [];
+  const ef   = ventas.filter(v=>v.tipo==='efectivo').reduce((s,v)=>s+(v.total||0),0);
+  const tr   = ventas.filter(v=>v.tipo==='transferencia').reduce((s,v)=>s+(v.total||0),0);
+  const desc = stateLimon.limonDescMonto || 0;
+  const efNeto = ef - desc;
+  const trNeto = tr;
+  const total  = efNeto + trNeto;
+  return { ef, tr, efNeto, trNeto, desc, total, ventas };
+}
+
+function renderLimonadas() {
+  const tl = totalLimon();
+  if($('limon-tot-ef'))   $('limon-tot-ef').textContent   = fmt(tl.ef);
+  if($('limon-tot-tr'))   $('limon-tot-tr').textContent   = fmt(tl.tr);
+  if($('limon-desc-val')) $('limon-desc-val').textContent = fmt(tl.desc);
+  if($('limon-neto'))     $('limon-neto').textContent     = fmt(tl.total);
+  renderGranizados();
+  // Tabla
+  const tb = $('tb-limonadas'); if(!tb) return;
+  if(!stateLimon.ventas.length){ tb.innerHTML='<tr><td colspan="7" class="empty-msg">Sin ventas registradas</td></tr>'; return; }
+  const totalGeneral = stateLimon.ventas.reduce((s,v)=>s+(v.total||0),0);
+  tb.innerHTML = stateLimon.ventas.map((v,i) => {
+    const badge = v.tipo==='efectivo'
+      ? '<span class="badge badge-ef">💵 Ef</span>'
+      : '<span class="badge badge-tr">🏦 Tr</span>';
+    const tipoLabel = v.tipoVenta==='jarra' ? '🫙 Jarra' : '🥤 Ind.';
+    return `<tr>
+      <td style="color:#a0aec0;font-size:0.75rem">${i+1}</td>
+      <td style="font-size:0.8rem">${tipoLabel}</td>
+      <td style="font-weight:700">${v.cantidad}</td>
+      <td>${fmt(v.precio)}</td>
+      <td><strong>${fmt(v.total)}</strong></td>
+      <td>${badge}</td>
+      <td><button class="btn-sm btn-danger" onclick="delLimonVenta('${v._docId}')">✕</button></td>
+    </tr>`;
+  }).join('') + `<tr class="total-row"><td colspan="4">TOTAL</td><td>${fmt(totalGeneral)}</td><td colspan="2" style="font-size:0.7rem;color:var(--gray)">💵${fmt(tl.ef)} 🏦${fmt(tl.tr)}</td></tr>`;
+}
+
+function saveLimonDiscount() {
+  clearTimeout(limonDiscountTimer);
+  limonDiscountTimer = setTimeout(async () => {
+    const monto  = moneyVal('limon-desc-monto');
+    const codigo = $('limon-desc-codigo') ? $('limon-desc-codigo').value.trim() : '';
+    stateLimon.limonDescMonto  = monto;
+    stateLimon.limonDescCodigo = codigo;
+    renderLimonadas();
+    try { await DRAFT().doc('limonadas').set({limonDescMonto:monto, limonDescCodigo:codigo},{merge:true}); }
+    catch(e){ console.error(e); }
+  }, 800);
+}
+
+async function lookupDiscountLimon() {
+  const code = $('limon-desc-codigo') ? $('limon-desc-codigo').value.trim() : '';
+  const info = $('limon-desc-info');
+  if(!info) return;
+  if(!code){ info.style.display='none'; return; }
+  info.textContent='Verificando...'; info.style.background='#eff6ff'; info.style.color='#1e40af'; info.style.display='block';
+  try {
+    const snap = await db.collection('usuarios').where('codigoDescuento','==',code).get();
+    if(!snap.empty){
+      const u = snap.docs[0].data();
+      info.textContent='✅ Código válido — '+(u.nombre||u.email||'usuario');
+      info.style.background='#f0fdf4'; info.style.color='#276749'; info.style.display='block';
+    } else {
+      info.textContent='❌ Código incorrecto';
+      info.style.background='#fff5f5'; info.style.color='var(--red)'; info.style.display='block';
+      if($('limon-desc-monto')) $('limon-desc-monto').value='';
+      saveLimonDiscount();
+    }
+  } catch(e){ info.style.display='none'; }
+}
+
+async function clearDescuentoLimon() {
+  if(!confirm('¿Eliminar el descuento de limonadas?')) return;
+  if($('limon-desc-monto'))  $('limon-desc-monto').value='';
+  if($('limon-desc-codigo')) $('limon-desc-codigo').value='';
+  if($('limon-desc-info'))   $('limon-desc-info').style.display='none';
+  stateLimon.limonDescMonto=0; stateLimon.limonDescCodigo='';
+  renderLimonadas();
+  try { await DRAFT().doc('limonadas').set({limonDescMonto:0,limonDescCodigo:''},{merge:true}); }
+  catch(e){ alert('Error: '+e.message); }
 }
 
 // ══════════════════════════════════════
@@ -4755,156 +5833,6 @@ async function cerrarComanda(){
     }
   } catch(e){ $('cc-error').textContent='Error: '+e.message; }
   finally{ btn.disabled=false; btn.textContent='✅ Cobrar y cerrar mesa'; }
-}
-
-
-// ══════════════════════════════════════
-//   CUADRE SEMANAL
-// ══════════════════════════════════════
-async function cargarCuadreSemanal() {
-  const desde = $('sem-desde').value;
-  const hasta = $('sem-hasta').value;
-  if(!desde || !hasta){ alert('Selecciona el rango de fechas.'); return; }
-  if(desde > hasta){ alert('La fecha "Desde" no puede ser posterior a "Hasta".'); return; }
-
-  // Generar array de fechas en el rango
-  const fechas = [];
-  let cur = new Date(desde + 'T00:00:00');
-  const fin = new Date(hasta + 'T00:00:00');
-  while(cur <= fin){
-    const y = cur.getFullYear();
-    const m = String(cur.getMonth()+1).padStart(2,'0');
-    const d = String(cur.getDate()).padStart(2,'0');
-    fechas.push(`${y}-${m}-${d}`);
-    cur.setDate(cur.getDate()+1);
-  }
-
-  // Mostrar loading
-  const resDiv = $('sem-resultado');
-  resDiv.style.display = 'none';
-  $('sem-dias-lista').innerHTML = '<div class="empty-msg">Cargando...</div>';
-
-  try {
-    // Consultar cada día
-    const diasData = [];
-    for(const fecha of fechas){
-      const draftDoc = db.collection('drafts').doc(fecha);
-      const [facSnap, gasSnap, compSnap] = await Promise.all([
-        draftDoc.collection('facturas').get(),
-        draftDoc.collection('gastos').get(),
-        draftDoc.collection('compras').get()
-      ]);
-
-      // Ventas brutas
-      let ventasBrutas = 0;
-      facSnap.docs.forEach(d => {
-        const f = d.data();
-        if(!f.mixto){ ventasBrutas += f.monto || f.total || 0; }
-        else{ (f.pagos||[]).forEach(p => { ventasBrutas += p.monto || 0; }); }
-      });
-
-      // Gastos
-      let gastos = 0;
-      gasSnap.docs.forEach(d => { gastos += d.data().monto || 0; });
-
-      // Compras
-      const comprasDia = compSnap.docs.map(d => ({...d.data(), _fecha: fecha}));
-      const totalComprasDia = comprasDia.reduce((s,c) => s + (c.monto||0), 0);
-
-      const neto = ventasBrutas - gastos;
-      diasData.push({ fecha, ventasBrutas, gastos, neto, compras: comprasDia, totalCompras: totalComprasDia });
-    }
-
-    // Consultar pagos de empleados en el rango
-    const empSnap = await db.collection('empleados_pagos')
-      .where('fecha', '>=', desde)
-      .where('fecha', '<=', hasta)
-      .get();
-    const empleadosPagos = empSnap.docs.map(d => ({...d.data(), _docId: d.id}));
-    empleadosPagos.sort((a,b) => (a.fecha||'').localeCompare(b.fecha||''));
-
-    // Calcular totales
-    const totalVentasNetas = diasData.reduce((s,d) => s + d.neto, 0);
-    const totalCompras = diasData.reduce((s,d) => s + d.totalCompras, 0);
-    const deberiaHaber = totalVentasNetas - totalCompras;
-    const totalEmpleados = empleadosPagos.reduce((s,p) => s + (p.montoPagado || p.monto || 0), 0);
-    const utilidad = deberiaHaber - totalEmpleados;
-
-    // Renderizar días
-    const fmtFecha = f => {
-      const [y,m,d] = f.split('-');
-      return `${d}/${m}/${y}`;
-    };
-    $('sem-dias-lista').innerHTML = diasData.length === 0
-      ? '<p class="empty-msg">Sin datos en el período</p>'
-      : `<table style="width:100%;font-size:0.82rem;border-collapse:collapse">
-          <thead><tr>
-            <th style="padding:4px 6px;text-align:left;color:var(--gray);font-size:0.7rem">Fecha</th>
-            <th style="padding:4px 6px;text-align:right;color:var(--gray);font-size:0.7rem">Ventas brutas</th>
-            <th style="padding:4px 6px;text-align:right;color:var(--gray);font-size:0.7rem">Gastos</th>
-            <th style="padding:4px 6px;text-align:right;color:var(--gray);font-size:0.7rem">Neto</th>
-          </tr></thead>
-          <tbody>
-            ${diasData.map(d => `<tr>
-              <td style="padding:5px 6px;border-bottom:1px solid #f0f4f8">${fmtFecha(d.fecha)}</td>
-              <td style="padding:5px 6px;border-bottom:1px solid #f0f4f8;text-align:right;color:#276749">${fmt(d.ventasBrutas)}</td>
-              <td style="padding:5px 6px;border-bottom:1px solid #f0f4f8;text-align:right;color:var(--red)">${fmt(d.gastos)}</td>
-              <td style="padding:5px 6px;border-bottom:1px solid #f0f4f8;text-align:right;font-weight:700;color:${d.neto>=0?'#276749':'var(--red)'}">${fmt(d.neto)}</td>
-            </tr>`).join('')}
-          </tbody>
-        </table>`;
-    $('sem-total-ventas').textContent = fmt(totalVentasNetas);
-
-    // Renderizar compras
-    const todasCompras = diasData.flatMap(d => d.compras);
-    $('sem-compras-lista').innerHTML = todasCompras.length === 0
-      ? '<p class="empty-msg">Sin compras en el período</p>'
-      : `<table style="width:100%;font-size:0.82rem;border-collapse:collapse">
-          <thead><tr>
-            <th style="padding:4px 6px;text-align:left;color:var(--gray);font-size:0.7rem">Fecha</th>
-            <th style="padding:4px 6px;text-align:left;color:var(--gray);font-size:0.7rem">Ítem</th>
-            <th style="padding:4px 6px;text-align:right;color:var(--gray);font-size:0.7rem">Monto</th>
-          </tr></thead>
-          <tbody>
-            ${todasCompras.map(c => `<tr>
-              <td style="padding:5px 6px;border-bottom:1px solid #f0f4f8;font-size:0.78rem;color:var(--gray)">${fmtFecha(c._fecha)}</td>
-              <td style="padding:5px 6px;border-bottom:1px solid #f0f4f8">${c.desc||c.descripcion||'—'}</td>
-              <td style="padding:5px 6px;border-bottom:1px solid #f0f4f8;text-align:right;font-weight:700;color:var(--red)">${fmt(c.monto||0)}</td>
-            </tr>`).join('')}
-          </tbody>
-        </table>`;
-    $('sem-total-compras').textContent = fmt(totalCompras);
-
-    // Debería haber
-    $('sem-deberia-haber').textContent = fmt(deberiaHaber);
-
-    // Renderizar empleados
-    $('sem-empleados-lista').innerHTML = empleadosPagos.length === 0
-      ? '<p class="empty-msg">Sin pagos de empleados en el período</p>'
-      : empleadosPagos.map(p => {
-          const monto = p.montoPagado || p.monto || 0;
-          const badge = p.estado === 'abono'
-            ? '<span style="background:#fef3c7;color:#92400e;font-size:0.7rem;padding:2px 6px;border-radius:999px;font-weight:700;margin-left:6px">ABONO</span>'
-            : '';
-          return `<div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid #f0f4f8">
-            <div>
-              <span style="font-weight:700">${p.nombre||p.empleado||'—'}</span>${badge}
-              <div style="font-size:0.75rem;color:var(--gray)">${p.periodo||p.fecha||''}</div>
-            </div>
-            <span style="font-weight:800;color:#c05621">${fmt(monto)}</span>
-          </div>`;
-        }).join('');
-    $('sem-total-empleados').textContent = fmt(totalEmpleados);
-
-    // Utilidad
-    $('sem-utilidad').textContent = fmt(utilidad);
-    $('sem-utilidad-box').className = 'neto-box ' + (utilidad >= 0 ? 'neto-pos' : 'neto-neg');
-
-    resDiv.style.display = 'block';
-  } catch(e) {
-    alert('Error al cargar el cuadre semanal: ' + e.message);
-    console.error(e);
-  }
 }
 
 </script>
