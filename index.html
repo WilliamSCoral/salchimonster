@@ -662,10 +662,18 @@
   <div id="sem-resultado" style="display:none">
     <!-- Ventas netas del período -->
     <div class="card">
-      <div class="card-title">💰 Ventas netas del período</div>
+      <div class="card-title">💰 Ventas del período</div>
       <div id="sem-dias-lista"></div>
-      <div style="display:flex;justify-content:space-between;font-weight:800;font-size:1rem;border-top:2px solid var(--border);padding-top:10px;margin-top:8px">
-        <span>Total ventas netas</span><span id="sem-total-ventas" style="color:#276749">$0</span>
+      <div style="border-top:2px solid var(--border);padding-top:10px;margin-top:8px">
+        <div style="display:flex;justify-content:space-between;font-weight:700;font-size:0.9rem;padding:4px 0">
+          <span>Total venta neta</span><span id="sem-total-ventas" style="color:#276749">$0</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-weight:700;font-size:0.9rem;padding:4px 0">
+          <span>Total gastos</span><span id="sem-total-gastos-dia" style="color:var(--red)">$0</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-weight:800;font-size:1rem;padding:8px 0 2px;border-top:1.5px solid var(--border);margin-top:6px">
+          <span>💼 Lo que debe haber</span><span id="sem-deberia-haber" style="color:#276749;font-size:1.1rem">$0</span>
+        </div>
       </div>
     </div>
     <!-- Compras del período -->
@@ -674,13 +682,6 @@
       <div id="sem-compras-lista"></div>
       <div style="display:flex;justify-content:space-between;font-weight:800;font-size:1rem;border-top:2px solid var(--border);padding-top:10px;margin-top:8px">
         <span>Total compras</span><span id="sem-total-compras" style="color:var(--red)">$0</span>
-      </div>
-    </div>
-    <!-- Dinero que debería haber -->
-    <div class="card">
-      <div class="neto-box neto-pos">
-        <span class="neto-label">💼 Dinero que debería haber<br><small style="font-weight:400;font-size:0.75rem">(ventas netas − compras)</small></span>
-        <span class="neto-value" id="sem-deberia-haber">$0</span>
       </div>
     </div>
     <!-- Pagos de empleados -->
@@ -4844,8 +4845,9 @@ async function cargarCuadreSemanal() {
     empleadosPagos.sort((a,b) => (a.fecha||'').localeCompare(b.fecha||''));
 
     // Calcular totales
-    const totalVentasNetas = diasData.reduce((s,d) => s + d.neto, 0);
-    const totalCompras = diasData.reduce((s,d) => s + d.totalCompras, 0);
+    const totalVentasNetas = diasData.filter(d=>!d.sinDatos).reduce((s,d) => s + d.neto, 0);
+    const totalGastosDia   = diasData.filter(d=>!d.sinDatos).reduce((s,d) => s + d.gastos, 0);
+    const totalCompras = diasData.filter(d=>!d.sinDatos).reduce((s,d) => s + d.totalCompras, 0);
     const deberiaHaber = totalVentasNetas - totalCompras;
     const totalEmpleados = empleadosPagos.reduce((s,p) => s + (p.montoPagado || p.monto || 0), 0);
     const utilidad = deberiaHaber - totalEmpleados;
@@ -4855,27 +4857,32 @@ async function cargarCuadreSemanal() {
       const [y,m,d] = f.split('-');
       return `${d}/${m}/${y}`;
     };
+    const diasConDatos = diasData.filter(d => !d.sinDatos);
     $('sem-dias-lista').innerHTML = diasData.length === 0
       ? '<p class="empty-msg">Sin datos en el período</p>'
       : `<table style="width:100%;font-size:0.82rem;border-collapse:collapse">
           <thead><tr>
-            <th style="padding:4px 6px;text-align:left;color:var(--gray);font-size:0.7rem">Fecha</th>
-            <th style="padding:4px 6px;text-align:right;color:var(--gray);font-size:0.7rem">Ventas brutas</th>
-            <th style="padding:4px 6px;text-align:right;color:var(--gray);font-size:0.7rem">Gastos</th>
-            <th style="padding:4px 6px;text-align:right;color:var(--gray);font-size:0.7rem">Neto</th>
+            <th style="padding:4px 6px;text-align:left;color:var(--gray);font-size:0.7rem;text-transform:uppercase;letter-spacing:0.04em">Día</th>
+            <th style="padding:4px 6px;text-align:right;color:var(--gray);font-size:0.7rem;text-transform:uppercase;letter-spacing:0.04em">Venta neta</th>
+            <th style="padding:4px 6px;text-align:right;color:var(--gray);font-size:0.7rem;text-transform:uppercase;letter-spacing:0.04em">Gastos</th>
           </tr></thead>
           <tbody>
             ${diasData.map(d => d.sinDatos
-              ? `<tr><td style="padding:5px 6px;border-bottom:1px solid #f0f4f8;color:var(--gray)">${fmtFecha(d.fecha)}</td><td colspan="3" style="padding:5px 6px;border-bottom:1px solid #f0f4f8;color:var(--gray);font-size:0.75rem">Sin registro guardado</td></tr>`
+              ? `<tr><td style="padding:5px 6px;border-bottom:1px solid #f0f4f8;color:var(--gray)">${fmtFecha(d.fecha)}</td><td colspan="2" style="padding:5px 6px;border-bottom:1px solid #f0f4f8;color:var(--gray);font-size:0.75rem;text-align:right">Sin registro</td></tr>`
               : `<tr>
               <td style="padding:5px 6px;border-bottom:1px solid #f0f4f8">${fmtFecha(d.fecha)}</td>
-              <td style="padding:5px 6px;border-bottom:1px solid #f0f4f8;text-align:right;color:#276749">${fmt(d.ventasBrutas)}</td>
-              <td style="padding:5px 6px;border-bottom:1px solid #f0f4f8;text-align:right;color:var(--red)">${fmt(d.gastos)}</td>
               <td style="padding:5px 6px;border-bottom:1px solid #f0f4f8;text-align:right;font-weight:700;color:${d.neto>=0?'#276749':'var(--red)'}">${fmt(d.neto)}</td>
+              <td style="padding:5px 6px;border-bottom:1px solid #f0f4f8;text-align:right;color:var(--red)">${fmt(d.gastos)}</td>
             </tr>`).join('')}
+            ${diasConDatos.length > 1 ? `<tr style="background:#f7fafc">
+              <td style="padding:6px 6px;font-weight:800;font-size:0.85rem">TOTAL</td>
+              <td style="padding:6px 6px;text-align:right;font-weight:800;color:#276749">${fmt(totalVentasNetas)}</td>
+              <td style="padding:6px 6px;text-align:right;font-weight:800;color:var(--red)">${fmt(totalGastosDia)}</td>
+            </tr>` : ''}
           </tbody>
         </table>`;
     $('sem-total-ventas').textContent = fmt(totalVentasNetas);
+    $('sem-total-gastos-dia').textContent = fmt(totalGastosDia);
 
     // Renderizar compras
     const todasCompras = diasData.filter(d => !d.sinDatos).flatMap(d => d.compras||[]);
