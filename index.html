@@ -2196,27 +2196,38 @@ function renderFacturas(){
   const tb=$('tb-facturas');
   if(!state.facturas.length){ tb.innerHTML='<tr><td colspan="5" class="empty-msg">Sin facturas</td></tr>'; return; }
   let html='';
+  let totalDomicilios=0;
   state.facturas.forEach((f,idx)=>{
     const seq=idx+1, did=f._docId;
+    const esDom=f.tipoPedido==='domicilio';
+    const domVal=f.domicilioValor||0;
+    if(esDom) totalDomicilios+=domVal;
     // Etiqueta extra para facturas con detalle
     const mesaTag=f.modoDetalle&&f.mesa?`<span onclick="verResumenFactura('${did}')" style="font-size:0.68rem;background:#fef3c7;color:#92400e;padding:1px 7px;border-radius:4px;margin-left:4px;cursor:pointer;border:1px solid #f6d860" title="Ver detalle">Mesa ${f.mesa} ${f.hora?'⏰'+f.hora:''} 🔍</span>`:'';
+    const domTag=esDom?`<span style="font-size:0.68rem;background:#fff7ed;color:#c2410c;padding:1px 7px;border-radius:4px;margin-left:4px;border:1px solid #fb923c">🛵${f.domicilioBarrio?' '+f.domicilioBarrio:''}</span>`:'';
     const editBtn=currentRole==='admin'?`<button class="btn-sm" onclick="editarNumFactura('${did}','${f.num}')" style="padding:2px 6px;font-size:0.72rem;background:#ebf8ff;color:#2b6cb0;border:1px solid #bee3f8;border-radius:5px;cursor:pointer;margin-left:4px" title="Editar número">✏️</button>`:'';
+    // Celda de monto: si es domicilio muestra pedido + domicilio por separado
+    const montoCell=(montoBase)=>esDom
+      ?`<strong>${fmt(montoBase-domVal)}</strong><br><span style="font-size:0.72rem;color:#c2410c;font-weight:700">+🛵 ${fmt(domVal)}</span>`
+      :`<strong>${fmt(montoBase)}</strong>`;
+    const rowBg=esDom?'background:#fff7ed;':'';
     if(!f.mixto){
       const badge=f.tipo==='efectivo'?'<span class="badge badge-ef">Ef</span>':'<span class="badge badge-tr">Tr</span>';
-      html+=`<tr><td style="color:#a0aec0;font-size:0.75rem">${seq}</td><td><strong>${f.num}</strong>${editBtn}${mesaTag}${f.desc?`<br><span style="font-size:0.7rem;color:var(--gray)">${f.desc}</span>`:''}</td><td><strong>${fmt(f.monto||f.total||0)}</strong></td><td>${badge}</td><td>${currentRole==='admin'?`<button class="btn-sm btn-danger" onclick="delFactura('${did}')">✕</button>`:''}</td></tr>`;
+      html+=`<tr style="${rowBg}"><td style="color:#a0aec0;font-size:0.75rem">${seq}</td><td><strong>${f.num}</strong>${editBtn}${domTag}${mesaTag}${f.desc?`<br><span style="font-size:0.7rem;color:var(--gray)">${f.desc}</span>`:''}</td><td>${montoCell(f.monto||f.total||0)}</td><td>${badge}</td><td>${currentRole==='admin'?`<button class="btn-sm btn-danger" onclick="delFactura('${did}')">✕</button>`:''}</td></tr>`;
     } else {
       const pagos=f.pagos||[];
       const efTotal=pagos.filter(p=>p.tipo==='efectivo').reduce((s,p)=>s+(p.monto||0),0);
       const transfers=pagos.filter(p=>p.tipo==='transferencia');
       let first=true;
       const delBtn = currentRole==='admin' ? `<button class="btn-sm btn-danger" onclick="delFactura('${did}')">✕</button>` : '';
-      if(efTotal>0){ html+=`<tr><td style="color:#a0aec0;font-size:0.75rem">${seq}</td><td><strong>${f.num}</strong>${editBtn}${mesaTag}${f.desc?`<br><span style="font-size:0.7rem;color:var(--gray)">${f.desc}</span>`:''}</td><td><strong>${fmt(efTotal)}</strong></td><td><span class="badge badge-ef">Ef</span></td><td>${first?delBtn:''}</td></tr>`; first=false; }
-      transfers.forEach((p,ti)=>{ html+=`<tr><td></td><td><strong>${f.num}-${ti+1}</strong>${f.desc?`<br><span style="font-size:0.7rem;color:var(--gray)">${f.desc}</span>`:''}</td><td><strong>${fmt(p.monto||0)}</strong></td><td><span class="badge badge-tr">Tr</span></td><td>${first?delBtn:''}</td></tr>`; first=false; });
-      if(!efTotal&&!transfers.length){ html+=`<tr><td style="color:#a0aec0;font-size:0.75rem">${seq}</td><td><strong>${f.num}</strong>${editBtn}${mesaTag}${f.desc?`<br><span style="font-size:0.7rem;color:var(--gray)">${f.desc}</span>`:''}</td><td><strong>${fmt(f.total||f.monto||0)}</strong></td><td><span class="badge badge-ef">Ef</span></td><td>${delBtn}</td></tr>`; }
+      if(efTotal>0){ html+=`<tr style="${rowBg}"><td style="color:#a0aec0;font-size:0.75rem">${seq}</td><td><strong>${f.num}</strong>${editBtn}${domTag}${mesaTag}${f.desc?`<br><span style="font-size:0.7rem;color:var(--gray)">${f.desc}</span>`:''}</td><td>${montoCell(efTotal)}</td><td><span class="badge badge-ef">Ef</span></td><td>${first?delBtn:''}</td></tr>`; first=false; }
+      transfers.forEach((p,ti)=>{ html+=`<tr style="${rowBg}"><td></td><td><strong>${f.num}-${ti+1}</strong>${f.desc?`<br><span style="font-size:0.7rem;color:var(--gray)">${f.desc}</span>`:''}</td><td><strong>${fmt(p.monto||0)}</strong></td><td><span class="badge badge-tr">Tr</span></td><td>${first?delBtn:''}</td></tr>`; first=false; });
+      if(!efTotal&&!transfers.length){ html+=`<tr style="${rowBg}"><td style="color:#a0aec0;font-size:0.75rem">${seq}</td><td><strong>${f.num}</strong>${editBtn}${domTag}${mesaTag}${f.desc?`<br><span style="font-size:0.7rem;color:var(--gray)">${f.desc}</span>`:''}</td><td>${montoCell(f.total||f.monto||0)}</td><td><span class="badge badge-ef">Ef</span></td><td>${delBtn}</td></tr>`; }
     }
   });
   const t=totals();
-  tb.innerHTML=html+`<tr class="total-row"><td colspan="2">TOTAL (${state.facturas.length})</td><td>${fmt(t.bruto)}</td><td colspan="2" style="font-size:0.7rem;color:var(--gray)">💵${fmt(t.ef)} 🏦${fmt(t.tr)}</td></tr>`;
+  const domRow=totalDomicilios>0?` &nbsp;🛵<span style="color:#c2410c;font-weight:700">${fmt(totalDomicilios)}</span>`:'';
+  tb.innerHTML=html+`<tr class="total-row"><td colspan="2">TOTAL (${state.facturas.length})</td><td>${fmt(t.bruto)}</td><td colspan="2" style="font-size:0.7rem;color:var(--gray)">💵${fmt(t.ef)} 🏦${fmt(t.tr)}${domRow}</td></tr>`;
 }
 
 // ══════════════════════════════════════
@@ -5789,14 +5800,15 @@ async function cerrarComanda(){
   const num=nextFacturaNum();
   const desc=`Mesa ${c.mesa||''} (${(c.items||[]).map(i=>`${i.cantidad}x ${i.nombre}`).join(', ')})`;
   let factData;
+  const domExtra={tipoPedido:c.tipoPedido||'',domicilioValor:c.domicilioValor||0,domicilioBarrio:c.domicilioBarrio||''};
   if(ccTipo==='efectivo'){
-    factData={num,desc,monto:c.total,tipo:'efectivo',mixto:false,modoDetalle:true,mesa:c.mesa,hora:c.hora,items:c.items,subtotal:c.subtotal,descuento:c.descuento,comandaId:docId};
+    factData={num,desc,monto:c.total,tipo:'efectivo',mixto:false,modoDetalle:true,mesa:c.mesa,hora:c.hora,items:c.items,subtotal:c.subtotal,descuento:c.descuento,comandaId:docId,...domExtra};
   } else if(ccTipo==='transferencia'){
-    factData={num,desc,monto:c.total,tipo:'transferencia',mixto:false,modoDetalle:true,mesa:c.mesa,hora:c.hora,items:c.items,subtotal:c.subtotal,descuento:c.descuento,comandaId:docId};
+    factData={num,desc,monto:c.total,tipo:'transferencia',mixto:false,modoDetalle:true,mesa:c.mesa,hora:c.hora,items:c.items,subtotal:c.subtotal,descuento:c.descuento,comandaId:docId,...domExtra};
   } else {
     const pagado=ccPagos.reduce((s,p)=>s+p.monto,0);
     if(Math.abs(pagado-c.total)>1){ $('cc-error').textContent='El total de pagos no coincide con el total de la comanda.'; return; }
-    factData={num,desc,total:c.total,mixto:true,pagos:ccPagos,modoDetalle:true,mesa:c.mesa,hora:c.hora,items:c.items,subtotal:c.subtotal,descuento:c.descuento,comandaId:docId};
+    factData={num,desc,total:c.total,mixto:true,pagos:ccPagos,modoDetalle:true,mesa:c.mesa,hora:c.hora,items:c.items,subtotal:c.subtotal,descuento:c.descuento,comandaId:docId,...domExtra};
   }
   const btn=$('btn-cerrar-comanda'); btn.disabled=true; btn.textContent='Cerrando...';
   try{
