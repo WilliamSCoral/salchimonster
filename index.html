@@ -4785,34 +4785,33 @@ async function cargarCuadreSemanal() {
   $('sem-dias-lista').innerHTML = '<div class="empty-msg">Cargando...</div>';
 
   try {
-    // Consultar cada día
+    const hoy = today(); // fecha actual YYYY-MM-DD
     const diasData = [];
+
     for(const fecha of fechas){
-      const draftDoc = db.collection('drafts').doc(fecha);
-      const [facSnap, gasSnap, compSnap] = await Promise.all([
-        draftDoc.collection('facturas').get(),
-        draftDoc.collection('gastos').get(),
-        draftDoc.collection('compras').get()
-      ]);
+      let ventasBrutas = 0, gastosTot = 0, comprasTot = 0, comprasDia = [];
 
-      // Ventas brutas
-      let ventasBrutas = 0;
-      facSnap.docs.forEach(d => {
-        const f = d.data();
-        if(!f.mixto){ ventasBrutas += f.monto || f.total || 0; }
-        else{ (f.pagos||[]).forEach(p => { ventasBrutas += p.monto || 0; }); }
-      });
+      if(fecha === hoy){
+        // Día actual: usar state en memoria y totals()
+        const t = totals();
+        ventasBrutas = t.bruto;
+        gastosTot    = t.tg;
+        comprasTot   = t.tc;
+        comprasDia   = JSON.parse(JSON.stringify(state.compras||[]));
+      } else {
+        // Día guardado: leer de historial/{fecha}
+        const doc = await HIST().doc(fecha).get();
+        if(!doc.exists){ diasData.push({fecha, ventasBrutas:0, gastos:0, neto:0, compras:[], totalCompras:0, sinDatos:true}); continue; }
+        const r = doc.data();
+        const t = r.totals || {};
+        ventasBrutas = t.bruto || 0;
+        gastosTot    = t.tg   || 0;
+        comprasTot   = t.tc   || 0;
+        comprasDia   = (r.state && r.state.compras) ? r.state.compras : [];
+      }
 
-      // Gastos
-      let gastos = 0;
-      gasSnap.docs.forEach(d => { gastos += d.data().monto || 0; });
-
-      // Compras
-      const comprasDia = compSnap.docs.map(d => ({...d.data(), _fecha: fecha}));
-      const totalComprasDia = comprasDia.reduce((s,c) => s + (c.monto||0), 0);
-
-      const neto = ventasBrutas - gastos;
-      diasData.push({ fecha, ventasBrutas, gastos, neto, compras: comprasDia, totalCompras: totalComprasDia });
+      const neto = ventasBrutas - gastosTot;
+      diasData.push({ fecha, ventasBrutas, gastos: gastosTot, neto, compras: comprasDia, totalCompras: comprasTot });
     }
 
     // Consultar pagos de empleados en el rango
@@ -4845,7 +4844,9 @@ async function cargarCuadreSemanal() {
             <th style="padding:4px 6px;text-align:right;color:var(--gray);font-size:0.7rem">Neto</th>
           </tr></thead>
           <tbody>
-            ${diasData.map(d => `<tr>
+            ${diasData.map(d => d.sinDatos
+              ? `<tr><td style="padding:5px 6px;border-bottom:1px solid #f0f4f8;color:var(--gray)">${fmtFecha(d.fecha)}</td><td colspan="3" style="padding:5px 6px;border-bottom:1px solid #f0f4f8;color:var(--gray);font-size:0.75rem">Sin registro guardado</td></tr>`
+              : `<tr>
               <td style="padding:5px 6px;border-bottom:1px solid #f0f4f8">${fmtFecha(d.fecha)}</td>
               <td style="padding:5px 6px;border-bottom:1px solid #f0f4f8;text-align:right;color:#276749">${fmt(d.ventasBrutas)}</td>
               <td style="padding:5px 6px;border-bottom:1px solid #f0f4f8;text-align:right;color:var(--red)">${fmt(d.gastos)}</td>
