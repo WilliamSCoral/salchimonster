@@ -1527,9 +1527,21 @@
         <input type="text" id="mi-nombre" placeholder="Ej: Salchipapa especial"/>
       </div>
     </div>
-    <div class="fg" style="margin-top:8px">
-      <label>Precio</label>
-      <input type="text" inputmode="numeric" id="mi-precio" placeholder="0" oninput="moneyFmt(this)"/>
+    <div class="form-row" style="margin-top:8px;gap:8px">
+      <div class="fg">
+        <label>Precio</label>
+        <input type="text" inputmode="numeric" id="mi-precio" placeholder="0" oninput="moneyFmt(this)"/>
+      </div>
+      <div class="fg">
+        <label>Categoría</label>
+        <select id="mi-categoria">
+          <option value="salchipapas">🍟 Salchipapas</option>
+          <option value="bebidas">🥤 Bebidas</option>
+          <option value="combos">🍔 Combos</option>
+          <option value="extras">🍴 Extras</option>
+          <option value="otro">🍽️ Otro</option>
+        </select>
+      </div>
     </div>
     <button onclick="saveMenuItem()" class="btn-blue mt8" style="width:100%;padding:12px" id="btn-save-menu">Guardar plato</button>
     <div id="mi-error" style="color:var(--red);font-size:0.82rem;margin-top:6px;text-align:center;min-height:16px"></div>
@@ -1572,10 +1584,9 @@
 
     <!-- Buscador de platos -->
     <div style="margin-top:8px;font-weight:700;font-size:0.82rem;margin-bottom:6px">Agregar platos</div>
-    <div style="display:flex;gap:6px;margin-bottom:8px">
-      <input type="text" id="com-buscar" placeholder="Buscar por código o nombre..." oninput="filtrarMenuComanda()" style="flex:1;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:0.84rem"/>
-    </div>
-    <div id="com-menu-lista" style="display:flex;flex-direction:column;gap:4px;max-height:180px;overflow-y:auto;margin-bottom:8px;border:1px solid var(--border);border-radius:8px;padding:6px"></div>
+    <input type="text" id="com-buscar" placeholder="Buscar por código o nombre..." oninput="filtrarMenuComanda()" style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:0.84rem;margin-bottom:6px;box-sizing:border-box"/>
+    <div id="com-cat-chips" style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px"></div>
+    <div id="com-menu-lista" style="display:flex;flex-direction:column;gap:2px;max-height:200px;overflow-y:auto;margin-bottom:8px;border:1px solid var(--border);border-radius:8px;padding:4px"></div>
 
     <!-- Items agregados -->
     <div style="font-weight:700;font-size:0.82rem;margin-bottom:6px">Items en la comanda</div>
@@ -3890,25 +3901,48 @@ function setupMenuListener(){
   unsubs.push(unsub);
 }
 
+const CAT_INFO = {
+  salchipapas: {emoji:'🍟', label:'Salchipapas'},
+  bebidas:     {emoji:'🥤', label:'Bebidas'},
+  combos:      {emoji:'🍔', label:'Combos'},
+  extras:      {emoji:'🍴', label:'Extras'},
+  otro:        {emoji:'🍽️', label:'Otro'},
+};
+const CAT_ORDER = ['salchipapas','combos','bebidas','extras','otro'];
+
+function getCatKey(p){ return CAT_ORDER.includes(p.categoria) ? p.categoria : 'otro'; }
+
 function renderMenuList(){
   const div = $('menu-list'); if(!div) return;
   if(!menuCache.length){ div.innerHTML='<div class="empty-msg">Sin platos registrados. Agrega el primero →</div>'; return; }
-  div.innerHTML = menuCache.map(p=>`
-    <div style="display:flex;align-items:center;gap:10px;padding:10px 4px;border-bottom:1px solid #f0f4f8">
-      <span style="background:#ebf8ff;color:#2b6cb0;font-weight:800;font-size:0.78rem;padding:3px 8px;border-radius:6px;min-width:42px;text-align:center">${p.codigo}</span>
-      <div style="flex:1">
-        <div style="font-weight:600;font-size:0.88rem">${p.nombre}</div>
-        <div style="font-size:0.8rem;color:#276749;font-weight:700">${fmt(p.precio)}</div>
-      </div>
-      <button class="btn-sm btn-ghost" onclick="openEditMenuItem('${p._docId}')">✏️</button>
-      <button class="btn-sm btn-danger" onclick="deleteMenuItem('${p._docId}')">✕</button>
-    </div>`).join('');
+  // Agrupar por categoría
+  const grupos = {};
+  CAT_ORDER.forEach(c=>grupos[c]=[]);
+  menuCache.forEach(p=>{ const k=getCatKey(p); if(!grupos[k])grupos[k]=[]; grupos[k].push(p); });
+  let html='';
+  CAT_ORDER.forEach(cat=>{
+    const items=grupos[cat]; if(!items||!items.length) return;
+    const ci=CAT_INFO[cat]||{emoji:'🍽️',label:cat};
+    html+=`<div style="font-size:0.72rem;font-weight:700;color:var(--gray);text-transform:uppercase;letter-spacing:0.06em;padding:8px 4px 4px;margin-top:4px">${ci.emoji} ${ci.label}</div>`;
+    html+=items.map(p=>`
+      <div style="display:flex;align-items:center;gap:10px;padding:8px 4px;border-bottom:1px solid #f0f4f8">
+        <span style="background:#ebf8ff;color:#2b6cb0;font-weight:800;font-size:0.78rem;padding:3px 8px;border-radius:6px;min-width:42px;text-align:center">${p.codigo}</span>
+        <div style="flex:1">
+          <div style="font-weight:600;font-size:0.88rem">${p.nombre}</div>
+          <div style="font-size:0.8rem;color:#276749;font-weight:700">${fmt(p.precio)}</div>
+        </div>
+        <button class="btn-sm btn-ghost" onclick="openEditMenuItem('${p._docId}')">✏️</button>
+        <button class="btn-sm btn-danger" onclick="deleteMenuItem('${p._docId}')">✕</button>
+      </div>`).join('');
+  });
+  div.innerHTML=html;
 }
 
 function openModalMenu(){
   $('mi-docid').value=''; $('mi-codigo').value=''; $('mi-nombre').value=''; $('mi-precio').value='';
   $('mi-error').textContent=''; $('modal-menu-title').textContent='🍽️ Nuevo plato';
   $('btn-save-menu').textContent='Guardar plato';
+  if($('mi-categoria')) $('mi-categoria').value='salchipapas';
   openModal('modal-menu-item');
 }
 
@@ -3916,23 +3950,25 @@ function openEditMenuItem(docId){
   const p = menuCache.find(x=>x._docId===docId); if(!p) return;
   $('mi-docid').value=docId; $('mi-codigo').value=p.codigo; $('mi-nombre').value=p.nombre;
   $('mi-precio').value=fmtRaw(p.precio); $('mi-error').textContent='';
+  if($('mi-categoria')) $('mi-categoria').value=p.categoria||'salchipapas';
   $('modal-menu-title').textContent='✏️ Editar plato'; $('btn-save-menu').textContent='Guardar cambios';
   openModal('modal-menu-item');
 }
 
 async function saveMenuItem(){
-  const docId   = $('mi-docid').value;
-  const codigo  = $('mi-codigo').value.trim().toUpperCase();
-  const nombre  = $('mi-nombre').value.trim();
-  const precio  = moneyVal('mi-precio');
+  const docId    = $('mi-docid').value;
+  const codigo   = $('mi-codigo').value.trim().toUpperCase();
+  const nombre   = $('mi-nombre').value.trim();
+  const precio   = moneyVal('mi-precio');
+  const categoria= ($('mi-categoria')&&$('mi-categoria').value)||'salchipapas';
   $('mi-error').textContent='';
   if(!codigo||!nombre||!precio){ $('mi-error').textContent='Todos los campos son obligatorios.'; return; }
   const dup = menuCache.find(p=>p.codigo===codigo && p._docId!==docId);
   if(dup){ $('mi-error').textContent='Ese código ya existe: '+dup.nombre; return; }
   const btn=$('btn-save-menu'); btn.disabled=true; btn.textContent='Guardando...';
   try{
-    if(docId){ await db.collection('menu').doc(docId).update({codigo,nombre,precio}); }
-    else      { await db.collection('menu').add({codigo,nombre,precio,creadoAt:TS(),creadoPor:currentUser.uid}); }
+    if(docId){ await db.collection('menu').doc(docId).update({codigo,nombre,precio,categoria}); }
+    else      { await db.collection('menu').add({codigo,nombre,precio,categoria,creadoAt:TS(),creadoPor:currentUser.uid}); }
     closeModal('modal-menu-item');
   } catch(e){ $('mi-error').textContent='Error: '+e.message; }
   finally{ btn.disabled=false; btn.textContent='Guardar plato'; }
@@ -4750,6 +4786,7 @@ function renderComandasAbiertas(){
 
 function openComanda(){
   comandaItems = [];
+  comandaCatFiltro = '';
   $('com-docid').value='';
   $('com-mesa').value='';
   $('com-hora').value=new Date().toLocaleTimeString('es-CO',{hour:'2-digit',minute:'2-digit'});
@@ -4771,6 +4808,14 @@ function openComanda(){
 function editarComanda(docId){
   const c = comandasAbiertas.find(x=>x._docId===docId); if(!c) return;
   comandaItems = JSON.parse(JSON.stringify(c.items||[]));
+  // Retrocompatibilidad: ítems sin flag acumula se detectan desde menuCache
+  comandaItems.forEach(it=>{
+    if(it.acumula===undefined){
+      const p=menuCache.find(m=>m._docId===it.docId);
+      it.acumula = p ? itemAcumula(p) : it.esLlevar||false;
+    }
+  });
+  comandaCatFiltro = '';
   $('com-docid').value=docId;
   $('com-mesa').value=c.mesa||'';
   $('com-hora').value=c.hora||'';
@@ -4789,43 +4834,93 @@ function editarComanda(docId){
   openModal('modal-comanda');
 }
 
+let comandaCatFiltro = '';
+
+function setCatFiltro(cat){
+  comandaCatFiltro = cat;
+  if($('com-buscar')) $('com-buscar').value = '';
+  filtrarMenuComanda();
+}
+
 function filtrarMenuComanda(){
   const q = ($('com-buscar').value||'').toLowerCase();
   const lista = $('com-menu-lista'); if(!lista) return;
-  const filtrado = q ? menuCache.filter(p=>p.nombre.toLowerCase().includes(q)||p.codigo.toLowerCase().includes(q)) : menuCache;
+
+  // Renderizar chips de categoría
+  const chips = $('com-cat-chips');
+  if(chips){
+    const catsPresentes = [...new Set(menuCache.map(p=>getCatKey(p)))];
+    const catsOrdenadas = CAT_ORDER.filter(c=>catsPresentes.includes(c));
+    const chipStyle = (activo) => `padding:4px 10px;border-radius:20px;border:1.5px solid;font-size:0.72rem;font-weight:700;cursor:pointer;`
+      +(activo ? 'background:#276749;color:#fff;border-color:#276749' : 'background:transparent;color:var(--gray);border-color:var(--border)');
+    chips.innerHTML = `<button onclick="setCatFiltro('')" style="${chipStyle(comandaCatFiltro==='')}">Todos</button>`
+      + catsOrdenadas.map(c=>{
+          const ci=CAT_INFO[c]||{emoji:'🍽️',label:c};
+          return `<button onclick="setCatFiltro('${c}')" style="${chipStyle(comandaCatFiltro===c)}">${ci.emoji} ${ci.label}</button>`;
+        }).join('');
+  }
+
+  // Filtrar lista
+  let filtrado = menuCache;
+  if(comandaCatFiltro) filtrado = filtrado.filter(p=>getCatKey(p)===comandaCatFiltro);
+  if(q) filtrado = filtrado.filter(p=>p.nombre.toLowerCase().includes(q)||p.codigo.toLowerCase().includes(q));
   if(!filtrado.length){ lista.innerHTML='<div class="empty-msg" style="padding:8px">Sin resultados</div>'; return; }
-  lista.innerHTML = filtrado.map(p=>`
-    <div style="display:flex;align-items:center;gap:8px;padding:6px 4px;cursor:pointer;border-radius:6px" onclick="agregarItemComanda('${p._docId}')">
-      <span style="background:#ebf8ff;color:#2b6cb0;font-weight:700;font-size:0.75rem;padding:2px 7px;border-radius:5px">${p.codigo}</span>
-      <span style="flex:1;font-size:0.85rem">${p.nombre}</span>
-      <span style="font-weight:700;color:#276749;font-size:0.85rem">${fmt(p.precio)}</span>
-      <span style="background:var(--primary);color:#fff;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:0.85rem;font-weight:700">+</span>
-    </div>`).join('');
+
+  // Si no hay búsqueda y no hay filtro, agrupar por categoría
+  if(!q && !comandaCatFiltro){
+    const grupos = {};
+    CAT_ORDER.forEach(c=>grupos[c]=[]);
+    filtrado.forEach(p=>{ const k=getCatKey(p); if(!grupos[k])grupos[k]=[]; grupos[k].push(p); });
+    let html='';
+    CAT_ORDER.forEach(cat=>{
+      const items=grupos[cat]; if(!items||!items.length) return;
+      const ci=CAT_INFO[cat]||{emoji:'🍽️',label:cat};
+      html+=`<div style="font-size:0.68rem;font-weight:700;color:var(--gray);text-transform:uppercase;letter-spacing:0.05em;padding:5px 4px 2px">${ci.emoji} ${ci.label}</div>`;
+      html+=items.map(p=>menuItemRow(p)).join('');
+    });
+    lista.innerHTML=html;
+  } else {
+    lista.innerHTML = filtrado.map(p=>menuItemRow(p)).join('');
+  }
+}
+
+function menuItemRow(p){
+  return `<div style="display:flex;align-items:center;gap:8px;padding:6px 4px;cursor:pointer;border-radius:6px" onclick="agregarItemComanda('${p._docId}')">
+    <span style="background:#ebf8ff;color:#2b6cb0;font-weight:700;font-size:0.72rem;padding:2px 6px;border-radius:5px;min-width:32px;text-align:center">${p.codigo}</span>
+    <span style="flex:1;font-size:0.84rem">${p.nombre}</span>
+    <span style="font-weight:700;color:#276749;font-size:0.82rem">${fmt(p.precio)}</span>
+    <span style="background:#276749;color:#fff;border-radius:50%;width:20px;height:20px;display:flex;align-items:center;justify-content:center;font-size:0.85rem;font-weight:700;flex-shrink:0">+</span>
+  </div>`;
 }
 
 const ES_LLEVAR = nombre => nombre.trim().toUpperCase() === 'LLEVAR';
+// Categorías que acumulan cantidad en una sola línea (sin nota individual)
+const CAT_ACUMULA = new Set(['bebidas']);
+
+function itemAcumula(p){
+  return ES_LLEVAR(p.nombre) || CAT_ACUMULA.has(p.categoria||'');
+}
 
 function agregarItemComanda(docId){
   const p = menuCache.find(x=>x._docId===docId); if(!p) return;
-  if(ES_LLEVAR(p.nombre)){
-    // LLEVAR se acumula en una sola línea
-    const exist = comandaItems.find(i=>i.docId===docId);
+  if(itemAcumula(p)){
+    // Acumula: una sola línea, contador +/-
+    const esLlevarFlag = ES_LLEVAR(p.nombre);
+    const exist = comandaItems.find(i=>i.docId===docId && i.acumula);
     if(exist){ exist.cantidad++; }
-    else { comandaItems.push({uid:docId, docId, codigo:p.codigo, nombre:p.nombre, precio:p.precio, cantidad:1, nota:'', esLlevar:true}); }
+    else { comandaItems.push({uid:'acum_'+docId, docId, codigo:p.codigo, nombre:p.nombre, precio:p.precio, cantidad:1, nota:'', esLlevar:esLlevarFlag, acumula:true}); }
   } else {
-    // Resto: línea independiente con nota
+    // Individual: línea nueva por unidad, con nota
     const uid = Date.now()+Math.random();
-    comandaItems.push({uid, docId, codigo:p.codigo, nombre:p.nombre, precio:p.precio, cantidad:1, nota:'', esLlevar:false});
+    comandaItems.push({uid, docId, codigo:p.codigo, nombre:p.nombre, precio:p.precio, cantidad:1, nota:'', esLlevar:false, acumula:false});
   }
-  const buscador=$('com-buscar');
-  if(buscador){ buscador.value=''; filtrarMenuComanda(); }
   renderComandaItems(); recalcComanda();
 }
 
 function quitarItemComanda(uid){
   const idx = comandaItems.findIndex(i=>String(i.uid)===String(uid)); if(idx<0) return;
   const item = comandaItems[idx];
-  if(item.esLlevar && item.cantidad>1){ item.cantidad--; }
+  if(item.acumula && item.cantidad>1){ item.cantidad--; }
   else { comandaItems.splice(idx,1); }
   renderComandaItems(); recalcComanda();
 }
@@ -4838,28 +4933,28 @@ function actualizarNotaComanda(uid, valor){
 function renderComandaItems(){
   const div = $('com-items-lista'); if(!div) return;
   if(!comandaItems.length){ div.innerHTML='<div class="empty-msg" style="font-size:0.8rem;padding:6px">Sin platos agregados</div>'; return; }
-  div.innerHTML = comandaItems.map(i=> i.esLlevar ? `
+  div.innerHTML = comandaItems.map(i=> i.acumula ? `
     <div style="display:flex;align-items:center;gap:8px;padding:6px 4px;border-bottom:1px solid #f0f4f8">
-      <span style="font-size:0.82rem;flex:1;font-weight:600">🛍 ${i.nombre}</span>
-      <span style="font-size:0.82rem;font-weight:700;color:var(--primary)">${fmt(i.precio*i.cantidad)}</span>
-      <button onclick="quitarItemComanda('${i.uid}')" style="width:22px;height:22px;border-radius:50%;border:1.5px solid #e2e8f0;background:#fff;cursor:pointer;font-weight:700;font-size:0.85rem;line-height:1">&#8722;</button>
-      <span style="font-weight:700;min-width:20px;text-align:center">${i.cantidad}</span>
-      <button onclick="agregarItemComanda('${i.docId}')" style="width:22px;height:22px;border-radius:50%;border:1.5px solid var(--primary);background:#ebf4ff;cursor:pointer;font-weight:700;font-size:0.85rem;line-height:1;color:var(--primary)">+</button>
+      <span style="font-size:0.82rem;flex:1;font-weight:600">${i.esLlevar?'🛍 ':''}${i.nombre}</span>
+      <span style="font-size:0.82rem;font-weight:700;color:var(--green)">${fmt(i.precio*i.cantidad)}</span>
+      <button onclick="quitarItemComanda('${i.uid}')" style="width:24px;height:24px;border-radius:50%;border:1.5px solid var(--border);background:transparent;cursor:pointer;font-weight:700;font-size:1rem;line-height:1;color:var(--text)">&#8722;</button>
+      <span style="font-weight:800;min-width:22px;text-align:center;font-size:0.9rem">${i.cantidad}</span>
+      <button onclick="agregarItemComanda('${i.docId}')" style="width:24px;height:24px;border-radius:50%;border:1.5px solid var(--green);background:transparent;cursor:pointer;font-weight:700;font-size:1rem;line-height:1;color:var(--green)">+</button>
     </div>` : `
     <div style="padding:6px 4px;border-bottom:1px solid #f0f4f8">
       <div style="display:flex;align-items:center;gap:8px">
         <span style="font-size:0.82rem;flex:1;font-weight:600">${i.nombre}</span>
-        <span style="font-size:0.82rem;font-weight:700;color:var(--primary)">${fmt(i.precio)}</span>
-        <button onclick="quitarItemComanda('${i.uid}')" style="width:22px;height:22px;border-radius:50%;border:1.5px solid #fc8181;background:#fff5f5;cursor:pointer;font-weight:700;font-size:0.85rem;line-height:1;color:#c53030">&#8722;</button>
+        <span style="font-size:0.82rem;font-weight:700;color:var(--green)">${fmt(i.precio)}</span>
+        <button onclick="quitarItemComanda('${i.uid}')" style="width:24px;height:24px;border-radius:50%;border:1.5px solid var(--red);background:transparent;cursor:pointer;font-weight:700;font-size:0.85rem;line-height:1;color:var(--red)">✕</button>
       </div>
       <input type="text" placeholder="Nota: sin queso, sin salsas..." value="${i.nota||''}"
         oninput="actualizarNotaComanda('${i.uid}', this.value)"
-        style="width:100%;margin-top:4px;padding:4px 8px;border:1px solid #e2e8f0;border-radius:6px;font-size:0.75rem;color:#4a5568;background:#f7fafc"/>
+        style="width:100%;margin-top:4px;padding:4px 8px;border:1px solid var(--border);border-radius:6px;font-size:0.75rem;background:var(--light)"/>
     </div>`).join('');
 }
 
 function recalcComanda(){
-  const subtotal = comandaItems.reduce((s,i)=>s+(i.esLlevar?i.precio*i.cantidad:i.precio),0);
+  const subtotal = comandaItems.reduce((s,i)=>s+(i.precio*i.cantidad),0);
   const desc     = moneyVal('com-descuento')||0;
   const domVal   = comandaTipoPedido==='domicilio' ? (moneyVal('com-dom-valor')||0) : 0;
   const total    = Math.max(0, subtotal-desc+domVal);
@@ -4940,7 +5035,7 @@ async function guardarComandaAbierta(silencioso=false){
   const desc   = moneyVal('com-descuento')||0;
   const domVal = comandaTipoPedido==='domicilio' ? (moneyVal('com-dom-valor')||0) : 0;
   const domBarrio = comandaTipoPedido==='domicilio' ? ($('com-dom-barrio')?.value.trim()||'') : '';
-  const sub    = comandaItems.reduce((s,i)=>s+(i.esLlevar?i.precio*i.cantidad:i.precio),0);
+  const sub    = comandaItems.reduce((s,i)=>s+(i.precio*i.cantidad),0);
   const total  = Math.max(0,sub-desc+domVal);
   const docId  = $('com-docid').value;
   $('com-error').textContent='';
@@ -5138,8 +5233,8 @@ function buildHtmlTicket(mesa,hora,fecha,items,subtotal,descuento,total,tipoPago
     tipo=`<div class="pmesa">MESA ${mesa}</div>`;
   }
   const itemsHtml=items.map(i=>{
-    const precio=i.esLlevar?(i.precio*i.cantidad):i.precio;
-    return `<div class="pr"><span><span class="pb">${i.esLlevar?i.cantidad:1}×</span> ${i.nombre}</span><span>${fmtP(precio)}</span></div>
+    const precio=i.precio*i.cantidad;
+    return `<div class="pr"><span><span class="pb">${i.acumula?i.cantidad:1}×</span> ${i.nombre}</span><span>${fmtP(precio)}</span></div>
             ${i.nota?`<div style="font-size:9px;color:#555;margin-left:14px;margin-bottom:2px">(${i.nota})</div>`:''}`;
   }).join('');
   const subDesc=(descuento>0||domVal>0)?`
@@ -5195,8 +5290,8 @@ function buildEscTicket(mesa, hora, fecha, items, subtotal, descuento, total, ti
   b.push(...escDiv());
   // Ítems con precios
   items.forEach((i,idx)=>{
-    const precio=i.esLlevar?(i.precio*i.cantidad):i.precio;
-    b.push(...escItemRow(i.esLlevar?i.cantidad:1,i.nombre.toUpperCase(),fmtRaw(precio)));
+    const precio=i.precio*i.cantidad;
+    b.push(...escItemRow(i.acumula?i.cantidad:1,i.nombre.toUpperCase(),fmtRaw(precio)));
     if(i.nota) b.push(...escBytes('   ('+i.nota+')'),_LF);
     if(idx<items.length-1) b.push(...escDash());
   });
@@ -5221,7 +5316,7 @@ function buildEscTicket(mesa, hora, fecha, items, subtotal, descuento, total, ti
 }
 
 function buildEscCocina(mesa, hora, fecha, items, tipoPedido='', domVal=0, domBarrio=''){
-  const sub=items.reduce((s,i)=>s+(i.esLlevar?i.precio*i.cantidad:i.precio),0);
+  const sub=items.reduce((s,i)=>s+(i.precio*i.cantidad),0);
   return buildEscTicket(mesa,hora,fecha,items,sub,0,sub+domVal,'',tipoPedido,domVal,domBarrio);
 }
 
@@ -5250,7 +5345,7 @@ async function imprimirCocina(){
   // Fallback: window.print()
   const domVal2=comandaTipoPedido==='domicilio'?(moneyVal('com-dom-valor')||0):0;
   const domBarrio2=comandaTipoPedido==='domicilio'?($('com-dom-barrio')?.value.trim()||''):'';
-  const sub2=comandaItems.reduce((s,i)=>s+(i.esLlevar?i.precio*i.cantidad:i.precio),0);
+  const sub2=comandaItems.reduce((s,i)=>s+(i.precio*i.cantidad),0);
   const total2=sub2+domVal2;
   $('print-area').innerHTML=buildHtmlTicket(mesa,hora,fecha,comandaItems,sub2,0,total2,'',comandaTipoPedido,domVal2,domBarrio2);
   window.print();
