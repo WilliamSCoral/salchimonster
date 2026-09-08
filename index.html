@@ -1317,10 +1317,10 @@
     <div class="modal-title">🧾 Comanda <span id="comanda-num-label"></span> <button class="btn-sm btn-ghost" onclick="closeModal('modal-comanda')">✕</button></div>
     <input type="hidden" id="com-docid"/>
 
-    <!-- Info mesa + hora -->
+    <!-- Info mesa/identificador + hora -->
     <div class="form-row">
-      <div class="fg" style="max-width:100px">
-        <label>Mesa N°</label>
+      <div class="fg" style="max-width:130px">
+        <label id="com-mesa-label">Mesa N°</label>
         <input type="number" inputmode="numeric" id="com-mesa" placeholder="1" min="1"/>
       </div>
       <div class="fg">
@@ -4608,6 +4608,19 @@ function setComandaTipo(tipo){
   btnR.style.cssText=baseStyle+(tipo==='recoger'  ?'border-color:#2b6cb0;background:#ebf8ff;color:#2b6cb0':'border-color:#e2e8f0;background:#fff;color:#4a5568');
   btnM.style.cssText=baseStyle+(tipo===''         ?'border-color:#276749;background:#f0fff4;color:#276749':'border-color:#e2e8f0;background:#fff;color:#4a5568');
   $('com-domicilio-panel').style.display=tipo==='domicilio'?'block':'none';
+  // Cambiar campo mesa ↔ identificador según tipo
+  const mesaInput=$('com-mesa'), mesaLabel=$('com-mesa-label');
+  if(tipo===''){ // mesa
+    mesaLabel.textContent='Mesa N°';
+    mesaInput.type='number';
+    mesaInput.inputMode='numeric';
+    mesaInput.placeholder='1';
+  } else { // para llevar o domicilio
+    mesaLabel.textContent='Nombre / código';
+    mesaInput.type='text';
+    mesaInput.inputMode='text';
+    mesaInput.placeholder='Ej: Juan, #42';
+  }
   recalcComanda();
 }
 
@@ -4663,7 +4676,7 @@ async function guardarComandaAbierta(silencioso=false){
   const total  = Math.max(0,sub-desc+domVal);
   const docId  = $('com-docid').value;
   $('com-error').textContent='';
-  if(!mesa){ $('com-error').textContent='Ingresa el número de mesa.'; return; }
+  if(!mesa){ $('com-error').textContent=comandaTipoPedido===''?'Ingresa el número de mesa.':'Ingresa un nombre o código para identificar el pedido.'; return; }
   if(!comandaItems.length){ $('com-error').textContent='Agrega al menos un plato.'; return; }
   // Validar que si hay descuento el código sea válido
   if(desc>0 && !comandaDescCodigoValido){ $('com-error').textContent='⚠️ Ingresa un código válido para aplicar el descuento.'; return; }
@@ -4832,88 +4845,120 @@ function escItemRow(qty, nombre, precioStr){
   return rows;
 }
 
-function buildEscCocina(mesa, hora, fecha, items, tipoPedido='', domVal=0, domBarrio=''){
+/* ── Fecha con nombre de día ── */
+function fechaConDia(dateObj){
+  const DIAS=['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
+  const d=dateObj||new Date();
+  const dd=String(d.getDate()).padStart(2,'0');
+  const mm=String(d.getMonth()+1).padStart(2,'0');
+  const yy=d.getFullYear();
+  return `${DIAS[d.getDay()]} ${dd}/${mm}/${yy}`;
+}
+
+/* ── HTML ticket unificado (fallback window.print) ── */
+function buildHtmlTicket(mesa,hora,fecha,items,subtotal,descuento,total,tipoPago='',tipoPedido='',domVal=0,domBarrio=''){
+  const fmtP=v=>'$'+Number(v).toLocaleString('es-CO');
+  let tipo='';
+  if(tipoPedido==='domicilio'){
+    tipo=`<div class="pc pb" style="font-size:13px;margin:2px 0">* DOMICILIO *</div>
+          <div class="pmesa">${mesa}</div>
+          ${domBarrio?`<div class="pc pb" style="font-size:13px;margin-bottom:2px">Barrio: ${domBarrio}</div>`:''}`;
+  } else if(tipoPedido==='recoger'){
+    tipo=`<div class="pc pb" style="font-size:13px;margin:2px 0">* PARA LLEVAR *</div>
+          <div class="pmesa">${mesa}</div>`;
+  } else {
+    tipo=`<div class="pmesa">MESA ${mesa}</div>`;
+  }
+  const itemsHtml=items.map(i=>{
+    const precio=i.esLlevar?(i.precio*i.cantidad):i.precio;
+    return `<div class="pr"><span><span class="pb">${i.esLlevar?i.cantidad:1}×</span> ${i.nombre}</span><span>${fmtP(precio)}</span></div>
+            ${i.nota?`<div style="font-size:9px;color:#555;margin-left:14px;margin-bottom:2px">(${i.nota})</div>`:''}`;
+  }).join('');
+  const subDesc=(descuento>0||domVal>0)?`
+    <div class="pr"><span>Subtotal</span><span>${fmtP(subtotal)}</span></div>
+    ${descuento>0?`<div class="pr"><span>Descuento</span><span>- ${fmtP(descuento)}</span></div>`:''}
+    ${domVal>0   ?`<div class="pr"><span>Domicilio</span><span>+ ${fmtP(domVal)}</span></div>`:''}
+    <div class="pl"></div>`:'';
+  return `
+    <h2>SALCHIMONSTER MOCOA</h2>
+    <div class="pc" style="font-size:10px">${fecha} — ${hora}</div>
+    <div class="pl"></div>
+    ${tipo}
+    <div class="pl"></div>
+    ${itemsHtml}
+    <div class="pl"></div>
+    ${subDesc}
+    <div class="pmesa">${fmtP(total)}</div>
+    ${tipoPago?`<div class="pl"></div><div class="ps" style="margin-top:4px">${tipoPago}</div>`:''}
+    <div class="pl"></div>
+    <div class="ps">¡Gracias por su visita!</div>`;
+}
+
+/* ── Función unificada de impresión ESC/POS ──
+   tipoPago = '' → sin forma de pago (pedido en cocina)
+   tipoPago = 'Pago en efectivo' etc → recibo final con pago */
+function buildEscTicket(mesa, hora, fecha, items, subtotal, descuento, total, tipoPago='', tipoPedido='', domVal=0, domBarrio=''){
   const b=[];
   b.push(...escInit());
-  b.push(...escLn('SALCHIMONSTER','c',true,0x11));
-  b.push(...escLn('MOCOA','c',false,0));
-  b.push(...escLn('COMANDA','c',false,0));
+  // Encabezado compacto igual en todas
+  b.push(...escLn('SALCHIMONSTER MOCOA','c',true,0));
   b.push(...escDiv());
-  b.push(...escBytes('Fecha:  '+fecha+'  '+hora),_LF);
-  b.push(_LF);
-  b.push(...escAlign('c'),...escBold(true),...escSize(0x01));
-  b.push(...escBytes('MESA '+String(mesa)),_LF);
-  b.push(...escSize(0),...escBold(false),...escAlign('l'));
+  b.push(...escLn(fecha+'  '+hora,'c',false,0));
+  b.push(...escDiv());
+  // Tipo + identificador
   if(tipoPedido==='domicilio'){
-    b.push(...escDiv());
-    b.push(...escLn('*** DOMICILIO ***','c',true,0x01));
-    if(domBarrio) b.push(...escLn('Barrio: '+domBarrio,'c',false,0));
-    if(domVal>0)  b.push(...escLn('Domicilio: $'+fmtRaw(domVal),'c',false,0));
+    b.push(...escLn('* DOMICILIO *','c',true,0));
+    b.push(_LF);
+    b.push(...escAlign('c'),...escBold(true),...escSize(0x11));
+    b.push(...escBytes(String(mesa).toUpperCase()),_LF);
+    b.push(...escSize(0),...escBold(false),...escAlign('l'));
+    if(domBarrio) b.push(...escLn('Barrio: '+domBarrio,'c',true,0));
   } else if(tipoPedido==='recoger'){
-    b.push(...escDiv());
-    b.push(...escLn('*** PARA LLEVAR ***','c',true,0x01));
+    b.push(...escLn('* PARA LLEVAR *','c',true,0));
+    b.push(_LF);
+    b.push(...escAlign('c'),...escBold(true),...escSize(0x11));
+    b.push(...escBytes(String(mesa).toUpperCase()),_LF);
+    b.push(...escSize(0),...escBold(false),...escAlign('l'));
+  } else {
+    b.push(...escAlign('c'),...escBold(true),...escSize(0x11));
+    b.push(...escBytes('MESA '+String(mesa)),_LF);
+    b.push(...escSize(0),...escBold(false),...escAlign('l'));
   }
   b.push(...escDiv());
+  // Ítems con precios
   items.forEach((i,idx)=>{
     const precio=i.esLlevar?(i.precio*i.cantidad):i.precio;
     b.push(...escItemRow(i.esLlevar?i.cantidad:1,i.nombre.toUpperCase(),fmtRaw(precio)));
-    if(!i.esLlevar && i.nota) b.push(...escBytes('   ('+i.nota+')'),_LF);
+    if(i.nota) b.push(...escBytes('   ('+i.nota+')'),_LF);
     if(idx<items.length-1) b.push(...escDash());
   });
   b.push(...escDiv());
-  const tot=items.reduce((s,i)=>s+(i.esLlevar?i.precio*i.cantidad:i.precio),0);
-  b.push(...escLn('TOTAL PEDIDO','c',true,0x09));
-  b.push(...escLn('$'+fmtRaw(tot),'c',true,0x09));
-  b.push(...escSize(0),...escBold(false));
+  // Subtotal / descuento / domicilio solo si aplica
+  if(descuento>0||domVal>0){
+    b.push(...escBytes(pL('Subtotal',20)+pR('$ '+fmtRaw(subtotal),12)),_LF);
+    if(descuento>0) b.push(...escBytes(pL('Descuento',20)+pR('- '+fmtRaw(descuento),12)),_LF);
+    if(domVal>0)    b.push(...escBytes(pL('Domicilio',20)+pR('+ '+fmtRaw(domVal),12)),_LF);
+    b.push(...escDiv());
+  }
+  // Total grande
+  b.push(...escAlign('c'),...escBold(true),...escSize(0x11));
+  b.push(...escBytes('$'+fmtRaw(total)),_LF);
+  b.push(...escSize(0),...escBold(false),...escAlign('l'));
   b.push(...escDiv());
-  b.push(...escLn('*** COCINA ***','c',false,0));
-  b.push(...escLn('SALCHIMONSTER MOCOA','c',false,0));
+  // Forma de pago (solo en recibo final)
+  if(tipoPago) b.push(...escLn(tipoPago,'c',false,0),...escDiv());
+  b.push(...escLn('Gracias por su visita!','c',false,0));
   b.push(_LF,_LF,_LF,...escCut());
   return new Uint8Array(b);
 }
 
+function buildEscCocina(mesa, hora, fecha, items, tipoPedido='', domVal=0, domBarrio=''){
+  const sub=items.reduce((s,i)=>s+(i.esLlevar?i.precio*i.cantidad:i.precio),0);
+  return buildEscTicket(mesa,hora,fecha,items,sub,0,sub+domVal,'',tipoPedido,domVal,domBarrio);
+}
+
 function buildEscComanda(mesa, hora, fecha, items, subtotal, descuento, total, tipoPago, tipoPedido='', domVal=0, domBarrio=''){
-  const b=[];
-  b.push(...escInit());
-  b.push(...escLn('SALCHIMONSTER','c',true,0x11));
-  b.push(...escLn('MOCOA','c',false,0));
-  b.push(...escLn('COMANDA','c',false,0));
-  b.push(...escDiv());
-  b.push(...escBytes('Fecha:  '+fecha+'  '+hora),_LF);
-  b.push(_LF);
-  b.push(...escAlign('c'),...escBold(true),...escSize(0x01));
-  b.push(...escBytes('MESA '+String(mesa)),_LF);
-  b.push(...escSize(0),...escBold(false),...escAlign('l'));
-  if(tipoPedido==='domicilio'){
-    b.push(...escDiv());
-    b.push(...escLn('*** DOMICILIO ***','c',true,0x01));
-    if(domBarrio) b.push(...escLn('Barrio: '+domBarrio,'c',false,0));
-  } else if(tipoPedido==='recoger'){
-    b.push(...escDiv());
-    b.push(...escLn('*** PARA LLEVAR ***','c',true,0x01));
-  }
-  b.push(...escDiv());
-  items.forEach((i,idx)=>{
-    const precio=i.esLlevar?(i.precio*i.cantidad):i.precio;
-    b.push(...escItemRow(i.esLlevar?i.cantidad:1,i.nombre.toUpperCase(),fmtRaw(precio)));
-    if(!i.esLlevar && i.nota) b.push(...escBytes('   ('+i.nota+')'),_LF);
-    if(idx<items.length-1) b.push(...escDash());
-  });
-  b.push(...escDiv());
-  if(descuento>0||domVal>0){
-    b.push(...escBytes(pL('SUBTOTAL',20)+pR('$ '+fmtRaw(subtotal),12)),_LF);
-    if(descuento>0) b.push(...escBytes(pL('DESCUENTO',20)+pR('- '+fmtRaw(descuento),12)),_LF);
-    if(domVal>0)    b.push(...escBytes(pL('DOMICILIO',20)+pR('+ '+fmtRaw(domVal),12)),_LF);
-  }
-  b.push(...escLn('TOTAL PEDIDO','c',true,0x11));
-  b.push(...escLn('$'+fmtRaw(total),'c',true,0x11));
-  b.push(...escSize(0),...escBold(false));
-  b.push(...escDiv());
-  b.push(...escLn(tipoPago,'c',false,0));
-  b.push(...escLn('*** COCINA ***','c',false,0));
-  b.push(...escLn('SALCHIMONSTER MOCOA','c',false,0));
-  b.push(_LF,_LF,_LF,...escCut());
-  return new Uint8Array(b);
+  return buildEscTicket(mesa,hora,fecha,items,subtotal,descuento,total,tipoPago,tipoPedido,domVal,domBarrio);
 }
 
 // Variable para guardar la factura activa en el modal de resumen
@@ -4923,7 +4968,7 @@ async function imprimirCocina(){
   const mesa=$('com-mesa').value.trim()||'—';
   const hora=$('com-hora').value||new Date().toLocaleTimeString('es-CO',{hour:'2-digit',minute:'2-digit'});
   if(!comandaItems.length){ alert('Agrega platos antes de imprimir.'); return; }
-  const fecha=new Date().toLocaleDateString('es-CO',{day:'2-digit',month:'2-digit',year:'numeric'});
+  const fecha=fechaConDia();
   if(navigator.bluetooth){
     // Conectar directo aquí (gesto de usuario activo)
     if(!btChar || !btDevice?.gatt?.connected){
@@ -4935,23 +4980,16 @@ async function imprimirCocina(){
     if(ok) return;
   }
   // Fallback: window.print()
-  const itemsHtml=comandaItems.map(i=>`<div class="pr"><span class="pb">${i.cantidad}×</span><span style="flex:1;margin-left:6px">${i.nombre}</span></div>`).join('');
-  $('print-area').innerHTML=`
-    <h2>SALCHIMONSTER MOCOA</h2>
-    <div class="pc" style="font-size:10px;margin-bottom:2px">ORDEN DE COCINA</div>
-    <div class="pc" style="font-size:10px">${fecha} — ${hora}</div>
-    <div class="pl"></div>
-    <div class="pmesa">MESA ${mesa}</div>
-    <div class="pc" style="font-size:10px;margin-bottom:4px">Atendido por: <strong>${currentUserName||'—'}</strong></div>
-    <div class="pl"></div>
-    ${itemsHtml}
-    <div class="pl"></div>
-    <div class="ps">— Fin del pedido —</div>`;
+  const domVal2=comandaTipoPedido==='domicilio'?(moneyVal('com-dom-valor')||0):0;
+  const domBarrio2=comandaTipoPedido==='domicilio'?($('com-dom-barrio')?.value.trim()||''):'';
+  const sub2=comandaItems.reduce((s,i)=>s+(i.esLlevar?i.precio*i.cantidad:i.precio),0);
+  const total2=sub2+domVal2;
+  $('print-area').innerHTML=buildHtmlTicket(mesa,hora,fecha,comandaItems,sub2,0,total2,'',comandaTipoPedido,domVal2,domBarrio2);
   window.print();
 }
 
 async function imprimirComanda(){
-  const fecha=new Date().toLocaleDateString('es-CO',{day:'2-digit',month:'2-digit',year:'numeric'});
+  const fecha=fechaConDia();
   if(navigator.bluetooth && currentRF){
     // Conectar directo aquí (gesto de usuario activo)
     if(!btChar || !btDevice?.gatt?.connected){
@@ -4978,35 +5016,25 @@ async function imprimirComanda(){
     if(ok) return;
   }
   // Fallback: window.print()
-  const mesa=$('rf-titulo').textContent;
-  const hora=$('rf-hora').textContent;
-  const subtotal=$('rf-subtotal').textContent;
-  const descRow=$('rf-desc-row').style.display!=='none';
-  const desc=$('rf-descuento').textContent;
-  const total=$('rf-total').textContent;
-  const pago=$('rf-pago').textContent;
-  const tmpDiv=document.createElement('div');
-  tmpDiv.innerHTML=$('rf-items').innerHTML;
-  let itemsHtml='';
-  tmpDiv.querySelectorAll('div').forEach(r=>{
-    const cols=r.querySelectorAll('span');
-    if(cols.length>=2) itemsHtml+=`<div class="pr"><span>${cols[0].textContent}</span><span>${cols[1].textContent}</span></div>`;
-    else if(r.textContent.trim()) itemsHtml+=`<div>${r.textContent.trim()}</div>`;
-  });
-  $('print-area').innerHTML=`
-    <h2>SALCHIMONSTER MOCOA</h2>
-    <div class="ps">${fecha} — ${hora}</div>
-    <div class="pc pb" style="margin-top:3px;font-size:12px">${mesa}</div>
-    <div class="ps" style="margin-bottom:2px">Atendido por: <strong>${currentUserName||'—'}</strong></div>
-    <div class="pl"></div>
-    ${itemsHtml}
-    <div class="pl"></div>
-    <div class="pr"><span>Subtotal</span><span>${subtotal}</span></div>
-    ${descRow?`<div class="pr"><span>Descuento</span><span>${desc}</span></div>`:''}
-    <div class="pr ptotal"><span>TOTAL</span><span>${total}</span></div>
-    <div class="pl"></div>
-    <div class="ps" style="margin-top:4px">${pago}</div>
-    <div class="ps" style="margin-top:6px">¡Gracias por su visita!</div>`;
+  if(!currentRF){ return; }
+  const fRF=currentRF;
+  const mesaRF=String(fRF.mesa||'—');
+  const horaRF=fRF.hora||'—';
+  const itemsRF=fRF.items||[];
+  const subRF=fRF.subtotal||(fRF.monto||fRF.total||0);
+  const descRF=fRF.descuento||0;
+  const totalRF=fRF.total||fRF.monto||0;
+  const domValRF=fRF.domicilioValor||0;
+  const domBarrioRF=fRF.domicilioBarrio||'';
+  let pagoRF='';
+  if(fRF.mixto&&fRF.pagos?.length){
+    const ef=(fRF.pagos||[]).filter(p=>p.tipo==='efectivo').reduce((s,p)=>s+(p.monto||0),0);
+    const tr=(fRF.pagos||[]).filter(p=>p.tipo==='transferencia').reduce((s,p)=>s+(p.monto||0),0);
+    pagoRF=`Efectivo: $${fmtRaw(ef)}  Trans: $${fmtRaw(tr)}`;
+  } else {
+    pagoRF=fRF.tipo==='efectivo'?'Pago en efectivo':'Pago por transferencia';
+  }
+  $('print-area').innerHTML=buildHtmlTicket(mesaRF,horaRF,fecha,itemsRF,subRF,descRF,totalRF,pagoRF,fRF.tipoPedido||'',domValRF,domBarrioRF);
   window.print();
 }
 
