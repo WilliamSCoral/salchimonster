@@ -680,13 +680,13 @@
 
   <!-- ── Sub-sección: Guardados ── -->
   <div id="sem-sec-guardados" style="display:none">
-    <div style="display:flex;gap:8px;margin-bottom:12px">
-      <button onclick="exportarCuadresExcel()" class="btn-green" style="flex:1;padding:11px;font-size:0.82rem;border-radius:10px">📥 Exportar Excel</button>
-      <button onclick="$('import-cuadres-file').click()" class="btn-blue"  style="flex:1;padding:11px;font-size:0.82rem;border-radius:10px">📂 Importar Excel</button>
-    </div>
+    <button onclick="$('import-cuadres-file').click()" class="btn-blue" style="width:100%;padding:11px;font-size:0.82rem;border-radius:10px;margin-bottom:12px">📂 Importar cuadres desde Excel</button>
     <input type="file" id="import-cuadres-file" accept=".xlsx,.xls" style="display:none" onchange="importarCuadresExcel(event)"/>
     <div class="card">
-      <div class="card-title">📁 Cuadres guardados</div>
+      <div class="card-title" style="display:flex;justify-content:space-between;align-items:center">
+        <span>📁 Cuadres guardados</span>
+        <button onclick="exportarCuadresExcel()" class="btn-green" style="padding:5px 11px;border-radius:8px;border:none;font-size:0.75rem;font-weight:700;cursor:pointer;color:#fff;background:#276749">📥 Excel</button>
+      </div>
       <div id="sem-guardados-lista"><p class="empty-msg">Sin cuadres guardados aún</p></div>
     </div>
   </div>
