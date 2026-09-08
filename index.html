@@ -2031,7 +2031,12 @@ async function eliminarSocio(docId){
 function abrirResumenSemanal(){
   if(!semPeriodoDesde){ alert('Carga un período primero.'); return; }
 
-  const fmtD = f => { const [y,m,d]=f.split('-'); return `${d}/${m}/${y}`; };
+  const DIAS_ESP  = ['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
+  const MESES_ESP = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+  const fmtD = f => {
+    const dt = new Date(f + 'T12:00:00');
+    return `${DIAS_ESP[dt.getDay()]} ${dt.getDate()} de ${MESES_ESP[dt.getMonth()]}`;
+  };
 
   // Tabla de días
   const filasHTML = semEmpCalc !== undefined && window._semDiasData
