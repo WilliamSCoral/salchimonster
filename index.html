@@ -198,6 +198,47 @@
       table { font-size: 0.88rem; }
       td, thead th { padding: 10px 12px; }
     }
+    /* ══ DARK MODE ══ */
+    [data-theme="dark"] {
+      --blue:   #7b93f5;
+      --green:  #48bb78;
+      --red:    #fc8181;
+      --orange: #f6ad55;
+      --purple: #b794f4;
+      --gray:   #a0aec0;
+      --light:  #2d3748;
+      --border: #3a4a5c;
+      --text:   #e2e8f0;
+    }
+    [data-theme="dark"] body { background: #111827; color: var(--text); }
+    [data-theme="dark"] .card { background: #1e2a3a; box-shadow: 0 1px 6px rgba(0,0,0,0.4); }
+    [data-theme="dark"] .tabs { background: #1e2a3a; border-color: var(--border); }
+    [data-theme="dark"] .tab { color: var(--gray); }
+    [data-theme="dark"] .tab.active { color: var(--blue); border-bottom-color: var(--blue); }
+    [data-theme="dark"] input, [data-theme="dark"] select { background: #2d3748; color: var(--text); border-color: var(--border); }
+    [data-theme="dark"] input:focus, [data-theme="dark"] select:focus { background: #374151; border-color: var(--blue); }
+    [data-theme="dark"] input[readonly] { background: #1e2a3a !important; color: var(--gray); }
+    [data-theme="dark"] .modal { background: #1e2a3a; }
+    [data-theme="dark"] .modal-bg { background: rgba(0,0,0,0.7); }
+    [data-theme="dark"] .hist-item { background: #2d3748; border-color: var(--border); }
+    [data-theme="dark"] .hist-item:active { background: #374151; }
+    [data-theme="dark"] .stat-box { background: #2d3748; border-color: var(--border); }
+    [data-theme="dark"] .pago-row { background: #2d3748; border-color: var(--border); }
+    [data-theme="dark"] .user-item { background: #2d3748; border-color: var(--border); }
+    [data-theme="dark"] thead th { background: #2d3748; }
+    [data-theme="dark"] tbody tr { border-color: #2d3748; }
+    [data-theme="dark"] tbody tr:active { background: #2d3748; }
+    [data-theme="dark"] .total-row td { background: #2d3748; border-color: var(--border); }
+    [data-theme="dark"] .btn-ghost { background: #2d3748; color: var(--text); }
+    [data-theme="dark"] .btn-danger { background: #2d2020; color: var(--red); }
+    [data-theme="dark"] .locked-banner { background: #2d2b1a; border-color: #b7791f; color: #f6e05e; }
+    [data-theme="dark"] .neto-pos { background: #1a2e22; border-color: #276749; }
+    [data-theme="dark"] .neto-neg { background: #2d1a1a; border-color: #9b2c2c; }
+    [data-theme="dark"] #mixto-progress { background: #2d3748; border-color: var(--border); }
+    [data-theme="dark"] .badge-ef { background: #1a3326; color: #48bb78; }
+    [data-theme="dark"] .badge-tr { background: #1a2640; color: #63b3ed; }
+    [data-theme="dark"] .empty-msg { color: #4a5568; }
+
     @page { size: 58mm auto; margin: 0mm 2mm; }
     @media print {
       html, body { width: 58mm !important; max-width: 58mm !important; margin: 0 !important; padding: 0 !important; background: #fff !important; }
@@ -255,6 +296,7 @@
     </div>
     <div class="topbar-right">
       <span class="user-badge" id="top-user-badge"></span>
+      <button id="btn-theme" onclick="toggleTheme()" style="background:rgba(255,255,255,0.15);color:#fff;border:none;padding:5px 8px;border-radius:6px;font-size:0.88rem;cursor:pointer" title="Cambiar tema">🌙</button>
       <button onclick="doLogout()" style="background:rgba(255,255,255,0.15);color:#fff;border:none;padding:5px 8px;border-radius:6px;font-size:0.82rem;cursor:pointer">🚪</button>
     </div>
   </div>
@@ -1509,6 +1551,20 @@ function moneyVal(id) {
   return parseInt(($(id).value || '0').replace(/\./g, ''), 10) || 0;
 }
 
+// ── Inicializar tema ──
+(function(){
+  try{
+    const t = localStorage.getItem('salchi-theme') || 'light';
+    document.documentElement.setAttribute('data-theme', t);
+    // El botón se actualiza después del render; usamos un observer mínimo
+    const obs = new MutationObserver(()=>{
+      const btn = document.getElementById('btn-theme');
+      if(btn){ btn.textContent = t === 'dark' ? '☀️' : '🌙'; obs.disconnect(); }
+    });
+    obs.observe(document.body, {childList:true, subtree:true});
+  }catch(e){}
+})();
+
 // ══════════════════════════════════════
 //   AUTH
 // ══════════════════════════════════════
@@ -1558,6 +1614,15 @@ async function doLogin() {
   } catch(e) {
     $('login-error').textContent = 'Usuario o contraseña incorrectos.';
   }
+}
+
+function toggleTheme(){
+  const html = document.documentElement;
+  const next = html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+  html.setAttribute('data-theme', next);
+  try{ localStorage.setItem('salchi-theme', next); } catch(e){}
+  const btn = $('btn-theme');
+  if(btn) btn.textContent = next === 'dark' ? '☀️' : '🌙';
 }
 
 async function doLogout() {
