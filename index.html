@@ -660,20 +660,37 @@
 
 <!-- ═══ PAGE 7: CUADRE SEMANAL ═══ -->
 <div class="page" id="page-7">
-  <div class="card">
-    <div class="card-title">📊 Cuadre semanal</div>
-    <div class="form-row" style="margin-bottom:10px">
-      <div class="fg"><label style="font-size:0.75rem">Desde</label><input type="date" id="sem-desde"/></div>
-      <div class="fg"><label style="font-size:0.75rem">Hasta</label><input type="date" id="sem-hasta"/></div>
+  <!-- Sub-tabs -->
+  <div style="display:flex;gap:4px;margin-bottom:14px;background:#f0f4f8;border-radius:12px;padding:4px">
+    <button id="sem-tab-cuadre"    onclick="switchSemTab('cuadre')"    style="flex:1;padding:8px 4px;border-radius:9px;border:none;background:#276749;color:#fff;font-weight:700;cursor:pointer;font-size:0.78rem">📊 Cuadre</button>
+    <button id="sem-tab-guardados" onclick="switchSemTab('guardados')" style="flex:1;padding:8px 4px;border-radius:9px;border:none;background:transparent;color:var(--gray);font-weight:600;cursor:pointer;font-size:0.78rem">📁 Guardados</button>
+  </div>
+
+  <!-- ── Sub-sección: Cuadre ── -->
+  <div id="sem-sec-cuadre">
+    <div class="card">
+      <div class="card-title">📊 Cuadre semanal</div>
+      <div class="form-row" style="margin-bottom:10px">
+        <div class="fg"><label style="font-size:0.75rem">Desde</label><input type="date" id="sem-desde"/></div>
+        <div class="fg"><label style="font-size:0.75rem">Hasta</label><input type="date" id="sem-hasta"/></div>
+      </div>
+      <button onclick="cargarCuadreSemanal()" class="btn-blue" style="width:100%;padding:12px">🔍 Cargar período</button>
     </div>
-    <button onclick="cargarCuadreSemanal()" class="btn-blue" style="width:100%;padding:12px">🔍 Cargar período</button>
   </div>
-  <!-- Cuadres guardados -->
-  <div class="card">
-    <div class="card-title">📁 Cuadres guardados</div>
-    <div id="sem-guardados-lista"><p class="empty-msg">Sin cuadres guardados aún</p></div>
+
+  <!-- ── Sub-sección: Guardados ── -->
+  <div id="sem-sec-guardados" style="display:none">
+    <div style="display:flex;gap:8px;margin-bottom:12px">
+      <button onclick="exportarCuadresExcel()" class="btn-green" style="flex:1;padding:11px;font-size:0.82rem;border-radius:10px">📥 Exportar Excel</button>
+      <button onclick="$('import-cuadres-file').click()" class="btn-blue"  style="flex:1;padding:11px;font-size:0.82rem;border-radius:10px">📂 Importar Excel</button>
+    </div>
+    <input type="file" id="import-cuadres-file" accept=".xlsx,.xls" style="display:none" onchange="importarCuadresExcel(event)"/>
+    <div class="card">
+      <div class="card-title">📁 Cuadres guardados</div>
+      <div id="sem-guardados-lista"><p class="empty-msg">Sin cuadres guardados aún</p></div>
+    </div>
   </div>
-  <div id="sem-resultado" style="display:none">
+  <div id="sem-resultado" style="display:none;margin-top:0">
     <!-- Botón resumen -->
     <button onclick="abrirResumenSemanal()" class="btn-purple" style="width:100%;padding:13px;margin-bottom:14px;font-size:0.95rem;border-radius:12px">📊 Ver resumen</button>
     <!-- Ventas netas del período -->
@@ -1986,6 +2003,83 @@ const CUADRES_COL  = () => db.collection('cuadres_semanales');
 
 let sociosData = []; // [{_docId, nombre, porcentaje}]
 let semUtilidadActual = 0; // para usar en renderSocios
+
+/* ── Sub-tabs semanales ── */
+function switchSemTab(tab){
+  const isCuadre = tab === 'cuadre';
+  $('sem-sec-cuadre').style.display    = isCuadre  ? '' : 'none';
+  $('sem-sec-guardados').style.display = !isCuadre ? '' : 'none';
+  // sem-resultado is inside sem-sec-cuadre logically but sits after it in DOM;
+  // hide/show it together with the cuadre section
+  const res = $('sem-resultado');
+  if(res) res.style.display = isCuadre ? (window._semResultadoVisible ? '' : 'none') : 'none';
+  // style active tab button
+  const tabCuadre    = $('sem-tab-cuadre');
+  const tabGuardados = $('sem-tab-guardados');
+  tabCuadre.style.background    = isCuadre  ? '#276749' : 'transparent';
+  tabCuadre.style.color         = isCuadre  ? '#fff'    : 'var(--gray)';
+  tabGuardados.style.background = !isCuadre ? '#276749' : 'transparent';
+  tabGuardados.style.color      = !isCuadre ? '#fff'    : 'var(--gray)';
+}
+
+/* ── Exportar cuadres a Excel ── */
+function exportarCuadresExcel(){
+  if(!cuadresGuardados.length){ alert('No hay cuadres guardados para exportar.'); return; }
+  const fmt = v => typeof v === 'number' ? v : 0;
+  const rows = cuadresGuardados.map(c => ({
+    'Desde'             : c.desde        || '',
+    'Hasta'             : c.hasta        || '',
+    'Venta neta ($)'    : fmt(c.totalVentasNetas),
+    'Compras caja ($)'  : fmt(c.totalComprasCaja),
+    'Debe haber ($)'    : fmt(c.deberiaHaber),
+    'Empleados ($)'     : fmt(c.totalEmpleados),
+    'Utilidad ($)'      : fmt(c.utilidad),
+    'Socios (JSON)'     : JSON.stringify(c.socios || []),
+    'Guardado'          : c.guardadoAt && c.guardadoAt.toDate ? c.guardadoAt.toDate().toLocaleString('es-CO') : (c.guardadoAt||''),
+  }));
+  const ws = XLSX.utils.json_to_sheet(rows);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Cuadres');
+  // auto column width
+  const cols = Object.keys(rows[0]).map(k => ({ wch: Math.max(k.length, 18) }));
+  ws['!cols'] = cols;
+  XLSX.writeFile(wb, `cuadres_semanales_${today()}.xlsx`);
+}
+
+/* ── Importar cuadres desde Excel ── */
+async function importarCuadresExcel(ev){
+  const file = ev.target.files[0];
+  if(!file) return;
+  ev.target.value = '';
+  const buf = await file.arrayBuffer();
+  const wb  = XLSX.read(buf, { type: 'array' });
+  const ws  = wb.Sheets[wb.SheetNames[0]];
+  const rows = XLSX.utils.sheet_to_json(ws);
+  if(!rows.length){ alert('El archivo está vacío o no tiene el formato esperado.'); return; }
+  let ok = 0, err = 0;
+  for(const row of rows){
+    const desde = (row['Desde']||'').trim();
+    const hasta  = (row['Hasta']||'').trim();
+    if(!desde || !hasta){ err++; continue; }
+    const docId = `${desde}_${hasta}`;
+    let socios = [];
+    try{ socios = JSON.parse(row['Socios (JSON)'] || '[]'); } catch(e){}
+    const record = {
+      desde,
+      hasta,
+      totalVentasNetas : Number(row['Venta neta ($)']  || 0),
+      totalComprasCaja : Number(row['Compras caja ($)'] || 0),
+      deberiaHaber     : Number(row['Debe haber ($)']   || 0),
+      totalEmpleados   : Number(row['Empleados ($)']    || 0),
+      utilidad         : Number(row['Utilidad ($)']     || 0),
+      socios,
+      importadoAt      : firebase.firestore.FieldValue.serverTimestamp(),
+    };
+    try{ await CUADRES_COL().doc(docId).set(record); ok++; }
+    catch(e){ console.error('import cuadre', e); err++; }
+  }
+  alert(`Importación completa:\n✅ ${ok} cuadres guardados\n❌ ${err} errores`);
+}
 
 function setupSociosListener(){
   SOCIOS_COL().orderBy('nombre').onSnapshot(snap=>{
@@ -5226,6 +5320,7 @@ async function cargarCuadreSemanal() {
   // Mostrar loading
   const resDiv = $('sem-resultado');
   resDiv.style.display = 'none';
+  window._semResultadoVisible = false;
   $('sem-dias-lista').innerHTML = '<div class="empty-msg">Cargando...</div>';
 
   try {
@@ -5421,6 +5516,7 @@ async function cargarCuadreSemanal() {
     renderSocios();
 
     resDiv.style.display = 'block';
+    window._semResultadoVisible = true;
   } catch(e) {
     alert('Error al cargar el cuadre semanal: ' + e.message);
     console.error(e);
