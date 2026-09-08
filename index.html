@@ -435,15 +435,24 @@
         </div>
         <div id="lista-emp-reg"><p class="empty-msg">Sin empleados registrados</p></div>
       </div>
-      <div class="card">
-        <div class="card-title">
-          💸 Pagos del día
-          <button class="btn-sm btn-danger" onclick="clearEmpleados()">🗑 Limpiar</button>
+      <div>
+        <div class="card">
+          <div class="card-title">
+            💸 Pagos del día
+            <button class="btn-sm btn-danger" onclick="clearEmpleados()">🗑 Limpiar</button>
+          </div>
+          <table>
+            <thead><tr><th>#</th><th>Empleado</th><th>Pago</th><th>Tipo</th><th></th></tr></thead>
+            <tbody id="tb-empleados"><tr><td colspan="5" class="empty-msg">Sin pagos hoy</td></tr></tbody>
+          </table>
         </div>
-        <table>
-          <thead><tr><th>#</th><th>Empleado</th><th>Pago</th><th>Tipo</th><th></th></tr></thead>
-          <tbody id="tb-empleados"><tr><td colspan="5" class="empty-msg">Sin pagos hoy</td></tr></tbody>
-        </table>
+        <div class="card" style="margin-top:10px">
+          <div class="card-title" style="margin-bottom:8px">
+            📅 Pagos esta semana
+            <span id="sem-actual-rango" style="font-size:0.72rem;font-weight:400;color:var(--gray)"></span>
+          </div>
+          <div id="sem-actual-pagos"><p class="empty-msg">Sin pagos esta semana</p></div>
+        </div>
       </div>
     </div>
   </div>
@@ -676,26 +685,18 @@
         </div>
       </div>
     </div>
-    <!-- Compras del período -->
+    <!-- Empleados -->
     <div class="card">
-      <div class="card-title">🛒 Compras del período</div>
-      <div id="sem-compras-lista"></div>
+      <div class="card-title">👷 Empleados — Cierre semanal</div>
+      <div id="sem-empleados-contenido"><p class="empty-msg">Carga un período primero.</p></div>
       <div style="display:flex;justify-content:space-between;font-weight:800;font-size:1rem;border-top:2px solid var(--border);padding-top:10px;margin-top:8px">
-        <span>Total compras</span><span id="sem-total-compras" style="color:var(--red)">$0</span>
-      </div>
-    </div>
-    <!-- Pagos de empleados -->
-    <div class="card">
-      <div class="card-title">👷 Pagos de empleados del período</div>
-      <div id="sem-empleados-lista"></div>
-      <div style="display:flex;justify-content:space-between;font-weight:800;font-size:1rem;border-top:2px solid var(--border);padding-top:10px;margin-top:8px">
-        <span>Total empleados</span><span id="sem-total-empleados" style="color:#c05621">$0</span>
+        <span>Total pagado empleados</span><span id="sem-total-empleados" style="color:#c05621">$0</span>
       </div>
     </div>
     <!-- Utilidad -->
     <div class="card">
       <div class="neto-box" id="sem-utilidad-box">
-        <span class="neto-label">📈 Utilidad del período<br><small style="font-weight:400;font-size:0.75rem">(debería haber − pagos empleados)</small></span>
+        <span class="neto-label">📈 Utilidad del período<br><small style="font-weight:400;font-size:0.75rem">(lo que debe haber − pagado a empleados)</small></span>
         <span class="neto-value" id="sem-utilidad">$0</span>
       </div>
     </div>
@@ -1936,6 +1937,7 @@ function setupEmpleadosListeners(){
   EMP_PAGO().orderBy('creadoAt','desc').limit(300).onSnapshot(snap=>{
     historialPagosEmp = snap.docs.map(d=>({_docId:d.id,...d.data()}));
     renderHistorialPagos();
+    renderPagosSemanaActual();
   }, e=>console.error('emp_pagos',e));
 
   // Extras diarios — todos, para acceso rápido por clave empId_fecha
@@ -2111,6 +2113,65 @@ function populateEmpHistFiltro(){
   if(current) sel.value=current;
 }
 
+function getLunesActual(){
+  const hoy = new Date();
+  const dow  = hoy.getDay(); // 0=Dom,1=Lun,...,6=Sab
+  const diff = (dow === 0) ? -6 : 1 - dow; // retroceder al lunes
+  const lunes = new Date(hoy);
+  lunes.setDate(hoy.getDate() + diff);
+  return lunes.toISOString().slice(0,10);
+}
+
+function renderPagosSemanaActual(){
+  const div = $('sem-actual-pagos');
+  const rangoDiv = $('sem-actual-rango');
+  if(!div) return;
+  const lunes = getLunesActual();
+  const hoyStr = today();
+  const fmtD = f => { const [y,m,d]=f.split('-'); return `${d}/${m}`; };
+  if(rangoDiv) rangoDiv.textContent = `(${fmtD(lunes)} – ${fmtD(hoyStr)})`;
+
+  const lista = historialPagosEmp.filter(p => {
+    const f = p.fecha || '';
+    return f >= lunes && f <= hoyStr;
+  });
+  if(!lista.length){ div.innerHTML='<p class="empty-msg">Sin pagos esta semana</p>'; return; }
+
+  const canDel = currentRole === 'admin';
+  div.innerHTML = lista.map(p => {
+    const monto = p.montoPagado || p.monto || 0;
+    const esAbono = p.estado === 'abono';
+    const badge = esAbono
+      ? '<span style="background:#fffbeb;color:#744210;border:1px solid #d69e2e;border-radius:5px;padding:1px 6px;font-size:0.7rem;font-weight:700;margin-left:4px">ABONO</span>'
+      : '';
+    const tipoBadge = p.tipo === 'transferencia'
+      ? '<span style="background:#ebf8ff;color:#2b6cb0;border-radius:5px;padding:1px 6px;font-size:0.7rem;font-weight:700">🏦</span>'
+      : '<span style="background:#f0fff4;color:#276749;border-radius:5px;padding:1px 6px;font-size:0.7rem;font-weight:700">💵</span>';
+    const saldoStr = esAbono && p.saldo
+      ? `<div style="font-size:0.72rem;color:#c05621">Saldo pendiente: ${fmt(p.saldo)}</div>` : '';
+    const delBtn = canDel
+      ? `<button onclick="delPagoEmpleado('${p._docId}')" title="Eliminar pago"
+           style="padding:3px 8px;border-radius:6px;border:1.5px solid #fed7d7;background:#fff5f5;color:#e53e3e;font-weight:700;cursor:pointer;font-size:0.8rem">✕</button>`
+      : '';
+    return `<div style="background:#fff;border:1.5px solid ${esAbono?'#d69e2e':'var(--border)'};border-radius:9px;padding:9px 12px;margin-bottom:6px">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start">
+        <div>
+          <span style="font-weight:700;font-size:0.88rem">${p.nombreEmpleado||'—'}${badge}</span>
+          <div style="font-size:0.72rem;color:var(--gray);margin-top:1px">
+            📅 ${p.fecha||'—'} &nbsp;${tipoBadge}
+            ${p.periodo ? `<div>🗓 ${p.periodo}</div>` : ''}
+            ${saldoStr}
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px">
+          <span style="font-weight:800;color:#276749">${fmt(monto)}</span>
+          ${delBtn}
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
 function renderHistorialPagos(){
   const div=$('lista-pagos-emp');
   if(!div) return;
@@ -2159,12 +2220,15 @@ function renderHistorialPagos(){
 
 async function delPagoEmpleado(docId){
   if(currentRole !== 'admin'){ alert('⛔ Solo el administrador puede eliminar pagos.'); return; }
-  if(!currentDiscountCode){ alert('⛔ Tu cuenta no tiene clave configurada. Configúrala en Usuarios.'); return; }
-  const clave=prompt('Ingresa la clave de administrador para eliminar este pago:');
-  if(clave===null) return;
-  if(clave.trim() !== currentDiscountCode){ alert('❌ Clave incorrecta.'); return; }
+  if(!confirm('¿Eliminar este pago? Esta acción no se puede deshacer.')) return;
+  if(currentDiscountCode){
+    const clave=prompt('Ingresa la clave de administrador para confirmar:');
+    if(clave===null) return;
+    if(clave.trim() !== currentDiscountCode){ alert('❌ Clave incorrecta.'); return; }
+  }
   try{
     await EMP_PAGO().doc(docId).delete();
+    renderPagosSemanaActual();
   } catch(e){ alert('Error: '+e.message); }
 }
 
@@ -4762,11 +4826,82 @@ async function cerrarComanda(){
 // ══════════════════════════════════════
 //   CUADRE SEMANAL
 // ══════════════════════════════════════
+let semPeriodoDesde = '';
+let semPeriodoHasta = '';
+let semEmpCalc      = []; // [{emp, totalCalc, totalDias, totalMin, extrasVal, abonosPeriodo, totalAbonado, saldoPendiente}]
+let semEmpPagos     = []; // empleadosPagos cargados del período
+
+function setSemPagoTipo(empId, tipo){
+  ['ef','tr'].forEach(t=>{
+    const btn=$(`sem-btn-${t}-${empId}`);
+    if(!btn) return;
+    btn.style.background  = t==='ef' ? (tipo==='efectivo'?'#f0fff4':'#fff') : (tipo==='transferencia'?'#ebf8ff':'#fff');
+    btn.style.color       = t==='ef' ? (tipo==='efectivo'?'#276749':'#4a5568') : (tipo==='transferencia'?'#2b6cb0':'#4a5568');
+    btn.style.borderColor = t==='ef' ? (tipo==='efectivo'?'#48bb78':'#e2e8f0') : (tipo==='transferencia'?'#63b3ed':'#e2e8f0');
+  });
+  const h=$(`sem-pago-tipo-${empId}`);
+  if(h) h.value=tipo;
+}
+
+async function registrarPagoSemanal(empId){
+  if(!currentUser){ alert('Debes iniciar sesión.'); return; }
+  const rec = semEmpCalc.find(r=>r.emp._docId===empId);
+  if(!rec){ alert('Empleado no encontrado.'); return; }
+  const montoInput = $(`sem-pago-monto-${empId}`);
+  const tipoHidden = $(`sem-pago-tipo-${empId}`);
+  const montoAhora = parseInt((montoInput?.value||'0').replace(/\./g,''),10)||0;
+  if(!montoAhora){ alert('Ingresa el monto a pagar.'); return; }
+  const tipo       = tipoHidden?.value || 'efectivo';
+  const totalCalc  = rec.totalCalc;
+  const esAbono    = montoAhora < totalCalc;
+  const saldo      = esAbono ? totalCalc - montoAhora : 0;
+  const hoy        = today();
+  const btn        = $(`sem-btn-reg-${empId}`);
+  if(btn){ btn.disabled=true; btn.textContent='Registrando...'; }
+  try{
+    const batch = db.batch();
+    // Movimiento en caja del día actual
+    const cajaRef = DRAFT().doc('current').collection('empleados').doc();
+    batch.set(cajaRef,{ nombre:rec.emp.nombre, pago:montoAhora, tipo, createdAt:TS(), createdBy:currentUser.uid,
+      empleadoId:empId, esOcasional:false, periodo:`${semPeriodoDesde} → ${semPeriodoHasta}`,
+      diasPagados:rec.totalDias, extrasMin:rec.totalMin, extrasVal:rec.extrasVal, esAbono });
+    // Historial de pagos
+    const histRef = EMP_PAGO().doc();
+    batch.set(histRef,{ empleadoId:empId, nombreEmpleado:rec.emp.nombre, totalCalculado:totalCalc,
+      montoPagado:montoAhora, saldo, estado:esAbono?'abono':'completo', monto:montoAhora, tipo,
+      periodo:`${semPeriodoDesde} → ${semPeriodoHasta}`, desde:semPeriodoDesde, hasta:semPeriodoHasta,
+      diasPagados:rec.totalDias, extrasMin:rec.totalMin, extrasVal:rec.extrasVal,
+      fecha:hoy, creadoAt:TS(), creadoPor:currentUser.uid, abonoNum:(rec.abonosPeriodo.length+1) });
+    await batch.commit();
+    // Si es pago completo, eliminar extras del período
+    if(!esAbono){
+      const dc=new Date(semPeriodoDesde+'T00:00:00'), hc=new Date(semPeriodoHasta+'T23:59:59');
+      const eBatch=db.batch(); let changed=false;
+      const ec=new Date(dc);
+      while(ec<=hc){
+        const fe=ec.toISOString().slice(0,10);
+        const di=`${empId}_${fe}`;
+        if(empExtras[di]?._docId){ eBatch.delete(EMP_EXTRAS().doc(di)); changed=true; }
+        ec.setDate(ec.getDate()+1);
+      }
+      if(changed) await eBatch.commit();
+    }
+    alert(`✅ ${esAbono?'Abono':'Pago completo'} de ${fmt(montoAhora)} registrado para ${rec.emp.nombre}`);
+    // Recargar sección de empleados
+    await cargarCuadreSemanal();
+  } catch(e){
+    alert('Error: '+e.message);
+    if(btn){ btn.disabled=false; btn.textContent='✅ Registrar pago'; }
+  }
+}
+
 async function cargarCuadreSemanal() {
   const desde = $('sem-desde').value;
   const hasta = $('sem-hasta').value;
   if(!desde || !hasta){ alert('Selecciona el rango de fechas.'); return; }
   if(desde > hasta){ alert('La fecha "Desde" no puede ser posterior a "Hasta".'); return; }
+  semPeriodoDesde = desde;
+  semPeriodoHasta = hasta;
 
   // Generar array de fechas en el rango
   const fechas = [];
@@ -4885,45 +5020,82 @@ async function cargarCuadreSemanal() {
     $('sem-total-ventas').textContent = fmt(totalVentasNetas);
     $('sem-total-gastos-dia').textContent = fmt(totalComprasCaja);
 
-    // Renderizar compras
-    const todasCompras = diasData.filter(d => !d.sinDatos).flatMap(d => d.compras||[]);
-    $('sem-compras-lista').innerHTML = todasCompras.length === 0
-      ? '<p class="empty-msg">Sin compras en el período</p>'
-      : `<table style="width:100%;font-size:0.82rem;border-collapse:collapse">
-          <thead><tr>
-            <th style="padding:4px 6px;text-align:left;color:var(--gray);font-size:0.7rem">Fecha</th>
-            <th style="padding:4px 6px;text-align:left;color:var(--gray);font-size:0.7rem">Ítem</th>
-            <th style="padding:4px 6px;text-align:right;color:var(--gray);font-size:0.7rem">Monto</th>
-          </tr></thead>
-          <tbody>
-            ${todasCompras.map(c => `<tr>
-              <td style="padding:5px 6px;border-bottom:1px solid #f0f4f8;font-size:0.78rem;color:var(--gray)">${fmtFecha(c._fecha)}</td>
-              <td style="padding:5px 6px;border-bottom:1px solid #f0f4f8">${c.desc||c.descripcion||'—'}</td>
-              <td style="padding:5px 6px;border-bottom:1px solid #f0f4f8;text-align:right;font-weight:700;color:var(--red)">${fmt(c.monto||0)}</td>
-            </tr>`).join('')}
-          </tbody>
-        </table>`;
-    $('sem-total-compras').textContent = fmt(totalComprasCaja);
-
     // Debería haber
     $('sem-deberia-haber').textContent = fmt(deberiaHaber);
 
-    // Renderizar empleados
-    $('sem-empleados-lista').innerHTML = empleadosPagos.length === 0
-      ? '<p class="empty-msg">Sin pagos de empleados en el período</p>'
-      : empleadosPagos.map(p => {
-          const monto = p.montoPagado || p.monto || 0;
-          const badge = p.estado === 'abono'
-            ? '<span style="background:#fef3c7;color:#92400e;font-size:0.7rem;padding:2px 6px;border-radius:999px;font-weight:700;margin-left:6px">ABONO</span>'
-            : '';
-          return `<div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid #f0f4f8">
-            <div>
-              <span style="font-weight:700">${p.nombreEmpleado||p.nombre||'—'}</span>${badge}
-              <div style="font-size:0.75rem;color:var(--gray)">${p.periodo||p.fecha||''}</div>
+    // ── Sección empleados ──
+    semEmpPagos = empleadosPagos;
+    semEmpCalc  = [];
+    const dcP = new Date(desde + 'T00:00:00');
+    const hcP = new Date(hasta + 'T23:59:59');
+
+    if(!empleadosReg.length){
+      $('sem-empleados-contenido').innerHTML = '<p class="empty-msg">Sin empleados registrados.</p>';
+    } else {
+      let htmlEmps = '';
+      for(const emp of empleadosReg){
+        const r = empRates(emp);
+        let totalDias = 0, totalMin = 0;
+        const ec = new Date(dcP);
+        while(ec <= hcP){
+          const fe = ec.toISOString().slice(0,10);
+          totalDias++;
+          totalMin += (empExtras[`${emp._docId}_${fe}`]?.extraMin || 0);
+          ec.setDate(ec.getDate() + 1);
+        }
+        const subtotal   = totalDias * r.diario;
+        const extrasVal  = totalMin  * r.minuto;
+        const totalCalc  = subtotal + extrasVal;
+        const abonosPeriodo = empleadosPagos.filter(p => p.empleadoId === emp._docId);
+        const totalAbonado  = abonosPeriodo.reduce((s,p) => s + (p.montoPagado || p.monto || 0), 0);
+        const saldoPendiente = Math.max(0, totalCalc - totalAbonado);
+        semEmpCalc.push({ emp, r, totalDias, totalMin, subtotal, extrasVal, totalCalc, abonosPeriodo, totalAbonado, saldoPendiente });
+
+        // Abonos previos
+        const abonosHTML = abonosPeriodo.length
+          ? abonosPeriodo.map(p => {
+              const esA = p.estado === 'abono';
+              return `<div style="display:flex;justify-content:space-between;align-items:center;background:${esA?'#fffbeb':'#f0fff4'};border:1px solid ${esA?'#d69e2e':'#48bb78'};border-radius:8px;padding:5px 10px;margin-bottom:4px;font-size:0.78rem">
+                <span>${esA?'⚠️ Abono':'✅ Pago'} — ${p.fecha||'—'}</span>
+                <strong style="color:${esA?'#744210':'#276749'}">${fmt(p.montoPagado||p.monto||0)}</strong>
+              </div>`;}).join('')
+          : `<div style="font-size:0.78rem;color:var(--gray);padding:4px 0">Sin pagos en este período</div>`;
+
+        const saldoColor = saldoPendiente > 0 ? '#c05621' : '#276749';
+        const saldoLabel = saldoPendiente > 0
+          ? `⏳ Saldo pendiente: <strong style="color:${saldoColor}">${fmt(saldoPendiente)}</strong>`
+          : `<span style="color:#276749;font-weight:700">✅ Pagado completo</span>`;
+
+        htmlEmps += `<div style="background:#fff;border:1.5px solid var(--border);border-radius:12px;padding:13px 14px;margin-bottom:10px">
+          <div style="font-weight:800;font-size:1rem;margin-bottom:8px">👔 ${emp.nombre}</div>
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:5px;font-size:0.75rem;text-align:center;margin-bottom:8px">
+            <div style="background:#f7fafc;border-radius:8px;padding:5px"><div style="color:var(--gray)">Días</div><strong>${totalDias}</strong></div>
+            <div style="background:#f7fafc;border-radius:8px;padding:5px"><div style="color:var(--gray)">Extras</div><strong>${totalMin} min = ${fmt(extrasVal)}</strong></div>
+            <div style="background:#edf7ed;border-radius:8px;padding:5px"><div style="color:var(--gray)">Total calculado</div><strong style="color:#276749">${fmt(totalCalc)}</strong></div>
+          </div>
+          <div style="margin-bottom:8px">${abonosHTML}</div>
+          <div style="font-size:0.8rem;margin-bottom:10px;text-align:right">${saldoLabel}</div>
+          ${saldoPendiente > 0 ? `
+          <div style="border-top:1px dashed #e2e8f0;padding-top:10px">
+            <div style="font-size:0.75rem;font-weight:700;color:var(--gray);margin-bottom:6px">REGISTRAR PAGO</div>
+            <input type="hidden" id="sem-pago-tipo-${emp._docId}" value="efectivo"/>
+            <div style="display:flex;gap:6px;margin-bottom:7px">
+              <button id="sem-btn-ef-${emp._docId}" onclick="setSemPagoTipo('${emp._docId}','efectivo')"
+                style="flex:1;padding:8px;border-radius:8px;border:2px solid #48bb78;background:#f0fff4;color:#276749;font-weight:700;cursor:pointer;font-size:0.82rem">💵 Efectivo</button>
+              <button id="sem-btn-tr-${emp._docId}" onclick="setSemPagoTipo('${emp._docId}','transferencia')"
+                style="flex:1;padding:8px;border-radius:8px;border:2px solid #e2e8f0;background:#fff;color:#4a5568;font-weight:700;cursor:pointer;font-size:0.82rem">🏦 Transferencia</button>
             </div>
-            <span style="font-weight:800;color:#c05621">${fmt(monto)}</span>
-          </div>`;
-        }).join('');
+            <input type="text" inputmode="numeric" id="sem-pago-monto-${emp._docId}"
+              placeholder="Monto a pagar ahora" oninput="moneyFmt(this)"
+              style="width:100%;padding:10px;border-radius:8px;border:1.5px solid #d69e2e;font-size:1rem;font-weight:700;text-align:right;box-sizing:border-box;margin-bottom:7px"/>
+            <button id="sem-btn-reg-${emp._docId}" onclick="registrarPagoSemanal('${emp._docId}')"
+              class="btn-green" style="width:100%;padding:11px;font-size:0.92rem;border-radius:10px">✅ Registrar pago</button>
+          </div>` : ''}
+        </div>`;
+      }
+      $('sem-empleados-contenido').innerHTML = htmlEmps;
+    }
+
     $('sem-total-empleados').textContent = fmt(totalEmpleados);
 
     // Utilidad
