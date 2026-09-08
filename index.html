@@ -42,15 +42,18 @@
     .login-sub { text-align: center; font-size: 0.8rem; color: var(--gray); margin-bottom: 24px; }
 
     /* ── Top bar ── */
-    .topbar { background: var(--blue); color: #fff; padding: 10px 12px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 8px rgba(0,0,0,0.15); gap: 8px; }
+    .topbar { background: var(--blue); color: #fff; padding: 8px 12px 6px; display: flex; flex-direction: column; gap: 6px; position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
+    .topbar-row1 { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
     .topbar-left { display: flex; flex-direction: column; min-width: 0; }
     .topbar-left h1 { font-size: 1rem; font-weight: 700; white-space: nowrap; }
     .date-label { font-size: 0.72rem; opacity: 0.85; margin-top: 1px; }
     .topbar-right { display: flex; gap: 6px; align-items: center; flex-shrink: 0; }
     .user-badge { font-size: 0.7rem; background: rgba(255,255,255,0.2); padding: 3px 8px; border-radius: 12px; white-space: nowrap; max-width: 100px; overflow: hidden; text-overflow: ellipsis; }
+    .topbar-actions { display: flex; gap: 5px; }
+    .topbar-actions button { flex: 1; padding: 5px 4px; border-radius: 7px; background: rgba(255,255,255,0.15); color: #fff; border: 1px solid rgba(255,255,255,0.25); font-size: 0.68rem; font-weight: 700; cursor: pointer; white-space: nowrap; }
 
     /* ── Tabs ── */
-    .tabs { display: flex; background: #fff; border-bottom: 2px solid var(--border); overflow-x: auto; scrollbar-width: none; position: sticky; top: 52px; z-index: 99; }
+    .tabs { display: flex; background: #fff; border-bottom: 2px solid var(--border); overflow-x: auto; scrollbar-width: none; position: sticky; top: 88px; z-index: 99; }
     .tabs::-webkit-scrollbar { display: none; }
     .tab { flex: 1; min-width: 70px; padding: 8px 4px 6px; text-align: center; font-size: 0.68rem; font-weight: 600; color: var(--gray); cursor: pointer; border-bottom: 3px solid transparent; transition: all 0.2s; white-space: nowrap; user-select: none; }
     .tab .tab-icon { font-size: 1rem; display: block; margin-bottom: 2px; }
@@ -172,7 +175,7 @@
       .topbar-left h1 { font-size: 1.15rem; }
 
       /* Tabs */
-      .tabs { justify-content: center; top: 54px; padding: 0 32px; }
+      .tabs { justify-content: center; top: 90px; padding: 0 32px; }
       .tab { min-width: 100px; padding: 10px 16px 8px; font-size: 0.78rem; flex: 0 0 auto; }
       .tab .tab-icon { font-size: 1.1rem; }
 
@@ -245,14 +248,21 @@
 
 <!-- TOP BAR -->
 <div class="topbar">
-  <div class="topbar-left">
-    <h1>📋 Control de Facturas</h1>
-    <div class="date-label" id="top-date"></div>
+  <div class="topbar-row1">
+    <div class="topbar-left">
+      <h1>📋 Control de Facturas</h1>
+      <div class="date-label" id="top-date"></div>
+    </div>
+    <div class="topbar-right">
+      <span class="user-badge" id="top-user-badge"></span>
+      <button onclick="doLogout()" style="background:rgba(255,255,255,0.15);color:#fff;border:none;padding:5px 8px;border-radius:6px;font-size:0.82rem;cursor:pointer">🚪</button>
+    </div>
   </div>
-  <div class="topbar-right">
-    <span class="user-badge" id="top-user-badge"></span>
-    <button class="btn-sm btn-ghost" id="top-save-btn" onclick="showSave()" style="font-size:0.75rem;">💾 Guardar</button>
-    <button onclick="doLogout()" style="background:rgba(255,255,255,0.15);color:#fff;border:none;padding:5px 8px;border-radius:6px;font-size:0.82rem;cursor:pointer">🚪</button>
+  <div class="topbar-actions">
+    <button onclick="exportExcel()">📥 Excel</button>
+    <button onclick="importExcel()">📂 Importar</button>
+    <button onclick="showSave()">💾 Guardar día</button>
+    <button onclick="newDay()">🔄 Nuevo día</button>
   </div>
 </div>
 
@@ -610,16 +620,6 @@
     <div class="divider"></div>
     <div class="neto-box neto-pos" id="neto-total-box" style="margin:0"><span class="neto-label">💼 Total disponible</span><span class="neto-value" id="r-total">$ 0</span></div>
   </div>
-  <div id="resumen-export-section">
-    <button class="btn-export" onclick="exportExcel()">📥 Exportar a Excel</button>
-    <div style="height:8px"></div>
-    <button class="btn-import" onclick="importExcel()">📂 Importar desde Excel</button>
-    <div style="height:8px"></div>
-    <button class="btn-save" onclick="showSave()">💾 Guardar este día</button>
-    <div style="height:8px"></div>
-    <button class="btn-newday" onclick="newDay()">🔄 Nuevo día</button>
-  </div>
-  <div style="height:10px"></div>
 </div>
 
 <input type="file" id="import-file" accept=".xlsx,.xls" style="display:none" onchange="handleImport(event)"/>
@@ -668,6 +668,11 @@
     </div>
     <button onclick="cargarCuadreSemanal()" class="btn-blue" style="width:100%;padding:12px">🔍 Cargar período</button>
   </div>
+  <!-- Cuadres guardados -->
+  <div class="card">
+    <div class="card-title">📁 Cuadres guardados</div>
+    <div id="sem-guardados-lista"><p class="empty-msg">Sin cuadres guardados aún</p></div>
+  </div>
   <div id="sem-resultado" style="display:none">
     <!-- Ventas netas del período -->
     <div class="card">
@@ -689,17 +694,48 @@
     <div class="card">
       <div class="card-title">👷 Empleados — Cierre semanal</div>
       <div id="sem-empleados-contenido"><p class="empty-msg">Carga un período primero.</p></div>
-      <div style="display:flex;justify-content:space-between;font-weight:800;font-size:1rem;border-top:2px solid var(--border);padding-top:10px;margin-top:8px">
-        <span>Total pagado empleados</span><span id="sem-total-empleados" style="color:#c05621">$0</span>
+      <div style="border-top:2px solid var(--border);padding-top:10px;margin-top:8px">
+        <div style="display:flex;justify-content:space-between;font-weight:800;font-size:1rem;padding:4px 0">
+          <span>Total pagado empleados</span><span id="sem-total-empleados" style="color:#c05621">$0</span>
+        </div>
       </div>
     </div>
     <!-- Utilidad -->
     <div class="card">
       <div class="neto-box" id="sem-utilidad-box">
-        <span class="neto-label">📈 Utilidad del período<br><small style="font-weight:400;font-size:0.75rem">(lo que debe haber − pagado a empleados)</small></span>
+        <span class="neto-label">📈 Utilidad del período<br><small style="font-weight:400;font-size:0.75rem">(lo que debe haber − empleados pagados)</small></span>
         <span class="neto-value" id="sem-utilidad">$0</span>
       </div>
     </div>
+    <!-- Guardar cuadre -->
+    <button onclick="guardarCuadreSemanal()" class="btn-green" style="width:100%;padding:13px;margin-bottom:14px;font-size:0.95rem;border-radius:12px">💾 Guardar este cuadre</button>
+    <!-- Socios / Reparto de utilidad -->
+    <div class="card">
+      <div class="card-title" style="display:flex;justify-content:space-between;align-items:center">
+        <span>🤝 Reparto de utilidad</span>
+        <button onclick="abrirModalSocio(null)" style="padding:6px 12px;border-radius:8px;border:none;background:#276749;color:#fff;font-weight:700;cursor:pointer;font-size:0.78rem">+ Socio</button>
+      </div>
+      <div id="sem-socios-lista"><p class="empty-msg">Sin socios configurados</p></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MODAL: Socio ═══ -->
+<div class="modal-bg" id="modal-socio">
+  <div class="modal">
+    <div class="modal-title">🤝 <span id="modal-socio-title">Nuevo socio</span>
+      <button class="btn-sm btn-ghost" onclick="closeModal('modal-socio')">✕</button>
+    </div>
+    <input type="hidden" id="socio-docid"/>
+    <div class="fg" style="margin-bottom:10px">
+      <label>Nombre</label>
+      <input type="text" id="socio-nombre" placeholder="Ej: Anderson, William..." autocapitalize="words"/>
+    </div>
+    <div class="fg" style="margin-bottom:14px">
+      <label>Porcentaje (%)</label>
+      <input type="number" id="socio-pct" min="0" max="100" step="0.1" placeholder="Ej: 50"/>
+    </div>
+    <button class="btn-green" style="width:100%;padding:12px" onclick="guardarSocio()">✅ Guardar</button>
   </div>
 </div>
 
@@ -1211,6 +1247,12 @@
       <div id="pagoemp-abono-detail" style="font-size:0.82rem;color:#744210;line-height:1.6"></div>
     </div>
 
+    <!-- Fecha del pago -->
+    <div style="margin-bottom:10px">
+      <label style="font-size:0.75rem;font-weight:700;color:var(--gray);display:block;margin-bottom:4px">📅 Fecha del pago</label>
+      <input type="date" id="pagoemp-fecha-pago" style="width:100%;padding:9px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:0.9rem;box-sizing:border-box"/>
+    </div>
+
     <button id="btn-registrar-pago-emp" class="btn-green" style="width:100%;font-size:0.95rem;padding:13px;border-radius:12px" onclick="registrarPagoEmpleado()">✅ Registrar pago</button>
   </div>
 </div>
@@ -1586,6 +1628,8 @@ function setupListeners() {
   // ── Inventario ──
   setupInventarioListeners();
   setupEmpleadosListeners();
+  setupSociosListener();
+  setupCuadresListener();
   // ── Modo detalle ──
   loadModoDetalle();
 }
@@ -1924,6 +1968,160 @@ let pagoEmpHasta     = '';
 const EMP_REG    = () => db.collection('empleados_reg');
 const EMP_PAGO   = () => db.collection('empleados_pagos');
 const EMP_EXTRAS = () => db.collection('empleados_extras');
+const SOCIOS_COL   = () => db.collection('socios');
+const CUADRES_COL  = () => db.collection('cuadres_semanales');
+
+let sociosData = []; // [{_docId, nombre, porcentaje}]
+let semUtilidadActual = 0; // para usar en renderSocios
+
+function setupSociosListener(){
+  SOCIOS_COL().orderBy('nombre').onSnapshot(snap=>{
+    sociosData = snap.docs.map(d=>({_docId:d.id,...d.data()}));
+    renderSocios();
+  }, e=>console.error('socios',e));
+}
+
+function abrirModalSocio(docId){
+  $('socio-docid').value = docId||'';
+  $('modal-socio-title').textContent = docId ? 'Editar socio' : 'Nuevo socio';
+  if(docId){
+    const s = sociosData.find(s=>s._docId===docId);
+    $('socio-nombre').value = s?.nombre||'';
+    $('socio-pct').value    = s?.porcentaje||'';
+  } else {
+    $('socio-nombre').value='';
+    $('socio-pct').value='';
+  }
+  openModal('modal-socio');
+}
+
+async function guardarSocio(){
+  const nombre = ($('socio-nombre').value||'').trim();
+  const pct    = parseFloat($('socio-pct').value)||0;
+  if(!nombre){ alert('Ingresa el nombre.'); return; }
+  if(pct<=0||pct>100){ alert('El porcentaje debe ser entre 0 y 100.'); return; }
+  const docId = $('socio-docid').value;
+  try{
+    if(docId){ await SOCIOS_COL().doc(docId).update({nombre,porcentaje:pct}); }
+    else      { await SOCIOS_COL().doc().set({nombre,porcentaje:pct,creadoAt:TS()}); }
+    closeModal('modal-socio');
+  } catch(e){ alert('Error: '+e.message); }
+}
+
+async function eliminarSocio(docId){
+  if(!confirm('¿Eliminar este socio?')) return;
+  try{ await SOCIOS_COL().doc(docId).delete(); }
+  catch(e){ alert('Error: '+e.message); }
+}
+
+// ── Cuadres semanales guardados ──
+let cuadresGuardados = [];
+
+function setupCuadresListener(){
+  CUADRES_COL().orderBy('guardadoAt','desc').limit(50).onSnapshot(snap=>{
+    cuadresGuardados = snap.docs.map(d=>({_docId:d.id,...d.data()}));
+    renderCuadresGuardados();
+  }, e=>console.error('cuadres',e));
+}
+
+function renderCuadresGuardados(){
+  const div = $('sem-guardados-lista');
+  if(!div) return;
+  if(!cuadresGuardados.length){ div.innerHTML='<p class="empty-msg">Sin cuadres guardados aún</p>'; return; }
+  const fmtD = f => { if(!f) return '—'; const [y,m,d]=f.split('-'); return `${d}/${m}/${y}`; };
+  div.innerHTML = cuadresGuardados.map(c => {
+    const canDel = currentRole==='admin';
+    return `<div style="background:#fff;border:1.5px solid var(--border);border-radius:10px;padding:11px 13px;margin-bottom:7px">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start">
+        <div>
+          <div style="font-weight:700;font-size:0.9rem">📅 ${fmtD(c.desde)} — ${fmtD(c.hasta)}</div>
+          <div style="font-size:0.72rem;color:var(--gray);margin-top:2px">Guardado: ${c.guardadoAt?.toDate?.()?.toLocaleDateString('es-CO')||c.guardadoAt||'—'}</div>
+        </div>
+        <div style="display:flex;gap:6px;align-items:center">
+          <button onclick="verCuadreGuardado('${c._docId}')"
+            style="padding:4px 10px;border-radius:7px;border:1.5px solid var(--border);background:#fff;cursor:pointer;font-size:0.78rem;font-weight:700">👁 Ver</button>
+          ${canDel?`<button onclick="eliminarCuadre('${c._docId}')" style="padding:4px 8px;border-radius:7px;border:1.5px solid #fed7d7;background:#fff5f5;color:#e53e3e;cursor:pointer;font-size:0.78rem;font-weight:700">✕</button>`:''}
+        </div>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:8px;font-size:0.78rem;flex-wrap:wrap">
+        <span>Venta neta: <strong style="color:#276749">${fmt(c.totalVentasNetas||0)}</strong></span>
+        <span>Empleados: <strong style="color:#c05621">${fmt(c.totalEmpleados||0)}</strong></span>
+        <span>Utilidad: <strong style="color:${(c.utilidad||0)>=0?'#276749':'var(--red)'}">${fmt(c.utilidad||0)}</strong></span>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function guardarCuadreSemanal(){
+  if(!semPeriodoDesde||!semPeriodoHasta){ alert('Carga un período primero.'); return; }
+  if(!currentUser){ alert('Debes iniciar sesión.'); return; }
+  if(!confirm(`¿Guardar el cuadre del ${semPeriodoDesde} al ${semPeriodoHasta}?`)) return;
+
+  // Recopilar datos actuales del DOM
+  const totalVentasNetas = parseInt(($('sem-total-ventas')?.textContent||'0').replace(/[^0-9]/g,''),10)||0;
+  const totalComprasCaja = parseInt(($('sem-total-gastos-dia')?.textContent||'0').replace(/[^0-9]/g,''),10)||0;
+  const deberiaHaber     = parseInt(($('sem-deberia-haber')?.textContent||'0').replace(/[^0-9]/g,''),10)||0;
+  const totalEmpleados   = parseInt(($('sem-total-empleados')?.textContent||'0').replace(/[^0-9]/g,''),10)||0;
+  const utilidad         = semUtilidadActual;
+
+  const record = {
+    desde: semPeriodoDesde,
+    hasta: semPeriodoHasta,
+    totalVentasNetas,
+    totalComprasCaja,
+    deberiaHaber,
+    totalEmpleados,
+    utilidad,
+    socios: sociosData.map(s=>({ nombre:s.nombre, porcentaje:s.porcentaje, monto:Math.round(utilidad*(s.porcentaje||0)/100) })),
+    guardadoAt: TS(),
+    guardadoPor: currentUser.uid,
+    guardadoPorNombre: currentUserName||''
+  };
+  try{
+    await CUADRES_COL().doc(`${semPeriodoDesde}_${semPeriodoHasta}`).set(record);
+    alert('✅ Cuadre guardado correctamente.');
+  } catch(e){ alert('Error: '+e.message); }
+}
+
+function verCuadreGuardado(docId){
+  const c = cuadresGuardados.find(x=>x._docId===docId);
+  if(!c) return;
+  const fmtD = f => { if(!f) return '—'; const [y,m,d]=f.split('-'); return `${d}/${m}/${y}`; };
+  const sociosStr = (c.socios||[]).map(s=>`${s.nombre}: ${fmt(s.monto||0)} (${s.porcentaje}%)`).join('\n') || 'Sin socios';
+  alert(`📅 CUADRE ${fmtD(c.desde)} — ${fmtD(c.hasta)}\n\n💰 Venta neta: ${fmt(c.totalVentasNetas||0)}\n🛒 Compras caja: ${fmt(c.totalComprasCaja||0)}\n💼 Lo que debe haber: ${fmt(c.deberiaHaber||0)}\n👷 Empleados pagados: ${fmt(c.totalEmpleados||0)}\n📈 Utilidad: ${fmt(c.utilidad||0)}\n\n🤝 Reparto:\n${sociosStr}`);
+}
+
+async function eliminarCuadre(docId){
+  if(!confirm('¿Eliminar este cuadre guardado?')) return;
+  try{ await CUADRES_COL().doc(docId).delete(); }
+  catch(e){ alert('Error: '+e.message); }
+}
+
+function renderSocios(){
+  const div=$('sem-socios-lista');
+  if(!div) return;
+  const utilidad = semUtilidadActual;
+  if(!sociosData.length){ div.innerHTML='<p class="empty-msg">Sin socios configurados. Agrega socios con el botón "+".</p>'; return; }
+  const totalPct = sociosData.reduce((s,x)=>s+(x.porcentaje||0),0);
+  const pctWarning = Math.abs(totalPct-100)>0.1
+    ? `<div style="background:#fffbeb;border:1px solid #d69e2e;border-radius:8px;padding:7px 10px;margin-bottom:10px;font-size:0.78rem;color:#744210">⚠️ Los porcentajes suman ${totalPct.toFixed(1)}% (deberían sumar 100%)</div>`
+    : '';
+  div.innerHTML = pctWarning + sociosData.map(s=>{
+    const monto = Math.round(utilidad * (s.porcentaje||0) / 100);
+    const canDel = currentRole==='admin';
+    return `<div style="background:#fff;border:1.5px solid var(--border);border-radius:10px;padding:10px 13px;margin-bottom:7px;display:flex;justify-content:space-between;align-items:center">
+      <div>
+        <div style="font-weight:700;font-size:0.92rem">${s.nombre}</div>
+        <div style="font-size:0.75rem;color:var(--gray)">${(s.porcentaje||0).toFixed(1)}% de la utilidad</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <span style="font-weight:800;font-size:1.05rem;color:#276749">${fmt(monto)}</span>
+        <button onclick="abrirModalSocio('${s._docId}')" style="padding:4px 8px;border-radius:6px;border:1.5px solid var(--border);background:#fff;cursor:pointer;font-size:0.78rem">✏️</button>
+        ${canDel?`<button onclick="eliminarSocio('${s._docId}')" style="padding:4px 8px;border-radius:6px;border:1.5px solid #fed7d7;background:#fff5f5;color:#e53e3e;cursor:pointer;font-size:0.78rem">✕</button>`:''}
+      </div>
+    </div>`;
+  }).join('');
+}
 const DIAS_CORTO  = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
 const MESES_CORTO = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
 
@@ -2424,6 +2622,9 @@ function showModalPagarEmp(empId){
   const desdeD=new Date(hoy); desdeD.setDate(hoy.getDate()-6);
   pagoEmpDesde=desdeD.toISOString().slice(0,10);
   actualizarPeriodoModal();
+  // Inicializar fecha del pago a hoy
+  const fi=$('pagoemp-fecha-pago');
+  if(fi) fi.value=hoy.toISOString().slice(0,10);
   openModal('modal-pagar-emp');
 }
 
@@ -2529,7 +2730,7 @@ async function registrarPagoEmpleado(){
   if(montoAhora>totalCalculado){ alert(`El monto (${fmt(montoAhora)}) supera el total calculado (${fmt(totalCalculado)}).`); return; }
   const esAbono=montoAhora<totalCalculado;
   const saldo=esAbono ? totalCalculado-montoAhora : 0;
-  const hoy=new Date().toISOString().slice(0,10);
+  const hoy=($('pagoemp-fecha-pago')?.value) || new Date().toISOString().slice(0,10);
 
   // Detectar si hay un abono previo en este período
   const abonoExistente=historialPagosEmp.find(p=>{
@@ -4847,15 +5048,16 @@ async function registrarPagoSemanal(empId){
   if(!currentUser){ alert('Debes iniciar sesión.'); return; }
   const rec = semEmpCalc.find(r=>r.emp._docId===empId);
   if(!rec){ alert('Empleado no encontrado.'); return; }
-  const montoInput = $(`sem-pago-monto-${empId}`);
-  const tipoHidden = $(`sem-pago-tipo-${empId}`);
-  const montoAhora = parseInt((montoInput?.value||'0').replace(/\./g,''),10)||0;
+  const montoInput  = $(`sem-pago-monto-${empId}`);
+  const tipoHidden  = $(`sem-pago-tipo-${empId}`);
+  const fechaInput  = $(`sem-pago-fecha-${empId}`);
+  const montoAhora  = parseInt((montoInput?.value||'0').replace(/\./g,''),10)||0;
   if(!montoAhora){ alert('Ingresa el monto a pagar.'); return; }
-  const tipo       = tipoHidden?.value || 'efectivo';
-  const totalCalc  = rec.totalCalc;
-  const esAbono    = montoAhora < totalCalc;
-  const saldo      = esAbono ? totalCalc - montoAhora : 0;
-  const hoy        = today();
+  const tipo        = tipoHidden?.value || 'efectivo';
+  const hoy         = fechaInput?.value  || today();
+  const totalCalc   = rec.totalCalc;
+  const esAbono     = montoAhora < totalCalc;
+  const saldo       = esAbono ? totalCalc - montoAhora : 0;
   const btn        = $(`sem-btn-reg-${empId}`);
   if(btn){ btn.disabled=true; btn.textContent='Registrando...'; }
   try{
@@ -5079,6 +5281,11 @@ async function cargarCuadreSemanal() {
           <div style="border-top:1px dashed #e2e8f0;padding-top:10px">
             <div style="font-size:0.75rem;font-weight:700;color:var(--gray);margin-bottom:6px">REGISTRAR PAGO</div>
             <input type="hidden" id="sem-pago-tipo-${emp._docId}" value="efectivo"/>
+            <div style="margin-bottom:7px">
+              <label style="font-size:0.72rem;color:var(--gray);display:block;margin-bottom:3px">📅 Fecha del pago</label>
+              <input type="date" id="sem-pago-fecha-${emp._docId}" value="${today()}"
+                style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:0.88rem;box-sizing:border-box"/>
+            </div>
             <div style="display:flex;gap:6px;margin-bottom:7px">
               <button id="sem-btn-ef-${emp._docId}" onclick="setSemPagoTipo('${emp._docId}','efectivo')"
                 style="flex:1;padding:8px;border-radius:8px;border:2px solid #48bb78;background:#f0fff4;color:#276749;font-weight:700;cursor:pointer;font-size:0.82rem">💵 Efectivo</button>
@@ -5101,6 +5308,10 @@ async function cargarCuadreSemanal() {
     // Utilidad
     $('sem-utilidad').textContent = fmt(utilidad);
     $('sem-utilidad-box').className = 'neto-box ' + (utilidad >= 0 ? 'neto-pos' : 'neto-neg');
+
+    // Socios — actualizar reparto con la utilidad calculada
+    semUtilidadActual = utilidad;
+    renderSocios();
 
     resDiv.style.display = 'block';
   } catch(e) {
