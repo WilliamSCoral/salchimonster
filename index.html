@@ -669,7 +669,7 @@
           <span>Total venta neta</span><span id="sem-total-ventas" style="color:#276749">$0</span>
         </div>
         <div style="display:flex;justify-content:space-between;font-weight:700;font-size:0.9rem;padding:4px 0">
-          <span>Total gastos</span><span id="sem-total-gastos-dia" style="color:var(--red)">$0</span>
+          <span>Total compras de caja</span><span id="sem-total-gastos-dia" style="color:var(--red)">$0</span>
         </div>
         <div style="display:flex;justify-content:space-between;font-weight:800;font-size:1rem;padding:8px 0 2px;border-top:1.5px solid var(--border);margin-top:6px">
           <span>💼 Lo que debe haber</span><span id="sem-deberia-haber" style="color:#276749;font-size:1.1rem">$0</span>
@@ -4790,50 +4790,52 @@ async function cargarCuadreSemanal() {
     const diasData = [];
 
     for(const fecha of fechas){
-      let ventasBrutas = 0, gastosTot = 0, comprasTot = 0, comprasDia = [];
+      let netoDia = 0, comprasTot = 0, comprasDia = [];
 
       if(fecha === hoy){
         // Día actual: usar state en memoria y totals()
         const t = totals();
-        ventasBrutas = t.bruto;
-        gastosTot    = t.tg;
-        comprasTot   = t.tc;
-        comprasDia   = JSON.parse(JSON.stringify(state.compras||[]));
+        netoDia    = t.netoDia; // bruto − gastos − empleados del día
+        comprasTot = t.tc;
+        comprasDia = JSON.parse(JSON.stringify(state.compras||[]));
       } else {
         // Día guardado: leer de historial/{fecha}
         const doc = await HIST().doc(fecha).get();
-        if(!doc.exists){ diasData.push({fecha, ventasBrutas:0, gastos:0, neto:0, compras:[], totalCompras:0, sinDatos:true}); continue; }
+        if(!doc.exists){ diasData.push({fecha, neto:0, comprasTot:0, compras:[], sinDatos:true}); continue; }
         const r = doc.data();
         const t = r.totals || {};
         comprasDia = (r.state && r.state.compras) ? r.state.compras : [];
-        // Si totals tiene valores, usarlos; si no, calcular desde r.state (docs viejos)
-        if(t.bruto !== undefined || t.tg !== undefined){
-          ventasBrutas = t.bruto || 0;
-          gastosTot    = t.tg   || 0;
-          comprasTot   = t.tc   || 0;
+        // Si totals tiene netoDia guardado, usarlo; si no, calcular desde r.state (docs viejos)
+        if(t.netoDia !== undefined){
+          netoDia    = t.netoDia || 0;
+          comprasTot = t.tc      || 0;
+        } else if(t.bruto !== undefined){
+          // totals guardado pero sin netoDia — calcular restando te
+          netoDia    = (t.bruto||0) - (t.tg||0) - (t.te||0);
+          comprasTot = t.tc || 0;
         } else {
-          // Fallback: calcular desde state guardado
+          // Fallback total: calcular desde state guardado
           const st = r.state || {};
-          const facts = st.facturas || [];
-          const gasts = st.gastos   || [];
-          const comps = st.compras  || [];
+          const facts = st.facturas  || [];
+          const gasts = st.gastos    || [];
+          const comps = st.compras   || [];
+          const emps  = st.empleados || [];
           let brutoCalc = 0;
           facts.forEach(f => {
             if(f.mixto){ (f.pagos||[]).forEach(p => { brutoCalc += (p.monto||0); }); }
             else { brutoCalc += (f.monto || f.total || 0); }
           });
           const tgCalc = gasts.reduce((s,g) => s + (g.monto||0), 0);
+          const teCalc = emps.reduce((s,e)  => s + (e.pago ||0), 0);
           const tcCalc = comps.reduce((s,c) => s + (c.monto||0), 0);
-          ventasBrutas = brutoCalc;
-          gastosTot    = tgCalc;
-          comprasTot   = tcCalc;
+          netoDia    = brutoCalc - tgCalc - teCalc;
+          comprasTot = tcCalc;
         }
       }
 
-      const neto = ventasBrutas - gastosTot;
-      // Anotar la fecha en cada compra para mostrarla en la tabla
+      // Anotar la fecha en cada compra para mostrarla en la tabla de compras
       const comprasConFecha = comprasDia.map(c => ({...c, _fecha: fecha}));
-      diasData.push({ fecha, ventasBrutas, gastos: gastosTot, neto, compras: comprasConFecha, totalCompras: comprasTot });
+      diasData.push({ fecha, neto: netoDia, comprasTot, compras: comprasConFecha });
     }
 
     // Consultar pagos de empleados en el rango
@@ -4845,10 +4847,10 @@ async function cargarCuadreSemanal() {
     empleadosPagos.sort((a,b) => (a.fecha||'').localeCompare(b.fecha||''));
 
     // Calcular totales
-    const totalVentasNetas = diasData.filter(d=>!d.sinDatos).reduce((s,d) => s + d.neto, 0);
-    const totalGastosDia   = diasData.filter(d=>!d.sinDatos).reduce((s,d) => s + d.gastos, 0);
-    const totalCompras = diasData.filter(d=>!d.sinDatos).reduce((s,d) => s + d.totalCompras, 0);
-    const deberiaHaber = totalVentasNetas - totalCompras;
+    const diasValidos      = diasData.filter(d => !d.sinDatos);
+    const totalVentasNetas = diasValidos.reduce((s,d) => s + d.neto,       0);
+    const totalComprasCaja = diasValidos.reduce((s,d) => s + d.comprasTot,  0);
+    const deberiaHaber     = totalVentasNetas - totalComprasCaja;
     const totalEmpleados = empleadosPagos.reduce((s,p) => s + (p.montoPagado || p.monto || 0), 0);
     const utilidad = deberiaHaber - totalEmpleados;
 
@@ -4857,14 +4859,13 @@ async function cargarCuadreSemanal() {
       const [y,m,d] = f.split('-');
       return `${d}/${m}/${y}`;
     };
-    const diasConDatos = diasData.filter(d => !d.sinDatos);
     $('sem-dias-lista').innerHTML = diasData.length === 0
       ? '<p class="empty-msg">Sin datos en el período</p>'
       : `<table style="width:100%;font-size:0.82rem;border-collapse:collapse">
           <thead><tr>
             <th style="padding:4px 6px;text-align:left;color:var(--gray);font-size:0.7rem;text-transform:uppercase;letter-spacing:0.04em">Día</th>
             <th style="padding:4px 6px;text-align:right;color:var(--gray);font-size:0.7rem;text-transform:uppercase;letter-spacing:0.04em">Venta neta</th>
-            <th style="padding:4px 6px;text-align:right;color:var(--gray);font-size:0.7rem;text-transform:uppercase;letter-spacing:0.04em">Gastos</th>
+            <th style="padding:4px 6px;text-align:right;color:var(--gray);font-size:0.7rem;text-transform:uppercase;letter-spacing:0.04em">Compras caja</th>
           </tr></thead>
           <tbody>
             ${diasData.map(d => d.sinDatos
@@ -4872,17 +4873,17 @@ async function cargarCuadreSemanal() {
               : `<tr>
               <td style="padding:5px 6px;border-bottom:1px solid #f0f4f8">${fmtFecha(d.fecha)}</td>
               <td style="padding:5px 6px;border-bottom:1px solid #f0f4f8;text-align:right;font-weight:700;color:${d.neto>=0?'#276749':'var(--red)'}">${fmt(d.neto)}</td>
-              <td style="padding:5px 6px;border-bottom:1px solid #f0f4f8;text-align:right;color:var(--red)">${fmt(d.gastos)}</td>
+              <td style="padding:5px 6px;border-bottom:1px solid #f0f4f8;text-align:right;color:var(--red)">${fmt(d.comprasTot)}</td>
             </tr>`).join('')}
-            ${diasConDatos.length > 1 ? `<tr style="background:#f7fafc">
+            ${diasValidos.length > 1 ? `<tr style="background:#f7fafc">
               <td style="padding:6px 6px;font-weight:800;font-size:0.85rem">TOTAL</td>
               <td style="padding:6px 6px;text-align:right;font-weight:800;color:#276749">${fmt(totalVentasNetas)}</td>
-              <td style="padding:6px 6px;text-align:right;font-weight:800;color:var(--red)">${fmt(totalGastosDia)}</td>
+              <td style="padding:6px 6px;text-align:right;font-weight:800;color:var(--red)">${fmt(totalComprasCaja)}</td>
             </tr>` : ''}
           </tbody>
         </table>`;
     $('sem-total-ventas').textContent = fmt(totalVentasNetas);
-    $('sem-total-gastos-dia').textContent = fmt(totalGastosDia);
+    $('sem-total-gastos-dia').textContent = fmt(totalComprasCaja);
 
     // Renderizar compras
     const todasCompras = diasData.filter(d => !d.sinDatos).flatMap(d => d.compras||[]);
@@ -4902,7 +4903,7 @@ async function cargarCuadreSemanal() {
             </tr>`).join('')}
           </tbody>
         </table>`;
-    $('sem-total-compras').textContent = fmt(totalCompras);
+    $('sem-total-compras').textContent = fmt(totalComprasCaja);
 
     // Debería haber
     $('sem-deberia-haber').textContent = fmt(deberiaHaber);
