@@ -674,6 +674,8 @@
     <div id="sem-guardados-lista"><p class="empty-msg">Sin cuadres guardados aún</p></div>
   </div>
   <div id="sem-resultado" style="display:none">
+    <!-- Botón resumen -->
+    <button onclick="abrirResumenSemanal()" class="btn-purple" style="width:100%;padding:13px;margin-bottom:14px;font-size:0.95rem;border-radius:12px">📊 Ver resumen</button>
     <!-- Ventas netas del período -->
     <div class="card">
       <div class="card-title">💰 Ventas del período</div>
@@ -736,6 +738,17 @@
       <input type="number" id="socio-pct" min="0" max="100" step="0.1" placeholder="Ej: 50"/>
     </div>
     <button class="btn-green" style="width:100%;padding:12px" onclick="guardarSocio()">✅ Guardar</button>
+  </div>
+</div>
+
+<!-- ═══ MODAL: Resumen semanal ═══ -->
+<div class="modal-bg" id="modal-resumen-semanal">
+  <div class="modal" style="max-height:92vh;overflow-y:auto">
+    <div class="modal-title">
+      📊 Resumen semanal
+      <button class="btn-sm btn-ghost" onclick="closeModal('modal-resumen-semanal')">✕</button>
+    </div>
+    <div id="modal-resumen-contenido"></div>
   </div>
 </div>
 
@@ -2012,6 +2025,94 @@ async function eliminarSocio(docId){
   if(!confirm('¿Eliminar este socio?')) return;
   try{ await SOCIOS_COL().doc(docId).delete(); }
   catch(e){ alert('Error: '+e.message); }
+}
+
+// ── Resumen semanal ──
+function abrirResumenSemanal(){
+  if(!semPeriodoDesde){ alert('Carga un período primero.'); return; }
+
+  const fmtD = f => { const [y,m,d]=f.split('-'); return `${d}/${m}/${y}`; };
+
+  // Tabla de días
+  const filasHTML = semEmpCalc !== undefined && window._semDiasData
+    ? window._semDiasData.filter(d=>!d.sinDatos).map(d =>
+        `<tr>
+          <td style="padding:6px 8px;border-bottom:1px solid #f0f4f8">${fmtD(d.fecha)}</td>
+          <td style="padding:6px 8px;border-bottom:1px solid #f0f4f8;text-align:right;color:#276749;font-weight:700">${fmt(d.neto)}</td>
+          <td style="padding:6px 8px;border-bottom:1px solid #f0f4f8;text-align:right;color:var(--red)">${fmt(d.comprasTot)}</td>
+        </tr>`).join('')
+    : '';
+
+  // Leer totales actuales del DOM
+  const totalVentas    = ($('sem-total-ventas')?.textContent||'').trim();
+  const totalCompras   = ($('sem-total-gastos-dia')?.textContent||'').trim();
+  const deberiaHaber   = ($('sem-deberia-haber')?.textContent||'').trim();
+  const totalEmpleados = ($('sem-total-empleados')?.textContent||'').trim();
+  const utilidad       = semUtilidadActual;
+  const utilColor      = utilidad >= 0 ? '#276749' : 'var(--red)';
+
+  // Socios
+  const sociosHTML = sociosData.length
+    ? sociosData.map(s => {
+        const monto = Math.round(utilidad * (s.porcentaje||0) / 100);
+        return `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #f0f4f8">
+          <div>
+            <span style="font-weight:700">${s.nombre}</span>
+            <span style="font-size:0.75rem;color:var(--gray);margin-left:6px">${s.porcentaje}%</span>
+          </div>
+          <span style="font-weight:800;color:#276749">${fmt(monto)}</span>
+        </div>`;
+      }).join('')
+    : `<p style="font-size:0.82rem;color:var(--gray);text-align:center;padding:8px 0">Sin socios configurados</p>`;
+
+  $('modal-resumen-contenido').innerHTML = `
+    <div style="font-size:0.8rem;color:var(--gray);text-align:center;margin-bottom:12px;font-weight:600">
+      ${fmtD(semPeriodoDesde)} — ${fmtD(semPeriodoHasta)}
+    </div>
+
+    <!-- Tabla días -->
+    <table style="width:100%;border-collapse:collapse;font-size:0.82rem;margin-bottom:16px">
+      <thead>
+        <tr style="background:#f7fafc">
+          <th style="padding:7px 8px;text-align:left;font-size:0.7rem;color:var(--gray);text-transform:uppercase;letter-spacing:0.04em">Día</th>
+          <th style="padding:7px 8px;text-align:right;font-size:0.7rem;color:var(--gray);text-transform:uppercase;letter-spacing:0.04em">Venta neta</th>
+          <th style="padding:7px 8px;text-align:right;font-size:0.7rem;color:var(--gray);text-transform:uppercase;letter-spacing:0.04em">Compras caja</th>
+        </tr>
+      </thead>
+      <tbody>${filasHTML || '<tr><td colspan="3" style="padding:8px;text-align:center;color:var(--gray)">Sin datos de días</td></tr>'}</tbody>
+    </table>
+
+    <!-- Totales -->
+    <div style="background:#f7fafc;border-radius:10px;padding:12px 14px;margin-bottom:12px">
+      <div style="display:flex;justify-content:space-between;padding:5px 0;font-size:0.88rem">
+        <span>💰 Total ventas netas</span>
+        <strong style="color:#276749">${totalVentas}</strong>
+      </div>
+      <div style="display:flex;justify-content:space-between;padding:5px 0;font-size:0.88rem">
+        <span>🛒 Total compras de caja</span>
+        <strong style="color:var(--red)">${totalCompras}</strong>
+      </div>
+      <div style="display:flex;justify-content:space-between;padding:5px 0;font-size:0.88rem;border-top:1px dashed var(--border);margin-top:4px;padding-top:8px">
+        <span>💼 Lo que debe haber</span>
+        <strong style="color:#276749">${deberiaHaber}</strong>
+      </div>
+      <div style="display:flex;justify-content:space-between;padding:5px 0;font-size:0.88rem">
+        <span>👷 Pago empleados</span>
+        <strong style="color:#c05621">${totalEmpleados}</strong>
+      </div>
+      <div style="display:flex;justify-content:space-between;padding:8px 0 4px;font-size:1rem;border-top:2px solid var(--border);margin-top:6px">
+        <span style="font-weight:800">📈 Utilidad</span>
+        <strong style="color:${utilColor};font-size:1.15rem">${fmt(utilidad)}</strong>
+      </div>
+    </div>
+
+    <!-- Socios -->
+    <div style="background:#fff;border:1.5px solid var(--border);border-radius:10px;padding:12px 14px">
+      <div style="font-size:0.75rem;font-weight:700;color:var(--gray);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:8px">🤝 Reparto por socio</div>
+      ${sociosHTML}
+    </div>
+  `;
+  openModal('modal-resumen-semanal');
 }
 
 // ── Cuadres semanales guardados ──
@@ -5125,6 +5226,7 @@ async function cargarCuadreSemanal() {
   try {
     const hoy = today(); // fecha actual YYYY-MM-DD
     const diasData = [];
+    window._semDiasData = diasData; // para usar en abrirResumenSemanal()
 
     for(const fecha of fechas){
       let netoDia = 0, comprasTot = 0, comprasDia = [];
