@@ -1524,21 +1524,21 @@
 <!-- ═══ MODAL: Categoría ═══ -->
 <div class="modal-bg" id="modal-cat-item">
   <div class="modal">
-    <div class="modal-title"><span id="modal-cat-title">🏷️ Nueva categoría</span> <button class="btn-sm btn-ghost" onclick="closeModal('modal-cat-item')">✕</button></div>
-    <input type="hidden" id="cat-docid"/>
+    <div class="modal-title"><span id="mcat-title">🏷️ Nueva categoría</span> <button class="btn-sm btn-ghost" onclick="closeModal('modal-cat-item')">✕</button></div>
+    <input type="hidden" id="mcat-docid"/>
     <div class="form-row" style="gap:8px">
       <div class="fg" style="max-width:80px">
         <label>Emoji</label>
-        <input type="text" id="cat-emoji" placeholder="🍟" maxlength="4" style="text-align:center;font-size:1.3rem"/>
+        <input type="text" id="mcat-emoji" placeholder="🍟" maxlength="4" style="text-align:center;font-size:1.3rem"/>
       </div>
       <div class="fg">
         <label>Nombre</label>
-        <input type="text" id="cat-nombre" placeholder="Ej: Salchipapas"/>
+        <input type="text" id="mcat-nombre" placeholder="Ej: Salchipapas"/>
       </div>
     </div>
     <div class="fg" style="margin-top:10px">
       <label>Orden de aparición (número)</label>
-      <input type="number" inputmode="numeric" id="cat-orden" placeholder="1" min="1" max="99"/>
+      <input type="number" inputmode="numeric" id="mcat-orden" placeholder="1" min="1" max="99"/>
     </div>
     <!-- Toggle acumula -->
     <div style="display:flex;align-items:center;justify-content:space-between;margin-top:12px;padding:10px 12px;background:var(--light);border-radius:10px;border:1.5px solid var(--border)">
@@ -1547,14 +1547,14 @@
         <div style="font-size:0.75rem;color:var(--gray);margin-top:2px">Ej: bebidas — se suman con + en la comanda</div>
       </div>
       <label style="position:relative;display:inline-block;width:44px;height:24px;flex-shrink:0">
-        <input type="checkbox" id="cat-acumula" style="opacity:0;width:0;height:0"/>
-        <span id="cat-acumula-slider" onclick="toggleCatAcumula()" style="position:absolute;cursor:pointer;inset:0;border-radius:24px;background:#cbd5e0;transition:0.2s">
-          <span id="cat-acumula-knob" style="position:absolute;height:18px;width:18px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:0.2s"></span>
+        <input type="checkbox" id="mcat-acumula" style="opacity:0;width:0;height:0"/>
+        <span id="mcat-acumula-slider" onclick="toggleCatAcumula()" style="position:absolute;cursor:pointer;inset:0;border-radius:24px;background:#cbd5e0;transition:0.2s">
+          <span id="mcat-acumula-knob" style="position:absolute;height:18px;width:18px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:0.2s"></span>
         </span>
       </label>
     </div>
-    <button onclick="saveCat()" class="btn-blue mt8" style="width:100%;padding:12px" id="btn-save-cat">Guardar categoría</button>
-    <div id="cat-error" style="color:var(--red);font-size:0.82rem;margin-top:6px;text-align:center;min-height:16px"></div>
+    <button onclick="saveCat()" class="btn-blue mt8" style="width:100%;padding:12px" id="mcat-btn-save">Guardar categoría</button>
+    <div id="mcat-error" style="color:var(--red);font-size:0.82rem;margin-top:6px;text-align:center;min-height:16px"></div>
   </div>
 </div>
 
@@ -4008,54 +4008,54 @@ function renderCatList(){
 let catAcumulaTemp = false;
 function toggleCatAcumula(){
   catAcumulaTemp = !catAcumulaTemp;
-  const sl=$('cat-acumula-slider'), kn=$('cat-acumula-knob');
+  const sl=$('mcat-acumula-slider'), kn=$('mcat-acumula-knob');
   if(!sl||!kn) return;
-  sl.style.background = catAcumulaTemp ? 'var(--green)' : '#cbd5e0';
+  sl.style.background = catAcumulaTemp ? '#276749' : '#cbd5e0';
   kn.style.transform  = catAcumulaTemp ? 'translateX(20px)' : 'translateX(0)';
 }
 function setCatAcumula(val){
   catAcumulaTemp = !!val;
-  const sl=$('cat-acumula-slider'), kn=$('cat-acumula-knob');
+  const sl=$('mcat-acumula-slider'), kn=$('mcat-acumula-knob');
   if(!sl||!kn) return;
-  sl.style.background = catAcumulaTemp ? isDark()?'var(--green)':'var(--green)' : '#cbd5e0';
+  sl.style.background = catAcumulaTemp ? '#276749' : '#cbd5e0';
   kn.style.transform  = catAcumulaTemp ? 'translateX(20px)' : 'translateX(0)';
 }
 
 function openModalCat(docId){
-  $('cat-docid').value=docId||'';
-  $('cat-error').textContent='';
+  $('mcat-docid').value=docId||'';
+  $('mcat-error').textContent='';
   if(docId){
     const c=catById(docId); if(!c) return;
-    $('cat-emoji').value=c.emoji||''; $('cat-nombre').value=c.nombre||''; $('cat-orden').value=c.orden||1;
+    $('mcat-emoji').value=c.emoji||''; $('mcat-nombre').value=c.nombre||''; $('mcat-orden').value=c.orden||1;
     setCatAcumula(c.acumula);
-    $('modal-cat-title').textContent='✏️ Editar categoría';
-    $('btn-save-cat').textContent='Guardar cambios';
+    $('mcat-title').textContent='✏️ Editar categoría';
+    $('mcat-btn-save').textContent='Guardar cambios';
   } else {
-    $('cat-emoji').value=''; $('cat-nombre').value=''; $('cat-orden').value=catCache.length+1;
+    $('mcat-emoji').value=''; $('mcat-nombre').value=''; $('mcat-orden').value=catCache.length+1;
     setCatAcumula(false);
-    $('modal-cat-title').textContent='🏷️ Nueva categoría';
-    $('btn-save-cat').textContent='Guardar categoría';
+    $('mcat-title').textContent='🏷️ Nueva categoría';
+    $('mcat-btn-save').textContent='Guardar categoría';
   }
   openModal('modal-cat-item');
 }
 
 async function saveCat(){
-  const docId  = $('cat-docid').value;
-  const emoji  = $('cat-emoji').value.trim();
-  const nombre = $('cat-nombre').value.trim();
-  const orden  = parseInt($('cat-orden').value)||1;
+  const docId  = $('mcat-docid').value;
+  const emoji  = $('mcat-emoji').value.trim();
+  const nombre = $('mcat-nombre').value.trim();
+  const orden  = parseInt($('mcat-orden').value)||1;
   const acumula= catAcumulaTemp;
-  $('cat-error').textContent='';
-  if(!nombre){ $('cat-error').textContent='El nombre es obligatorio.'; return; }
+  $('mcat-error').textContent='';
+  if(!nombre){ $('mcat-error').textContent='El nombre es obligatorio.'; return; }
   const dup = catCache.find(c=>c.nombre.toLowerCase()===nombre.toLowerCase()&&c._docId!==docId);
-  if(dup){ $('cat-error').textContent='Ya existe una categoría con ese nombre.'; return; }
-  const btn=$('btn-save-cat'); btn.disabled=true; btn.textContent='Guardando...';
+  if(dup){ $('mcat-error').textContent='Ya existe una categoría con ese nombre.'; return; }
+  const btn=$('mcat-btn-save'); btn.disabled=true; btn.textContent='Guardando...';
   try{
     const data={nombre,emoji,orden,acumula};
     if(docId){ await db.collection('categorias_menu').doc(docId).update(data); }
     else      { await db.collection('categorias_menu').add(data); }
     closeModal('modal-cat-item');
-  } catch(e){ $('cat-error').textContent='Error: '+e.message; }
+  } catch(e){ $('mcat-error').textContent='Error: '+e.message; }
   finally{ btn.disabled=false; btn.textContent='Guardar categoría'; }
 }
 
