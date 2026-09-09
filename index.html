@@ -1526,14 +1526,37 @@
   <div class="modal">
     <div class="modal-title"><span id="mcat-title">🏷️ Nueva categoría</span> <button class="btn-sm btn-ghost" onclick="closeModal('modal-cat-item')">✕</button></div>
     <input type="hidden" id="mcat-docid"/>
-    <div class="form-row" style="gap:8px">
-      <div class="fg" style="max-width:80px">
-        <label>Emoji</label>
-        <input type="text" id="mcat-emoji" placeholder="🍟" maxlength="4" style="text-align:center;font-size:1.3rem"/>
+    <div class="fg" style="margin-bottom:8px">
+      <label>Nombre</label>
+      <input type="text" id="mcat-nombre" placeholder="Ej: Salchipapas"/>
+    </div>
+    <div class="fg">
+      <label>Emoji</label>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+        <input type="text" id="mcat-emoji" placeholder="🍟" maxlength="4" style="width:60px;text-align:center;font-size:1.4rem;padding:6px"/>
+        <span style="font-size:0.72rem;color:var(--gray)">← o elige uno:</span>
       </div>
-      <div class="fg">
-        <label>Nombre</label>
-        <input type="text" id="mcat-nombre" placeholder="Ej: Salchipapas"/>
+      <div style="display:flex;flex-wrap:wrap;gap:6px">
+        <span onclick="$('mcat-emoji').value=this.textContent" style="font-size:1.35rem;cursor:pointer;padding:4px;border-radius:6px;border:1px solid var(--border)">🍟</span>
+        <span onclick="$('mcat-emoji').value=this.textContent" style="font-size:1.35rem;cursor:pointer;padding:4px;border-radius:6px;border:1px solid var(--border)">🌭</span>
+        <span onclick="$('mcat-emoji').value=this.textContent" style="font-size:1.35rem;cursor:pointer;padding:4px;border-radius:6px;border:1px solid var(--border)">🍔</span>
+        <span onclick="$('mcat-emoji').value=this.textContent" style="font-size:1.35rem;cursor:pointer;padding:4px;border-radius:6px;border:1px solid var(--border)">🍕</span>
+        <span onclick="$('mcat-emoji').value=this.textContent" style="font-size:1.35rem;cursor:pointer;padding:4px;border-radius:6px;border:1px solid var(--border)">🌮</span>
+        <span onclick="$('mcat-emoji').value=this.textContent" style="font-size:1.35rem;cursor:pointer;padding:4px;border-radius:6px;border:1px solid var(--border)">🥪</span>
+        <span onclick="$('mcat-emoji').value=this.textContent" style="font-size:1.35rem;cursor:pointer;padding:4px;border-radius:6px;border:1px solid var(--border)">🍗</span>
+        <span onclick="$('mcat-emoji').value=this.textContent" style="font-size:1.35rem;cursor:pointer;padding:4px;border-radius:6px;border:1px solid var(--border)">🥩</span>
+        <span onclick="$('mcat-emoji').value=this.textContent" style="font-size:1.35rem;cursor:pointer;padding:4px;border-radius:6px;border:1px solid var(--border)">🌶️</span>
+        <span onclick="$('mcat-emoji').value=this.textContent" style="font-size:1.35rem;cursor:pointer;padding:4px;border-radius:6px;border:1px solid var(--border)">🧀</span>
+        <span onclick="$('mcat-emoji').value=this.textContent" style="font-size:1.35rem;cursor:pointer;padding:4px;border-radius:6px;border:1px solid var(--border)">🥤</span>
+        <span onclick="$('mcat-emoji').value=this.textContent" style="font-size:1.35rem;cursor:pointer;padding:4px;border-radius:6px;border:1px solid var(--border)">🧃</span>
+        <span onclick="$('mcat-emoji').value=this.textContent" style="font-size:1.35rem;cursor:pointer;padding:4px;border-radius:6px;border:1px solid var(--border)">☕</span>
+        <span onclick="$('mcat-emoji').value=this.textContent" style="font-size:1.35rem;cursor:pointer;padding:4px;border-radius:6px;border:1px solid var(--border)">🍺</span>
+        <span onclick="$('mcat-emoji').value=this.textContent" style="font-size:1.35rem;cursor:pointer;padding:4px;border-radius:6px;border:1px solid var(--border)">🧁</span>
+        <span onclick="$('mcat-emoji').value=this.textContent" style="font-size:1.35rem;cursor:pointer;padding:4px;border-radius:6px;border:1px solid var(--border)">🍰</span>
+        <span onclick="$('mcat-emoji').value=this.textContent" style="font-size:1.35rem;cursor:pointer;padding:4px;border-radius:6px;border:1px solid var(--border)">🍿</span>
+        <span onclick="$('mcat-emoji').value=this.textContent" style="font-size:1.35rem;cursor:pointer;padding:4px;border-radius:6px;border:1px solid var(--border)">🍴</span>
+        <span onclick="$('mcat-emoji').value=this.textContent" style="font-size:1.35rem;cursor:pointer;padding:4px;border-radius:6px;border:1px solid var(--border)">⭐</span>
+        <span onclick="$('mcat-emoji').value=this.textContent" style="font-size:1.35rem;cursor:pointer;padding:4px;border-radius:6px;border:1px solid var(--border)">🎁</span>
       </div>
     </div>
     <div class="fg" style="margin-top:10px">
