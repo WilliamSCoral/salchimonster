@@ -1288,6 +1288,14 @@
 
 <!-- ═══ PAGE 8: MENÚ ═══ -->
 <div class="page" id="page-8">
+  <!-- Categorías -->
+  <div class="card">
+    <div class="card-title">🏷️ Categorías
+      <button class="btn-sm btn-blue" onclick="openModalCat(null)">+ Nueva</button>
+    </div>
+    <div id="cat-list"><div class="empty-msg">Sin categorías</div></div>
+  </div>
+  <!-- Platos -->
   <div class="card">
     <div class="card-title">🍽️ Platos del menú
       <button class="btn-sm btn-blue" onclick="openModalMenu()">+ Nuevo plato</button>
@@ -1513,6 +1521,43 @@
 </div>
 
 <!-- ═══ MODAL: Nuevo/Editar plato ═══ -->
+<!-- ═══ MODAL: Categoría ═══ -->
+<div class="modal-bg" id="modal-cat-item">
+  <div class="modal">
+    <div class="modal-title"><span id="modal-cat-title">🏷️ Nueva categoría</span> <button class="btn-sm btn-ghost" onclick="closeModal('modal-cat-item')">✕</button></div>
+    <input type="hidden" id="cat-docid"/>
+    <div class="form-row" style="gap:8px">
+      <div class="fg" style="max-width:80px">
+        <label>Emoji</label>
+        <input type="text" id="cat-emoji" placeholder="🍟" maxlength="4" style="text-align:center;font-size:1.3rem"/>
+      </div>
+      <div class="fg">
+        <label>Nombre</label>
+        <input type="text" id="cat-nombre" placeholder="Ej: Salchipapas"/>
+      </div>
+    </div>
+    <div class="fg" style="margin-top:10px">
+      <label>Orden de aparición (número)</label>
+      <input type="number" inputmode="numeric" id="cat-orden" placeholder="1" min="1" max="99"/>
+    </div>
+    <!-- Toggle acumula -->
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-top:12px;padding:10px 12px;background:var(--light);border-radius:10px;border:1.5px solid var(--border)">
+      <div>
+        <div style="font-weight:700;font-size:0.85rem">Permite agregar varias unidades</div>
+        <div style="font-size:0.75rem;color:var(--gray);margin-top:2px">Ej: bebidas — se suman con + en la comanda</div>
+      </div>
+      <label style="position:relative;display:inline-block;width:44px;height:24px;flex-shrink:0">
+        <input type="checkbox" id="cat-acumula" style="opacity:0;width:0;height:0"/>
+        <span id="cat-acumula-slider" onclick="toggleCatAcumula()" style="position:absolute;cursor:pointer;inset:0;border-radius:24px;background:#cbd5e0;transition:0.2s">
+          <span id="cat-acumula-knob" style="position:absolute;height:18px;width:18px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:0.2s"></span>
+        </span>
+      </label>
+    </div>
+    <button onclick="saveCat()" class="btn-blue mt8" style="width:100%;padding:12px" id="btn-save-cat">Guardar categoría</button>
+    <div id="cat-error" style="color:var(--red);font-size:0.82rem;margin-top:6px;text-align:center;min-height:16px"></div>
+  </div>
+</div>
+
 <div class="modal-bg" id="modal-menu-item">
   <div class="modal">
     <div class="modal-title"><span id="modal-menu-title">🍽️ Nuevo plato</span> <button class="btn-sm btn-ghost" onclick="closeModal('modal-menu-item')">✕</button></div>
@@ -1534,13 +1579,7 @@
       </div>
       <div class="fg">
         <label>Categoría</label>
-        <select id="mi-categoria">
-          <option value="salchipapas">🍟 Salchipapas</option>
-          <option value="bebidas">🥤 Bebidas</option>
-          <option value="combos">🍔 Combos</option>
-          <option value="extras">🍴 Extras</option>
-          <option value="otro">🍽️ Otro</option>
-        </select>
+        <select id="mi-categoria"></select>
       </div>
     </div>
     <button onclick="saveMenuItem()" class="btn-blue mt8" style="width:100%;padding:12px" id="btn-save-menu">Guardar plato</button>
@@ -1916,6 +1955,8 @@ function setupListeners() {
 
   // ── Comandas abiertas ──
   setupComandasListener();
+  // ── Categorías del menú ──
+  setupCatListener();
   // ── Menú ──
   setupMenuListener();
   // ── Inventario ──
@@ -3901,29 +3942,150 @@ function setupMenuListener(){
   unsubs.push(unsub);
 }
 
-const CAT_INFO = {
-  salchipapas: {emoji:'🍟', label:'Salchipapas'},
-  bebidas:     {emoji:'🥤', label:'Bebidas'},
-  combos:      {emoji:'🍔', label:'Combos'},
-  extras:      {emoji:'🍴', label:'Extras'},
-  otro:        {emoji:'🍽️', label:'Otro'},
-};
-const CAT_ORDER = ['salchipapas','combos','bebidas','extras','otro'];
+// ── Categorías dinámicas ──
+let catCache = []; // [{_docId, nombre, emoji, orden, acumula}]
 
-function getCatKey(p){ return CAT_ORDER.includes(p.categoria) ? p.categoria : 'otro'; }
+const CATS_DEFAULT = [
+  {nombre:'Salchipapas', emoji:'🍟', orden:1, acumula:false},
+  {nombre:'Combos',      emoji:'🍔', orden:2, acumula:false},
+  {nombre:'Bebidas',     emoji:'🥤', orden:3, acumula:true },
+  {nombre:'Extras',      emoji:'🍴', orden:4, acumula:false},
+  {nombre:'Otro',        emoji:'🍽️', orden:5, acumula:false},
+];
+
+async function setupCatListener(){
+  const col = db.collection('categorias_menu');
+  const unsub = col.orderBy('orden').onSnapshot(async snap=>{
+    if(snap.empty){
+      // Sembrar categorías por defecto
+      const batch = db.batch();
+      CATS_DEFAULT.forEach(c=> batch.set(col.doc(), c));
+      await batch.commit().catch(()=>{});
+      return; // el onSnapshot volverá a dispararse con los datos
+    }
+    catCache = snap.docs.map(d=>({_docId:d.id,...d.data()}));
+    renderCatList();
+    renderMenuList();
+    if($('com-menu-lista')) filtrarMenuComanda();
+  }, e=>console.error(e));
+  unsubs.push(unsub);
+}
+
+function catById(id){ return catCache.find(c=>c._docId===id); }
+function catByNombre(nombre){ return catCache.find(c=>c.nombre.toLowerCase()===nombre.toLowerCase()); }
+
+// Compatibilidad con la lógica anterior (catKey = docId de la categoría)
+function getCatKey(p){
+  if(!p.categoria) return catCache.find(c=>c.nombre==='Otro')?._docId||'otro';
+  // p.categoria puede ser un docId (nuevo) o un nombre legado ('salchipapas', etc.)
+  const byId = catCache.find(c=>c._docId===p.categoria);
+  if(byId) return p.categoria;
+  const byNombre = catCache.find(c=>c.nombre.toLowerCase()===p.categoria.toLowerCase()
+    || c.nombre.toLowerCase().replace(/[^a-z]/g,'')===p.categoria.toLowerCase());
+  return byNombre?._docId || (catCache.find(c=>c.nombre==='Otro')?._docId||'otro');
+}
+
+function getCatInfo(key){
+  const c=catById(key); if(c) return {emoji:c.emoji,label:c.nombre,acumula:c.acumula};
+  return {emoji:'🍽️',label:'Otro',acumula:false};
+}
+
+function renderCatList(){
+  const div=$('cat-list'); if(!div) return;
+  if(!catCache.length){ div.innerHTML='<div class="empty-msg">Sin categorías</div>'; return; }
+  div.innerHTML=catCache.map(c=>`
+    <div style="display:flex;align-items:center;gap:10px;padding:9px 4px;border-bottom:1px solid #f0f4f8">
+      <span style="font-size:1.3rem;width:28px;text-align:center">${c.emoji||'🍽️'}</span>
+      <div style="flex:1">
+        <div style="font-weight:700;font-size:0.88rem">${c.nombre}</div>
+        <div style="font-size:0.72rem;color:var(--gray)">Orden: ${c.orden} · ${c.acumula?'<span style="color:var(--green);font-weight:700">Suma unidades</span>':'Una a una'}</div>
+      </div>
+      <button class="btn-sm btn-ghost" onclick="openModalCat('${c._docId}')">✏️</button>
+      <button class="btn-sm btn-danger" onclick="deleteCat('${c._docId}')">✕</button>
+    </div>`).join('');
+}
+
+let catAcumulaTemp = false;
+function toggleCatAcumula(){
+  catAcumulaTemp = !catAcumulaTemp;
+  const sl=$('cat-acumula-slider'), kn=$('cat-acumula-knob');
+  if(!sl||!kn) return;
+  sl.style.background = catAcumulaTemp ? 'var(--green)' : '#cbd5e0';
+  kn.style.transform  = catAcumulaTemp ? 'translateX(20px)' : 'translateX(0)';
+}
+function setCatAcumula(val){
+  catAcumulaTemp = !!val;
+  const sl=$('cat-acumula-slider'), kn=$('cat-acumula-knob');
+  if(!sl||!kn) return;
+  sl.style.background = catAcumulaTemp ? isDark()?'var(--green)':'var(--green)' : '#cbd5e0';
+  kn.style.transform  = catAcumulaTemp ? 'translateX(20px)' : 'translateX(0)';
+}
+
+function openModalCat(docId){
+  $('cat-docid').value=docId||'';
+  $('cat-error').textContent='';
+  if(docId){
+    const c=catById(docId); if(!c) return;
+    $('cat-emoji').value=c.emoji||''; $('cat-nombre').value=c.nombre||''; $('cat-orden').value=c.orden||1;
+    setCatAcumula(c.acumula);
+    $('modal-cat-title').textContent='✏️ Editar categoría';
+    $('btn-save-cat').textContent='Guardar cambios';
+  } else {
+    $('cat-emoji').value=''; $('cat-nombre').value=''; $('cat-orden').value=catCache.length+1;
+    setCatAcumula(false);
+    $('modal-cat-title').textContent='🏷️ Nueva categoría';
+    $('btn-save-cat').textContent='Guardar categoría';
+  }
+  openModal('modal-cat-item');
+}
+
+async function saveCat(){
+  const docId  = $('cat-docid').value;
+  const emoji  = $('cat-emoji').value.trim();
+  const nombre = $('cat-nombre').value.trim();
+  const orden  = parseInt($('cat-orden').value)||1;
+  const acumula= catAcumulaTemp;
+  $('cat-error').textContent='';
+  if(!nombre){ $('cat-error').textContent='El nombre es obligatorio.'; return; }
+  const dup = catCache.find(c=>c.nombre.toLowerCase()===nombre.toLowerCase()&&c._docId!==docId);
+  if(dup){ $('cat-error').textContent='Ya existe una categoría con ese nombre.'; return; }
+  const btn=$('btn-save-cat'); btn.disabled=true; btn.textContent='Guardando...';
+  try{
+    const data={nombre,emoji,orden,acumula};
+    if(docId){ await db.collection('categorias_menu').doc(docId).update(data); }
+    else      { await db.collection('categorias_menu').add(data); }
+    closeModal('modal-cat-item');
+  } catch(e){ $('cat-error').textContent='Error: '+e.message; }
+  finally{ btn.disabled=false; btn.textContent='Guardar categoría'; }
+}
+
+async function deleteCat(docId){
+  const c=catById(docId);
+  const nombre=c?.nombre||'esta categoría';
+  // Verificar si hay platos con esta categoría
+  const usada=menuCache.filter(p=>getCatKey(p)===docId);
+  const msg=usada.length
+    ? `"${nombre}" tiene ${usada.length} plato(s) asignado(s). ¿Eliminar de todas formas? Los platos quedarán sin categoría.`
+    : `¿Eliminar la categoría "${nombre}"?`;
+  if(!confirm(msg)) return;
+  try{ await db.collection('categorias_menu').doc(docId).delete(); }
+  catch(e){ alert('Error: '+e.message); }
+}
 
 function renderMenuList(){
   const div = $('menu-list'); if(!div) return;
   if(!menuCache.length){ div.innerHTML='<div class="empty-msg">Sin platos registrados. Agrega el primero →</div>'; return; }
-  // Agrupar por categoría
+  // Agrupar por categoría usando catCache como orden
+  const catOrden = catCache.length ? catCache.map(c=>c._docId) : [];
   const grupos = {};
-  CAT_ORDER.forEach(c=>grupos[c]=[]);
   menuCache.forEach(p=>{ const k=getCatKey(p); if(!grupos[k])grupos[k]=[]; grupos[k].push(p); });
+  // Agregar un bucket para platos sin categoría conocida
+  const sinCat = menuCache.filter(p=>{ const k=getCatKey(p); return !catOrden.includes(k); });
   let html='';
-  CAT_ORDER.forEach(cat=>{
-    const items=grupos[cat]; if(!items||!items.length) return;
-    const ci=CAT_INFO[cat]||{emoji:'🍽️',label:cat};
-    html+=`<div style="font-size:0.72rem;font-weight:700;color:var(--gray);text-transform:uppercase;letter-spacing:0.06em;padding:8px 4px 4px;margin-top:4px">${ci.emoji} ${ci.label}</div>`;
+  catOrden.forEach(catId=>{
+    const items=grupos[catId]; if(!items||!items.length) return;
+    const ci=getCatInfo(catId);
+    html+=`<div style="font-size:0.72rem;font-weight:700;color:var(--gray);text-transform:uppercase;letter-spacing:0.06em;padding:8px 4px 4px;margin-top:4px">${ci.emoji} ${ci.label}${ci.acumula?' <span style="color:var(--green);font-size:0.7rem;font-weight:700">· suma unidades</span>':''}</div>`;
     html+=items.map(p=>`
       <div style="display:flex;align-items:center;gap:10px;padding:8px 4px;border-bottom:1px solid #f0f4f8">
         <span style="background:#ebf8ff;color:#2b6cb0;font-weight:800;font-size:0.78rem;padding:3px 8px;border-radius:6px;min-width:42px;text-align:center">${p.codigo}</span>
@@ -3935,14 +4097,31 @@ function renderMenuList(){
         <button class="btn-sm btn-danger" onclick="deleteMenuItem('${p._docId}')">✕</button>
       </div>`).join('');
   });
-  div.innerHTML=html;
+  if(sinCat.length){
+    html+=`<div style="font-size:0.72rem;font-weight:700;color:var(--gray);text-transform:uppercase;letter-spacing:0.06em;padding:8px 4px 4px;margin-top:4px">🍽️ Sin categoría</div>`;
+    html+=sinCat.map(p=>`
+      <div style="display:flex;align-items:center;gap:10px;padding:8px 4px;border-bottom:1px solid #f0f4f8">
+        <span style="background:#ebf8ff;color:#2b6cb0;font-weight:800;font-size:0.78rem;padding:3px 8px;border-radius:6px;min-width:42px;text-align:center">${p.codigo}</span>
+        <div style="flex:1"><div style="font-weight:600;font-size:0.88rem">${p.nombre}</div><div style="font-size:0.8rem;color:#276749;font-weight:700">${fmt(p.precio)}</div></div>
+        <button class="btn-sm btn-ghost" onclick="openEditMenuItem('${p._docId}')">✏️</button>
+        <button class="btn-sm btn-danger" onclick="deleteMenuItem('${p._docId}')">✕</button>
+      </div>`).join('');
+  }
+  div.innerHTML=html||'<div class="empty-msg">Sin platos registrados</div>';
+}
+
+function populateCatSelect(selectedId){
+  const sel=$('mi-categoria'); if(!sel) return;
+  sel.innerHTML=catCache.map(c=>`<option value="${c._docId}">${c.emoji||''} ${c.nombre}</option>`).join('');
+  if(selectedId) sel.value=selectedId;
+  else if(catCache.length) sel.value=catCache[0]._docId;
 }
 
 function openModalMenu(){
   $('mi-docid').value=''; $('mi-codigo').value=''; $('mi-nombre').value=''; $('mi-precio').value='';
   $('mi-error').textContent=''; $('modal-menu-title').textContent='🍽️ Nuevo plato';
   $('btn-save-menu').textContent='Guardar plato';
-  if($('mi-categoria')) $('mi-categoria').value='salchipapas';
+  populateCatSelect(null);
   openModal('modal-menu-item');
 }
 
@@ -3950,7 +4129,7 @@ function openEditMenuItem(docId){
   const p = menuCache.find(x=>x._docId===docId); if(!p) return;
   $('mi-docid').value=docId; $('mi-codigo').value=p.codigo; $('mi-nombre').value=p.nombre;
   $('mi-precio').value=fmtRaw(p.precio); $('mi-error').textContent='';
-  if($('mi-categoria')) $('mi-categoria').value=p.categoria||'salchipapas';
+  populateCatSelect(getCatKey(p));
   $('modal-menu-title').textContent='✏️ Editar plato'; $('btn-save-menu').textContent='Guardar cambios';
   openModal('modal-menu-item');
 }
@@ -3960,7 +4139,7 @@ async function saveMenuItem(){
   const codigo   = $('mi-codigo').value.trim().toUpperCase();
   const nombre   = $('mi-nombre').value.trim();
   const precio   = moneyVal('mi-precio');
-  const categoria= ($('mi-categoria')&&$('mi-categoria').value)||'salchipapas';
+  const categoria= ($('mi-categoria')&&$('mi-categoria').value)||(catCache[0]?._docId||'');
   $('mi-error').textContent='';
   if(!codigo||!nombre||!precio){ $('mi-error').textContent='Todos los campos son obligatorios.'; return; }
   const dup = menuCache.find(p=>p.codigo===codigo && p._docId!==docId);
@@ -4846,39 +5025,34 @@ function filtrarMenuComanda(){
   const q = ($('com-buscar').value||'').toLowerCase();
   const lista = $('com-menu-lista'); if(!lista) return;
 
-  // Renderizar chips de categoría
+  // Chips de categoría (solo cats con platos)
   const chips = $('com-cat-chips');
   if(chips){
-    const catsPresentes = [...new Set(menuCache.map(p=>getCatKey(p)))];
-    const catsOrdenadas = CAT_ORDER.filter(c=>catsPresentes.includes(c));
-    const chipStyle = (activo) => `padding:4px 10px;border-radius:20px;border:1.5px solid;font-size:0.72rem;font-weight:700;cursor:pointer;`
+    const catsConPlatos = new Set(menuCache.map(p=>getCatKey(p)));
+    const catsOrdenadas = catCache.filter(c=>catsConPlatos.has(c._docId));
+    const chipStyle = activo => `padding:4px 10px;border-radius:20px;border:1.5px solid;font-size:0.72rem;font-weight:700;cursor:pointer;`
       +(activo ? 'background:#276749;color:#fff;border-color:#276749' : 'background:transparent;color:var(--gray);border-color:var(--border)');
     chips.innerHTML = `<button onclick="setCatFiltro('')" style="${chipStyle(comandaCatFiltro==='')}">Todos</button>`
-      + catsOrdenadas.map(c=>{
-          const ci=CAT_INFO[c]||{emoji:'🍽️',label:c};
-          return `<button onclick="setCatFiltro('${c}')" style="${chipStyle(comandaCatFiltro===c)}">${ci.emoji} ${ci.label}</button>`;
-        }).join('');
+      + catsOrdenadas.map(c=>`<button onclick="setCatFiltro('${c._docId}')" style="${chipStyle(comandaCatFiltro===c._docId)}">${c.emoji||''} ${c.nombre}</button>`).join('');
   }
 
-  // Filtrar lista
+  // Filtrar
   let filtrado = menuCache;
   if(comandaCatFiltro) filtrado = filtrado.filter(p=>getCatKey(p)===comandaCatFiltro);
   if(q) filtrado = filtrado.filter(p=>p.nombre.toLowerCase().includes(q)||p.codigo.toLowerCase().includes(q));
   if(!filtrado.length){ lista.innerHTML='<div class="empty-msg" style="padding:8px">Sin resultados</div>'; return; }
 
-  // Si no hay búsqueda y no hay filtro, agrupar por categoría
+  // Sin búsqueda ni filtro → agrupar por categoría
   if(!q && !comandaCatFiltro){
     const grupos = {};
-    CAT_ORDER.forEach(c=>grupos[c]=[]);
     filtrado.forEach(p=>{ const k=getCatKey(p); if(!grupos[k])grupos[k]=[]; grupos[k].push(p); });
     let html='';
-    CAT_ORDER.forEach(cat=>{
-      const items=grupos[cat]; if(!items||!items.length) return;
-      const ci=CAT_INFO[cat]||{emoji:'🍽️',label:cat};
-      html+=`<div style="font-size:0.68rem;font-weight:700;color:var(--gray);text-transform:uppercase;letter-spacing:0.05em;padding:5px 4px 2px">${ci.emoji} ${ci.label}</div>`;
+    catCache.forEach(cat=>{
+      const items=grupos[cat._docId]; if(!items||!items.length) return;
+      html+=`<div style="font-size:0.68rem;font-weight:700;color:var(--gray);text-transform:uppercase;letter-spacing:0.05em;padding:5px 4px 2px">${cat.emoji||''} ${cat.nombre}</div>`;
       html+=items.map(p=>menuItemRow(p)).join('');
     });
-    lista.innerHTML=html;
+    lista.innerHTML=html||'<div class="empty-msg" style="padding:8px">Sin resultados</div>';
   } else {
     lista.innerHTML = filtrado.map(p=>menuItemRow(p)).join('');
   }
@@ -4894,11 +5068,12 @@ function menuItemRow(p){
 }
 
 const ES_LLEVAR = nombre => nombre.trim().toUpperCase() === 'LLEVAR';
-// Categorías que acumulan cantidad en una sola línea (sin nota individual)
-const CAT_ACUMULA = new Set(['bebidas']);
 
 function itemAcumula(p){
-  return ES_LLEVAR(p.nombre) || CAT_ACUMULA.has(p.categoria||'');
+  if(ES_LLEVAR(p.nombre)) return true;
+  const catId = getCatKey(p);
+  const cat = catById(catId);
+  return cat ? !!cat.acumula : false;
 }
 
 function agregarItemComanda(docId){
