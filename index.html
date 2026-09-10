@@ -1237,6 +1237,33 @@
   </div>
 </div>
 
+<!-- ═══ MODAL: Editar compra ═══ -->
+<div class="modal-bg" id="modal-edit-compra">
+  <div class="modal">
+    <div class="modal-title">✏️ Editar compra <button class="btn-sm btn-ghost" onclick="closeModal('modal-edit-compra')">✕</button></div>
+    <input type="hidden" id="ec-docid"/>
+    <div class="form-row" style="margin-bottom:10px">
+      <div class="fg">
+        <label>Ítem / Concepto</label>
+        <input type="text" id="ec-desc" placeholder="Ej: Carne, salsamentaria..."/>
+      </div>
+      <div class="fg" style="max-width:140px">
+        <label>Valor</label>
+        <input type="text" inputmode="numeric" id="ec-monto" placeholder="0" oninput="moneyFmt(this)"/>
+      </div>
+    </div>
+    <div style="margin-bottom:14px">
+      <label style="font-size:0.82rem;font-weight:600;color:var(--gray);display:block;margin-bottom:6px">Tipo de pago</label>
+      <div style="display:flex;gap:8px">
+        <button id="ec-btn-ef" onclick="setEcTipo('efectivo')" style="flex:1;padding:10px;border-radius:10px;border:2px solid #48bb78;background:#f0fff4;color:#276749;font-weight:700;cursor:pointer;font-size:0.88rem">💵 Efectivo</button>
+        <button id="ec-btn-tr" onclick="setEcTipo('transferencia')" style="flex:1;padding:10px;border-radius:10px;border:2px solid #e2e8f0;background:var(--light);color:var(--gray);font-weight:700;cursor:pointer;font-size:0.88rem">🏦 Transferencia</button>
+      </div>
+    </div>
+    <div id="ec-error" style="color:var(--red);font-size:0.82rem;min-height:18px;margin-bottom:6px"></div>
+    <button class="btn-purple" style="width:100%;padding:12px;font-size:0.95rem" onclick="saveEditCompra()">💾 Guardar cambios</button>
+  </div>
+</div>
+
 <!-- ═══ MODAL: Editar usuario ═══ -->
 <div class="modal-bg" id="modal-edit-user">
   <div class="modal">
@@ -3369,6 +3396,45 @@ async function addCompra(){
 async function delCompra(docId){ if(locked) return; try{ await DRAFT().doc('current').collection('compras').doc(docId).delete(); }catch(e){ alert('Error: '+e.message); } }
 async function clearCompras(){ if(locked) return; if(!confirm('¿Eliminar todas las compras?')) return; const snap=await DRAFT().doc('current').collection('compras').get(); const batch=db.batch(); snap.docs.forEach(d=>batch.delete(d.ref)); await batch.commit(); }
 
+let ecTipo = 'efectivo';
+
+function setEcTipo(tipo){
+  ecTipo = tipo;
+  const ef = $('ec-btn-ef'), tr = $('ec-btn-tr');
+  if(tipo === 'efectivo'){
+    ef.style.cssText = 'flex:1;padding:10px;border-radius:10px;border:2px solid #48bb78;background:#f0fff4;color:#276749;font-weight:700;cursor:pointer;font-size:0.88rem';
+    tr.style.cssText = 'flex:1;padding:10px;border-radius:10px;border:2px solid #e2e8f0;background:var(--light);color:var(--gray);font-weight:700;cursor:pointer;font-size:0.88rem';
+  } else {
+    ef.style.cssText = 'flex:1;padding:10px;border-radius:10px;border:2px solid #e2e8f0;background:var(--light);color:var(--gray);font-weight:700;cursor:pointer;font-size:0.88rem';
+    tr.style.cssText = 'flex:1;padding:10px;border-radius:10px;border:2px solid #2b6cb0;background:#ebf8ff;color:#2b6cb0;font-weight:700;cursor:pointer;font-size:0.88rem';
+  }
+}
+
+function editCompra(docId){
+  if(locked) return;
+  const c = state.compras.find(x => x._docId === docId);
+  if(!c) return;
+  $('ec-docid').value = docId;
+  $('ec-desc').value = c.desc || '';
+  $('ec-monto').value = fmtRaw(c.monto);
+  $('ec-error').textContent = '';
+  setEcTipo(c.tipo || 'efectivo');
+  openModal('modal-edit-compra');
+}
+
+async function saveEditCompra(){
+  const docId = $('ec-docid').value;
+  const desc = $('ec-desc').value.trim();
+  const monto = moneyVal('ec-monto');
+  if(!desc){ $('ec-error').textContent = 'Ingresa un concepto.'; return; }
+  if(!monto){ $('ec-error').textContent = 'Ingresa un valor válido.'; return; }
+  $('ec-error').textContent = '';
+  try{
+    await DRAFT().doc('current').collection('compras').doc(docId).update({desc, monto, tipo: ecTipo});
+    closeModal('modal-edit-compra');
+  } catch(e){ $('ec-error').textContent = 'Error: '+e.message; }
+}
+
 function renderCaja(){
   const baseEf=state.baseEfectivo||0, baseTr=state.baseTr||0;
   const tcEf=state.compras.filter(c=>c.tipo==='efectivo').reduce((s,c)=>s+c.monto,0);
@@ -3383,7 +3449,8 @@ function renderCaja(){
   if(!state.compras.length){ tb.innerHTML='<tr><td colspan="5" class="empty-msg">Sin compras</td></tr>'; return; }
   tb.innerHTML=state.compras.map((c,i)=>{
     const badge=c.tipo==='efectivo'?'<span class="badge badge-ef">💵</span>':'<span class="badge badge-tr">🏦</span>';
-    return `<tr><td>${i+1}</td><td>${c.desc}</td><td><strong>${fmt(c.monto)}</strong></td><td>${badge}</td><td><button class="btn-sm btn-danger" onclick="delCompra('${c._docId}')">✕</button></td></tr>`;
+    const btns=locked?'':`<button class="btn-sm btn-ghost" style="margin-right:3px" onclick="editCompra('${c._docId}')">✏️</button><button class="btn-sm btn-danger" onclick="delCompra('${c._docId}')">✕</button>`;
+    return `<tr><td>${i+1}</td><td>${c.desc}</td><td><strong>${fmt(c.monto)}</strong></td><td>${badge}</td><td style="white-space:nowrap">${btns}</td></tr>`;
   }).join('')+`<tr class="total-row"><td colspan="2">TOTAL</td><td>${fmt(tcEf+tcTr)}</td><td colspan="2"></td></tr>`;
 }
 
