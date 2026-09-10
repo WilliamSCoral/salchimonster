@@ -3634,10 +3634,11 @@ async function showRecord(docId){
         </div>
         <div style="font-weight:700;color:#4a5568;margin-top:10px;margin-bottom:2px">📊 Neto del día</div>
         <div style="display:flex;justify-content:space-between"><span>💵 Efectivo ingresado</span><span>${fmt(t.ef)}</span></div>
-        <div style="display:flex;justify-content:space-between;color:var(--red)"><span>&nbsp;&nbsp;(−) Gastos</span><span>${fmt(t.tg)}</span></div>
+        <div style="display:flex;justify-content:space-between;color:var(--red)"><span>&nbsp;&nbsp;(−) Gastos ef.</span><span>${fmt(t.tgEf||0)}</span></div>
         <div style="display:flex;justify-content:space-between;color:#c05621"><span>&nbsp;&nbsp;(−) Empleados (ef)</span><span>${fmt(t.teEf||0)}</span></div>
         <div style="display:flex;justify-content:space-between;font-weight:700;border-top:1px dashed #c6f6d5;padding-top:4px;color:#276749"><span>= Efectivo neto</span><span>${fmt(t.efNeto)}</span></div>
         <div style="display:flex;justify-content:space-between;margin-top:6px"><span style="color:#2b6cb0">🏦 Transferencias</span><span>${fmt(t.tr)}</span></div>
+        <div style="display:flex;justify-content:space-between;color:var(--red)"><span>&nbsp;&nbsp;(−) Gastos tr.</span><span>${fmt(t.tgTr||0)}</span></div>
         <div style="display:flex;justify-content:space-between;color:#c05621"><span>&nbsp;&nbsp;(−) Empleados (tr)</span><span>${fmt(t.teTr||0)}</span></div>
         <div style="display:flex;justify-content:space-between;font-weight:700;border-top:1px dashed #bee3f8;padding-top:4px;color:#2b6cb0"><span>= Transferencias netas</span><span>${fmt(t.trNeto||0)}</span></div>
         <div style="display:flex;justify-content:space-between;font-weight:800;font-size:0.92rem;background:#ebf8ff;padding:7px 10px;border-radius:8px;margin-top:2px"><span>📊 Neto del día</span><span style="color:#2b6cb0">${fmt(t.netoDia||0)}</span></div>
@@ -3685,9 +3686,9 @@ function buildExcelData(st, t, fecha) {
     }
   });
   data.push(['','Total Efectivo',t.ef]); data.push(['','Total Transferencias',t.tr]); data.push(['','TOTAL BRUTO',t.bruto]); data.push([]);
-  data.push(['GASTOS DEL DÍA']); data.push(['Concepto','Monto']);
-  st.gastos.forEach(g=>data.push([g.desc,g.monto]));
-  data.push(['TOTAL GASTOS',t.tg]); data.push([]);
+  data.push(['GASTOS DEL DÍA']); data.push(['Concepto','Monto','Tipo']);
+  st.gastos.forEach(g=>data.push([g.desc,g.monto,g.tipo==='transferencia'?'Transferencia':'Efectivo']));
+  data.push(['TOTAL GASTOS EFECTIVO',t.tgEf]); data.push(['TOTAL GASTOS TRANSFERENCIAS',t.tgTr]); data.push(['TOTAL GASTOS',t.tg]); data.push([]);
   data.push(['PAGO A EMPLEADOS']); data.push(['Empleado','Pago','Tipo']);
   st.empleados.forEach(e=>data.push([e.nombre,e.pago,e.tipo==='transferencia'?'Transferencia':'Efectivo']));
   data.push(['TOTAL EMPLEADOS EFECTIVO',t.teEf]); data.push(['TOTAL EMPLEADOS TRANSFERENCIAS',t.teTr]); data.push([]);
@@ -3698,8 +3699,8 @@ function buildExcelData(st, t, fecha) {
   data.push(['SALDO CAJA EFECTIVO',t.saldoCajaEf]); data.push(['SALDO CAJA TRANSFERENCIAS',t.saldoCajaTr]); data.push(['SALDO CAJA TOTAL',t.saldoCaja]); data.push([]);
   data.push(['RESUMEN FINAL']); data.push([]);
   data.push(['--- Venta del día ---']); data.push(['Efectivo ingresado',t.ef]); data.push(['Transferencias ingresadas',t.tr]); data.push(['VENTA DEL DÍA',t.ventaDia]); data.push([]);
-  data.push(['--- Neto del día ---']); data.push(['Efectivo ingresado',t.ef]); data.push(['(−) Gastos del día',t.tg]); data.push(['(−) Empleados efectivo',t.teEf]); data.push(['= Efectivo neto',t.efNeto]);
-  data.push(['Transferencias ingresadas',t.tr]); data.push(['(−) Empleados transferencias',t.teTr]); data.push(['= Transferencias netas',t.trNeto]); data.push(['NETO DEL DÍA',t.netoDia]); data.push([]);
+  data.push(['--- Neto del día ---']); data.push(['Efectivo ingresado',t.ef]); data.push(['(−) Gastos efectivo',t.tgEf]); data.push(['(−) Empleados efectivo',t.teEf]); data.push(['= Efectivo neto',t.efNeto]);
+  data.push(['Transferencias ingresadas',t.tr]); data.push(['(−) Gastos transferencias',t.tgTr]); data.push(['(−) Empleados transferencias',t.teTr]); data.push(['= Transferencias netas',t.trNeto]); data.push(['NETO DEL DÍA',t.netoDia]); data.push([]);
   data.push(['--- Total disponible ---']); data.push(['Efectivo neto',t.efNeto]); data.push(['(+) Saldo caja efectivo',t.saldoCajaEf]); data.push(['= Disponible efectivo',t.dispEf]);
   data.push(['Transferencias netas',t.trNeto]); data.push(['(+) Saldo caja transferencias',t.saldoCajaTr]); data.push(['= Disponible transferencias',t.dispTr]); data.push(['TOTAL DISPONIBLE',t.total]);
   return data;
@@ -3721,6 +3722,7 @@ function exportExcelFromRecord(){
   const savedState=r.state;
   savedState.compras.forEach(c=>{if(!c.tipo)c.tipo='efectivo';});
   savedState.empleados.forEach(e=>{if(!e.tipo)e.tipo='efectivo';});
+  savedState.gastos.forEach(g=>{if(!g.tipo)g.tipo='efectivo';});
   if(!savedState.baseEfectivo) savedState.baseEfectivo=0;
   if(!savedState.baseTr) savedState.baseTr=0;
   const origState=state; state=savedState; const t=totals(); state=origState;
