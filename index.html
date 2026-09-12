@@ -508,6 +508,7 @@
   <div class="tab" id="tab-7" onclick="goTab(7)"><span class="tab-icon">📊</span>Semanal</div>
   <div class="tab" id="tab-8" onclick="goTab(8)"><span class="tab-icon">🍽️</span>Menú</div>
   <div class="tab" id="tab-9" onclick="goTab(9)"><span class="tab-icon">📦</span>Inventario</div>
+  <div class="tab" id="tab-10" onclick="goTab(10)"><span class="tab-icon">📋</span>Fíos <span id="fios-badge" style="display:none;background:#ef4444;color:#fff;border-radius:99px;font-size:0.65rem;padding:1px 5px;font-weight:700;vertical-align:middle"></span></div>
 </div>
 
 <!-- ═══ PAGE 0: FACTURAS ═══ -->
@@ -552,10 +553,16 @@
         <div style="display:flex;gap:6px">
           <button type="button" id="btn-ftipo-ef" onclick="setFacturaTipo('efectivo')" style="flex:1;padding:9px 6px;border-radius:8px;border:2px solid #48bb78;background:#f0fff4;color:#276749;font-weight:700;cursor:pointer;font-size:0.82rem">💵 Efectivo</button>
           <button type="button" id="btn-ftipo-tr" onclick="setFacturaTipo('transferencia')" style="flex:1;padding:9px 6px;border-radius:8px;border:2px solid #e2e8f0;background:#fff;color:#4a5568;font-weight:700;cursor:pointer;font-size:0.82rem">🏦 Transfer</button>
+          <button type="button" id="btn-ftipo-fio" onclick="setFacturaTipo('fio')" style="flex:1;padding:9px 6px;border-radius:8px;border:2px solid #e2e8f0;background:#fff;color:#4a5568;font-weight:700;cursor:pointer;font-size:0.82rem">📋 Fío</button>
         </div>
       </div>
     </div>
-    <label class="mixto-toggle">
+    <!-- Campo cliente para fíos -->
+    <div id="f-fio-cliente-wrap" style="display:none;margin-top:6px">
+      <label style="font-size:0.72rem;font-weight:600;color:var(--gray);text-transform:uppercase;letter-spacing:0.04em">Cliente (fío)</label>
+      <input type="text" id="f-fio-cliente" placeholder="Nombre del cliente" style="width:100%;padding:8px 12px;border-radius:8px;border:1.5px solid #a78bfa;background:var(--card);color:var(--text);font-size:0.9rem;box-sizing:border-box;margin-top:3px"/>
+    </div>
+    <label class="mixto-toggle" id="f-mixto-toggle-wrap">
       <input type="checkbox" id="f-mixto" onchange="toggleMixto()"/>
       <span>💳 Pago mixto — varios métodos</span>
     </label>
@@ -1264,6 +1271,71 @@
   </div>
 </div>
 
+<!-- ═══ MODAL: Editar factura ═══ -->
+<div class="modal-bg" id="modal-edit-factura">
+  <div class="modal">
+    <div class="modal-title">✏️ Editar factura <span id="ef-num-label" style="color:var(--blue)"></span> <button class="btn-sm btn-ghost" onclick="closeModal('modal-edit-factura')">✕</button></div>
+    <input type="hidden" id="ef-docid"/>
+    <input type="hidden" id="ef-es-mixto"/>
+    <div class="form-row" style="margin-bottom:12px">
+      <div class="fg">
+        <label>Descripción</label>
+        <input type="text" id="ef-desc" placeholder="Descripción opcional"/>
+      </div>
+    </div>
+    <!-- Sección simple -->
+    <div id="ef-simple-section">
+      <div class="form-row" style="margin-bottom:10px">
+        <div class="fg" style="max-width:160px">
+          <label>Valor</label>
+          <input type="text" inputmode="numeric" id="ef-monto" placeholder="0" oninput="moneyFmt(this)"/>
+        </div>
+      </div>
+      <div style="margin-bottom:14px">
+        <label style="font-size:0.82rem;font-weight:600;color:var(--gray);display:block;margin-bottom:6px">Tipo de pago</label>
+        <div style="display:flex;gap:8px">
+          <button id="ef-btn-ef" onclick="efSetTipo('efectivo')" style="flex:1;padding:10px;border-radius:10px;border:2px solid #48bb78;background:#f0fff4;color:#276749;font-weight:700;cursor:pointer;font-size:0.88rem">💵 Efectivo</button>
+          <button id="ef-btn-tr" onclick="efSetTipo('transferencia')" style="flex:1;padding:10px;border-radius:10px;border:2px solid #e2e8f0;background:var(--light);color:var(--gray);font-weight:700;cursor:pointer;font-size:0.88rem">🏦 Transferencia</button>
+        </div>
+      </div>
+    </div>
+    <!-- Sección mixta -->
+    <div id="ef-mixto-section" style="display:none">
+      <label style="font-size:0.82rem;font-weight:600;color:var(--gray);display:block;margin-bottom:6px">Pagos (mixto)</label>
+      <div id="ef-pagos-list" style="display:flex;flex-direction:column;gap:8px;margin-bottom:10px"></div>
+      <button class="btn-sm btn-ghost" style="width:100%;padding:8px;border-radius:8px;border:1.5px dashed var(--border);font-size:0.85rem" onclick="efAddPago()">+ Agregar pago</button>
+    </div>
+    <div id="ef-error" style="color:var(--red);font-size:0.82rem;min-height:18px;margin-top:6px;margin-bottom:6px"></div>
+    <button class="btn-blue" style="width:100%;padding:12px;font-size:0.95rem;margin-top:4px" onclick="saveEditFactura()">💾 Guardar cambios</button>
+  </div>
+</div>
+
+<!-- ═══ MODAL: Cobrar fío ═══ -->
+<div class="modal-bg" id="modal-cobrar-fio">
+  <div class="modal">
+    <div class="modal-title">💰 Cobrar fío <button class="btn-sm btn-ghost" onclick="closeModal('modal-cobrar-fio')">✕</button></div>
+    <input type="hidden" id="cf-docid"/>
+    <div style="background:var(--light);border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:0.88rem">
+      <div id="cf-info" style="color:var(--text)"></div>
+    </div>
+    <div class="form-row" style="margin-bottom:10px">
+      <div class="fg" style="max-width:160px">
+        <label>Monto cobrado</label>
+        <input type="text" inputmode="numeric" id="cf-monto" placeholder="0" oninput="moneyFmt(this)"/>
+      </div>
+    </div>
+    <div style="margin-bottom:14px">
+      <label style="font-size:0.82rem;font-weight:600;color:var(--gray);display:block;margin-bottom:6px">Método de pago</label>
+      <div style="display:flex;gap:8px">
+        <button id="cf-btn-ef" onclick="cfSetTipo('efectivo')" style="flex:1;padding:10px;border-radius:10px;border:2px solid #48bb78;background:#f0fff4;color:#276749;font-weight:700;cursor:pointer;font-size:0.88rem">💵 Efectivo</button>
+        <button id="cf-btn-tr" onclick="cfSetTipo('transferencia')" style="flex:1;padding:10px;border-radius:10px;border:2px solid #e2e8f0;background:var(--light);color:var(--gray);font-weight:700;cursor:pointer;font-size:0.88rem">🏦 Transferencia</button>
+      </div>
+    </div>
+    <div id="cf-error" style="color:var(--red);font-size:0.82rem;min-height:18px;margin-bottom:6px"></div>
+    <button class="btn-blue" style="width:100%;padding:12px;font-size:0.95rem" onclick="confirmarCobroFio()">✅ Confirmar cobro</button>
+  </div>
+</div>
+
 <!-- ═══ MODAL: Editar usuario ═══ -->
 <div class="modal-bg" id="modal-edit-user">
   <div class="modal">
@@ -1407,6 +1479,33 @@
   </div>
 
 </div><!-- page-9 -->
+
+<!-- ═══ PAGE 10: FÍOS / CRÉDITOS ═══ -->
+<div class="page" id="page-10">
+  <div style="background:#f5f3ff;border:1.5px solid #a78bfa;border-radius:12px;padding:10px 14px;margin-bottom:12px;font-size:0.82rem;color:#6d28d9">
+    💡 Para registrar un fío, en <strong>Facturas</strong> selecciona <strong>📋 Fío</strong> como tipo de pago al agregar la factura.
+  </div>
+
+  <div class="card">
+    <div class="card-title" style="display:flex;justify-content:space-between;align-items:center">
+      <span>⏳ Fíos pendientes</span>
+      <span id="fio-total-pend" style="font-size:0.82rem;font-weight:700;color:var(--red)"></span>
+    </div>
+    <div id="fios-pendientes-list">
+      <div class="empty-msg">Sin fíos pendientes</div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:12px">
+    <div class="card-title" style="display:flex;justify-content:space-between;align-items:center">
+      <span>✅ Cobrados recientemente</span>
+      <button class="btn-sm btn-ghost" onclick="toggleFiosCobrados()" id="btn-toggle-cobrados">Ver</button>
+    </div>
+    <div id="fios-cobrados-list" style="display:none">
+      <div class="empty-msg">Sin cobros registrados</div>
+    </div>
+  </div>
+</div><!-- page-10 -->
 
 </div><!-- end app-wrapper -->
 
@@ -2009,6 +2108,8 @@ function setupListeners() {
   setupCatListener();
   // ── Menú ──
   setupMenuListener();
+  // ── Fíos / Créditos ──
+  setupFiosListener();
   // ── Inventario ──
   setupInventarioListeners();
   setupEmpleadosListeners();
@@ -2034,6 +2135,7 @@ function goTab(i) {
   if (i===6) loadUsers();
   if (i===8) renderMenuList();
   if (i===9) renderInventarioTab();
+  if (i===10) renderFios();
 }
 
 // ══════════════════════════════════════
@@ -2128,6 +2230,7 @@ function updateMixtoProgress() {
 function totals() {
   let ef=0, tr=0;
   state.facturas.forEach(f => {
+    if(f.tipo==='fio') return; // fíos pendientes no cuentan como ingreso
     if(f.mixto){ (f.pagos||[]).forEach(p=>{ if(p.tipo==='efectivo') ef+=(p.monto||0); else tr+=(p.monto||0); }); }
     else { if(f.tipo==='efectivo') ef+=(f.monto||f.total||0); else tr+=(f.monto||f.total||0); }
   });
@@ -2161,23 +2264,144 @@ function updateFacturaNumField() { $('f-num').value=nextFacturaNum(); }
 async function addFactura() {
   if(locked) return;
   const num=String(nextFacturaNum()), desc=$('f-desc').value.trim(), monto=moneyVal('f-monto'), mixto=$('f-mixto').checked;
+  const tipoActual = $('f-tipo').value;
   if(monto<=0){ alert('Ingresa un monto válido.'); return; }
   let data;
-  if(mixto){
+  if(tipoActual === 'fio'){
+    const cliente = ($('f-fio-cliente').value||'').trim();
+    if(!cliente){ alert('Ingresa el nombre del cliente para el fío.'); $('f-fio-cliente').focus(); return; }
+    if(mixto){
+      // Fío con pago mixto (parte ef, parte tr)
+      if(!currentPagos.length){ alert('Agrega al menos un pago parcial.'); return; }
+      const pagado=currentPagos.reduce((s,p)=>s+p.monto,0);
+      if(pagado!==monto){ alert(`Los pagos (${fmt(pagado)}) no cuadran con el total (${fmt(monto)}).`); return; }
+      data={num,desc,total:monto,mixto:true,pagos:[...currentPagos],tipo:'fio',cliente};
+      currentPagos=[]; renderMixtoPagos(); updateMixtoProgress();
+    } else {
+      data = {num, desc, monto, tipo:'fio', mixto:false, cliente};
+    }
+    data.createdAt=TS(); data.createdBy=currentUser.uid;
+    // Guardar también en colección global de fíos
+    try {
+      await FIOS_COL().add({
+        cliente, desc: desc || '', monto, fecha: today(),
+        estado: 'pendiente', facturaNum: num,
+        creadoPor: currentUser.uid, createdAt: TS()
+      });
+    } catch(e){ console.warn('No se pudo guardar en fios:', e); }
+    $('f-fio-cliente').value='';
+  } else if(mixto){
     if(!currentPagos.length){ alert('Agrega al menos un pago parcial.'); return; }
     const pagado=currentPagos.reduce((s,p)=>s+p.monto,0);
     if(pagado!==monto){ alert(`Los pagos (${fmt(pagado)}) no cuadran con el total (${fmt(monto)}).`); return; }
     data={num,desc,total:monto,mixto:true,pagos:[...currentPagos]};
     currentPagos=[]; renderMixtoPagos(); updateMixtoProgress();
   } else {
-    data={num,desc,monto,tipo:$('f-tipo').value,mixto:false};
+    data={num,desc,monto,tipo:tipoActual,mixto:false};
   }
-  data.createdAt=TS(); data.createdBy=currentUser.uid;
+  if(!data.createdAt){ data.createdAt=TS(); data.createdBy=currentUser.uid; }
   $('f-desc').value=''; $('f-monto').value='';
   setFacturaTipo('efectivo');
   $('f-desc').focus();
   try { await DRAFT().doc('current').collection('facturas').add(data); }
   catch(e){ alert('Error al guardar: '+e.message); }
+}
+
+// ── Editar pago de factura ──
+let efTipo = 'efectivo';  // para facturas simples
+let efPagosEdit = [];     // para facturas mixtas: [{tipo, monto}]
+
+function efSetTipo(tipo){
+  efTipo = tipo;
+  const ef=$('ef-btn-ef'), tr=$('ef-btn-tr');
+  if(tipo==='efectivo'){
+    ef.style.cssText='flex:1;padding:10px;border-radius:10px;border:2px solid #48bb78;background:#f0fff4;color:#276749;font-weight:700;cursor:pointer;font-size:0.88rem';
+    tr.style.cssText='flex:1;padding:10px;border-radius:10px;border:2px solid #e2e8f0;background:var(--light);color:var(--gray);font-weight:700;cursor:pointer;font-size:0.88rem';
+  } else {
+    ef.style.cssText='flex:1;padding:10px;border-radius:10px;border:2px solid #e2e8f0;background:var(--light);color:var(--gray);font-weight:700;cursor:pointer;font-size:0.88rem';
+    tr.style.cssText='flex:1;padding:10px;border-radius:10px;border:2px solid #2b6cb0;background:#ebf8ff;color:#2b6cb0;font-weight:700;cursor:pointer;font-size:0.88rem';
+  }
+}
+
+function efRenderPagos(){
+  const container=$('ef-pagos-list'); if(!container) return;
+  container.innerHTML = efPagosEdit.map((p,i)=>{
+    const esEf = p.tipo==='efectivo';
+    return `<div style="display:flex;gap:6px;align-items:center;background:var(--light);border-radius:8px;padding:6px 8px;border:1px solid var(--border)">
+      <button onclick="efSetPagoTipo(${i},'efectivo')" style="padding:4px 10px;border-radius:6px;border:1.5px solid ${esEf?'#48bb78':'#e2e8f0'};background:${esEf?'#f0fff4':'var(--light)'};color:${esEf?'#276749':'var(--gray)'};cursor:pointer;font-size:0.82rem;font-weight:700">💵 Ef</button>
+      <button onclick="efSetPagoTipo(${i},'transferencia')" style="padding:4px 10px;border-radius:6px;border:1.5px solid ${!esEf?'#2b6cb0':'#e2e8f0'};background:${!esEf?'#ebf8ff':'var(--light)'};color:${!esEf?'#2b6cb0':'var(--gray)'};cursor:pointer;font-size:0.82rem;font-weight:700">🏦 Tr</button>
+      <input type="text" inputmode="numeric" id="ef-pago-monto-${i}" value="${fmtRaw(p.monto)}" oninput="moneyFmt(this)" style="flex:1;min-width:0;padding:6px 8px;border-radius:6px;border:1px solid var(--border);background:var(--card);color:var(--text);font-size:0.88rem"/>
+      ${efPagosEdit.length>1?`<button onclick="efDelPago(${i})" style="padding:4px 8px;border-radius:6px;border:none;background:var(--red);color:#fff;cursor:pointer;font-size:0.78rem">✕</button>`:''}
+    </div>`;
+  }).join('');
+}
+
+function efSetPagoTipo(idx, tipo){
+  efPagosEdit[idx].tipo = tipo;
+  efRenderPagos();
+}
+
+function efDelPago(idx){
+  if(efPagosEdit.length<=1) return;
+  efPagosEdit.splice(idx,1);
+  efRenderPagos();
+}
+
+function efAddPago(){
+  efPagosEdit.push({tipo:'efectivo', monto:0});
+  efRenderPagos();
+  // Enfocar el nuevo input
+  setTimeout(()=>{ const el=$(`ef-pago-monto-${efPagosEdit.length-1}`); if(el) el.focus(); },50);
+}
+
+function editFactura(docId){
+  if(locked || currentRole!=='admin') return;
+  const f = state.facturas.find(x=>x._docId===docId); if(!f) return;
+  $('ef-docid').value = docId;
+  $('ef-num-label').textContent = `#${f.num}`;
+  $('ef-desc').value = f.desc || '';
+  $('ef-error').textContent = '';
+  const esMixto = !!f.mixto;
+  $('ef-es-mixto').value = esMixto ? '1' : '0';
+  if(!esMixto){
+    $('ef-simple-section').style.display = '';
+    $('ef-mixto-section').style.display = 'none';
+    $('ef-monto').value = fmtRaw(f.monto||f.total||0);
+    efSetTipo(f.tipo||'efectivo');
+  } else {
+    $('ef-simple-section').style.display = 'none';
+    $('ef-mixto-section').style.display = '';
+    const pagos = f.pagos||[];
+    efPagosEdit = pagos.length ? pagos.map(p=>({tipo:p.tipo||'efectivo', monto:p.monto||0})) : [{tipo:'efectivo',monto:0}];
+    efRenderPagos();
+  }
+  openModal('modal-edit-factura');
+}
+
+async function saveEditFactura(){
+  const docId = $('ef-docid').value;
+  const desc = $('ef-desc').value.trim();
+  const esMixto = $('ef-es-mixto').value === '1';
+  $('ef-error').textContent = '';
+
+  if(!esMixto){
+    const monto = moneyVal('ef-monto');
+    if(!monto){ $('ef-error').textContent='Ingresa un valor válido.'; return; }
+    try{
+      await DRAFT().doc('current').collection('facturas').doc(docId).update({desc, monto, tipo:efTipo});
+      closeModal('modal-edit-factura');
+    } catch(e){ $('ef-error').textContent='Error: '+e.message; }
+  } else {
+    // Leer montos del DOM actualizado
+    const pagosGuardar = efPagosEdit.map((p,i)=>({tipo:p.tipo, monto:moneyVal(`ef-pago-monto-${i}`)}));
+    const totalMixto = pagosGuardar.reduce((s,p)=>s+p.monto,0);
+    if(!totalMixto){ $('ef-error').textContent='Los pagos no pueden sumar $0.'; return; }
+    if(pagosGuardar.some(p=>!p.monto)){ $('ef-error').textContent='Todos los pagos deben tener un valor.'; return; }
+    try{
+      await DRAFT().doc('current').collection('facturas').doc(docId).update({desc, pagos:pagosGuardar, total:totalMixto, monto:totalMixto});
+      closeModal('modal-edit-factura');
+    } catch(e){ $('ef-error').textContent='Error: '+e.message; }
+  }
 }
 
 async function editarNumFactura(docId, numActual){
@@ -2239,23 +2463,31 @@ function renderFacturas(){
       ?`<strong>${fmt(montoBase-domVal)}</strong><br><span style="font-size:0.72rem;color:#c2410c;font-weight:700">+🛵 ${fmt(domVal)}</span>`
       :`<strong>${fmt(montoBase)}</strong>`;
     const rowBg=esDom?'background:#fff7ed;':'';
-    if(!f.mixto){
+    const pagoEditBtn = currentRole==='admin' && !locked && f.tipo!=='fio' ? `<button class="btn-sm" onclick="editFactura('${did}')" style="padding:2px 6px;font-size:0.72rem;background:#fef9c3;color:#854d0e;border:1px solid #fde047;border-radius:5px;cursor:pointer;margin-left:2px" title="Editar pago">💳</button>` : '';
+    if(f.tipo==='fio'){
+      const fioBadge='<span style="background:#f5f3ff;color:#6d28d9;border:1px solid #a78bfa;border-radius:5px;padding:1px 7px;font-size:0.72rem;font-weight:700">📋 Fío</span>';
+      const clienteLabel=f.cliente?`<span style="font-size:0.7rem;color:#6d28d9;font-weight:600"> ${f.cliente}</span>`:'';
+      html+=`<tr style="background:#faf5ff"><td style="color:#a0aec0;font-size:0.75rem">${seq}</td><td><strong>${f.num}</strong>${editBtn}${clienteLabel}${domTag}${mesaTag}${f.desc?`<br><span style="font-size:0.7rem;color:var(--gray)">${f.desc}</span>`:''}</td><td><strong style="color:#6d28d9">${fmt(f.monto||0)}</strong></td><td>${fioBadge}</td><td>${currentRole==='admin'?`<button class="btn-sm btn-danger" onclick="delFactura('${did}')">✕</button>`:''}</td></tr>`;
+    } else if(!f.mixto){
       const badge=f.tipo==='efectivo'?'<span class="badge badge-ef">Ef</span>':'<span class="badge badge-tr">Tr</span>';
-      html+=`<tr style="${rowBg}"><td style="color:#a0aec0;font-size:0.75rem">${seq}</td><td><strong>${f.num}</strong>${editBtn}${domTag}${mesaTag}${f.desc?`<br><span style="font-size:0.7rem;color:var(--gray)">${f.desc}</span>`:''}</td><td>${montoCell(f.monto||f.total||0)}</td><td>${badge}</td><td>${currentRole==='admin'?`<button class="btn-sm btn-danger" onclick="delFactura('${did}')">✕</button>`:''}</td></tr>`;
+      html+=`<tr style="${rowBg}"><td style="color:#a0aec0;font-size:0.75rem">${seq}</td><td><strong>${f.num}</strong>${editBtn}${pagoEditBtn}${domTag}${mesaTag}${f.desc?`<br><span style="font-size:0.7rem;color:var(--gray)">${f.desc}</span>`:''}</td><td>${montoCell(f.monto||f.total||0)}</td><td>${badge}</td><td>${currentRole==='admin'?`<button class="btn-sm btn-danger" onclick="delFactura('${did}')">✕</button>`:''}</td></tr>`;
     } else {
       const pagos=f.pagos||[];
       const efTotal=pagos.filter(p=>p.tipo==='efectivo').reduce((s,p)=>s+(p.monto||0),0);
       const transfers=pagos.filter(p=>p.tipo==='transferencia');
       let first=true;
       const delBtn = currentRole==='admin' ? `<button class="btn-sm btn-danger" onclick="delFactura('${did}')">✕</button>` : '';
-      if(efTotal>0){ html+=`<tr style="${rowBg}"><td style="color:#a0aec0;font-size:0.75rem">${seq}</td><td><strong>${f.num}</strong>${editBtn}${domTag}${mesaTag}${f.desc?`<br><span style="font-size:0.7rem;color:var(--gray)">${f.desc}</span>`:''}</td><td>${montoCell(efTotal)}</td><td><span class="badge badge-ef">Ef</span></td><td>${first?delBtn:''}</td></tr>`; first=false; }
-      transfers.forEach((p,ti)=>{ html+=`<tr style="${rowBg}"><td></td><td><strong>${f.num}-${ti+1}</strong>${f.desc?`<br><span style="font-size:0.7rem;color:var(--gray)">${f.desc}</span>`:''}</td><td><strong>${fmt(p.monto||0)}</strong></td><td><span class="badge badge-tr">Tr</span></td><td>${first?delBtn:''}</td></tr>`; first=false; });
-      if(!efTotal&&!transfers.length){ html+=`<tr style="${rowBg}"><td style="color:#a0aec0;font-size:0.75rem">${seq}</td><td><strong>${f.num}</strong>${editBtn}${domTag}${mesaTag}${f.desc?`<br><span style="font-size:0.7rem;color:var(--gray)">${f.desc}</span>`:''}</td><td>${montoCell(f.total||f.monto||0)}</td><td><span class="badge badge-ef">Ef</span></td><td>${delBtn}</td></tr>`; }
+      if(efTotal>0){ html+=`<tr style="${rowBg}"><td style="color:#a0aec0;font-size:0.75rem">${seq}</td><td><strong>${f.num}</strong>${editBtn}${pagoEditBtn}${domTag}${mesaTag}${f.desc?`<br><span style="font-size:0.7rem;color:var(--gray)">${f.desc}</span>`:''}</td><td>${montoCell(efTotal)}</td><td><span class="badge badge-ef">Ef</span></td><td style="white-space:nowrap">${first?delBtn:''}</td></tr>`; first=false; }
+      transfers.forEach((p,ti)=>{ html+=`<tr style="${rowBg}"><td></td><td><strong>${f.num}-${ti+1}</strong>${f.desc?`<br><span style="font-size:0.7rem;color:var(--gray)">${f.desc}</span>`:''}</td><td><strong>${fmt(p.monto||0)}</strong></td><td><span class="badge badge-tr">Tr</span></td><td style="white-space:nowrap">${first?delBtn:''}</td></tr>`; first=false; });
+      if(!efTotal&&!transfers.length){ html+=`<tr style="${rowBg}"><td style="color:#a0aec0;font-size:0.75rem">${seq}</td><td><strong>${f.num}</strong>${editBtn}${pagoEditBtn}${domTag}${mesaTag}${f.desc?`<br><span style="font-size:0.7rem;color:var(--gray)">${f.desc}</span>`:''}</td><td>${montoCell(f.total||f.monto||0)}</td><td><span class="badge badge-ef">Ef</span></td><td>${delBtn}</td></tr>`; }
     }
   });
   const t=totals();
+  const fiosPend=state.facturas.filter(f=>f.tipo==='fio');
+  const totalFios=fiosPend.reduce((s,f)=>s+(f.monto||0),0);
+  const fioRow=fiosPend.length?` &nbsp;<span style="color:#6d28d9;font-weight:700">📋${fmt(totalFios)}</span>`:'';
   const domRow=totalDomicilios>0?` &nbsp;🛵<span style="color:#c2410c;font-weight:700">${fmt(totalDomicilios)}</span>`:'';
-  tb.innerHTML=html+`<tr class="total-row"><td colspan="2">TOTAL (${state.facturas.length})</td><td>${fmt(t.bruto)}</td><td colspan="2" style="font-size:0.7rem;color:var(--gray)">💵${fmt(t.ef)} 🏦${fmt(t.tr)}${domRow}</td></tr>`;
+  tb.innerHTML=html+`<tr class="total-row"><td colspan="2">TOTAL (${state.facturas.length})</td><td>${fmt(t.bruto)}</td><td colspan="2" style="font-size:0.7rem;color:var(--gray)">💵${fmt(t.ef)} 🏦${fmt(t.tr)}${fioRow}${domRow}</td></tr>`;
 }
 
 // ══════════════════════════════════════
@@ -2304,14 +2536,15 @@ function setGastoTipo(tipo){
 }
 function setFacturaTipo(tipo){
   $('f-tipo').value=tipo;
-  const ef=$('btn-ftipo-ef'), tr=$('btn-ftipo-tr');
-  if(tipo==='efectivo'){
-    ef.style.cssText='flex:1;padding:9px 6px;border-radius:8px;border:2px solid #48bb78;background:#f0fff4;color:#276749;font-weight:700;cursor:pointer;font-size:0.82rem';
-    tr.style.cssText='flex:1;padding:9px 6px;border-radius:8px;border:2px solid #e2e8f0;background:#fff;color:#4a5568;font-weight:700;cursor:pointer;font-size:0.82rem';
-  } else {
-    ef.style.cssText='flex:1;padding:9px 6px;border-radius:8px;border:2px solid #e2e8f0;background:#fff;color:#4a5568;font-weight:700;cursor:pointer;font-size:0.82rem';
-    tr.style.cssText='flex:1;padding:9px 6px;border-radius:8px;border:2px solid #2b6cb0;background:#ebf8ff;color:#2b6cb0;font-weight:700;cursor:pointer;font-size:0.82rem';
-  }
+  const ef=$('btn-ftipo-ef'), tr=$('btn-ftipo-tr'), fio=$('btn-ftipo-fio');
+  const BASE='flex:1;padding:9px 6px;border-radius:8px;font-weight:700;cursor:pointer;font-size:0.82rem;';
+  ef.style.cssText=BASE+(tipo==='efectivo'?'border:2px solid #48bb78;background:#f0fff4;color:#276749;':'border:2px solid #e2e8f0;background:#fff;color:#4a5568;');
+  tr.style.cssText=BASE+(tipo==='transferencia'?'border:2px solid #2b6cb0;background:#ebf8ff;color:#2b6cb0;':'border:2px solid #e2e8f0;background:#fff;color:#4a5568;');
+  fio.style.cssText=BASE+(tipo==='fio'?'border:2px solid #a78bfa;background:#f5f3ff;color:#6d28d9;':'border:2px solid #e2e8f0;background:#fff;color:#4a5568;');
+  // Mostrar campo cliente solo en fío
+  const clienteWrap=$('f-fio-cliente-wrap');
+  if(clienteWrap) clienteWrap.style.display = tipo==='fio' ? '' : 'none';
+  // El mixto siempre visible — aplica también para fíos con pago dividido
 }
 function setPagoTipo(tipo){
   $('p-tipo').value=tipo;
@@ -3731,6 +3964,177 @@ async function deleteRecord(){
   if(!confirm('¿Eliminar este registro?')) return;
   try{ await HIST().doc(currentHistKey).delete(); closeModal('modal-hist'); renderHistorial(); }
   catch(e){ alert('Error: '+e.message); }
+}
+
+// ══════════════════════════════════════
+//   FÍOS / CRÉDITOS
+// ══════════════════════════════════════
+let fiosCache = [];
+let fiosCobradosVisible = false;
+
+function FIOS_COL() { return db.collection('fios'); }
+
+function setupFiosListener() {
+  const unsub = FIOS_COL().orderBy('createdAt','desc').onSnapshot(snap => {
+    fiosCache = snap.docs.map(d => ({_docId: d.id, ...d.data()}));
+    updateFiosBadge();
+    // Re-renderizar si la tab está activa
+    const tab10 = $('page-10');
+    if (tab10 && tab10.classList.contains('active')) renderFios();
+  }, e => console.error('Fíos listener:', e));
+  unsubs.push(unsub);
+}
+
+function updateFiosBadge() {
+  const pendientes = fiosCache.filter(f => f.estado === 'pendiente');
+  const badge = $('fios-badge');
+  if (!badge) return;
+  if (pendientes.length > 0) {
+    badge.textContent = pendientes.length;
+    badge.style.display = 'inline';
+  } else {
+    badge.style.display = 'none';
+  }
+}
+
+// addFio() removida — los fíos se crean desde el formulario de facturas (tipo 'fio')
+
+async function delFio(docId) {
+  if (!confirm('¿Eliminar este fío?')) return;
+  try { await FIOS_COL().doc(docId).delete(); } catch(e) { alert('Error: ' + e.message); }
+}
+
+function renderFios() {
+  const pendientes = fiosCache.filter(f => f.estado === 'pendiente');
+  const cobrados = fiosCache.filter(f => f.estado === 'cobrado');
+
+  // Total pendiente
+  const totalPend = pendientes.reduce((s, f) => s + (f.monto || 0), 0);
+  const totEl = $('fio-total-pend');
+  if (totEl) totEl.textContent = pendientes.length ? `Total: ${fmt(totalPend)}` : '';
+
+  // Lista pendientes
+  const pendEl = $('fios-pendientes-list');
+  if (pendEl) {
+    if (!pendientes.length) {
+      pendEl.innerHTML = '<div class="empty-msg">Sin fíos pendientes 🎉</div>';
+    } else {
+      pendEl.innerHTML = pendientes.map(f => `
+        <div style="display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)">
+          <div style="flex:1;min-width:0">
+            <div style="font-weight:700;color:var(--text)">${f.cliente}</div>
+            ${f.desc ? `<div style="font-size:0.78rem;color:var(--gray)">${f.desc}</div>` : ''}
+            <div style="font-size:0.75rem;color:var(--gray);margin-top:2px">📅 ${f.fecha||''}</div>
+          </div>
+          <div style="text-align:right;flex-shrink:0">
+            <div style="font-weight:800;font-size:1rem;color:var(--red)">${fmt(f.monto)}</div>
+            <div style="display:flex;gap:4px;margin-top:5px">
+              <button class="btn-sm" onclick="abrirCobroFio('${f._docId}')" style="background:#f0fff4;color:#276749;border:1.5px solid #48bb78;border-radius:6px;padding:3px 8px;cursor:pointer;font-size:0.78rem;font-weight:700">💰 Cobrar</button>
+              <button class="btn-sm btn-danger" onclick="delFio('${f._docId}')">✕</button>
+            </div>
+          </div>
+        </div>`).join('');
+    }
+  }
+
+  // Lista cobrados
+  const cobrEl = $('fios-cobrados-list');
+  if (cobrEl) {
+    if (!cobrados.length) {
+      cobrEl.innerHTML = '<div class="empty-msg">Sin cobros registrados</div>';
+    } else {
+      cobrEl.innerHTML = cobrados.slice(0, 30).map(f => `
+        <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">
+          <div style="flex:1;min-width:0">
+            <div style="font-weight:700;color:var(--text);font-size:0.88rem">${f.cliente}</div>
+            ${f.desc ? `<div style="font-size:0.75rem;color:var(--gray)">${f.desc}</div>` : ''}
+            <div style="font-size:0.72rem;color:var(--gray)">Fío: ${f.fecha||''} → Cobro: ${f.fechaCobro||''}</div>
+          </div>
+          <div style="text-align:right;flex-shrink:0">
+            <div style="font-weight:700;font-size:0.9rem;color:#276749">${fmt(f.monto)}</div>
+            <span class="badge ${f.tipoCobro==='transferencia'?'badge-tr':'badge-ef'}" style="font-size:0.7rem">${f.tipoCobro==='transferencia'?'🏦 Tr':'💵 Ef'}</span>
+          </div>
+        </div>`).join('');
+    }
+  }
+}
+
+function toggleFiosCobrados() {
+  fiosCobradosVisible = !fiosCobradosVisible;
+  const el = $('fios-cobrados-list');
+  const btn = $('btn-toggle-cobrados');
+  if (el) el.style.display = fiosCobradosVisible ? '' : 'none';
+  if (btn) btn.textContent = fiosCobradosVisible ? 'Ocultar' : 'Ver';
+  if (fiosCobradosVisible) renderFios();
+}
+
+// ── Cobro de fío ──
+let cfTipo = 'efectivo';
+
+function cfSetTipo(tipo) {
+  cfTipo = tipo;
+  const ef = $('cf-btn-ef'), tr = $('cf-btn-tr');
+  if (tipo === 'efectivo') {
+    ef.style.cssText = 'flex:1;padding:10px;border-radius:10px;border:2px solid #48bb78;background:#f0fff4;color:#276749;font-weight:700;cursor:pointer;font-size:0.88rem';
+    tr.style.cssText = 'flex:1;padding:10px;border-radius:10px;border:2px solid #e2e8f0;background:var(--light);color:var(--gray);font-weight:700;cursor:pointer;font-size:0.88rem';
+  } else {
+    ef.style.cssText = 'flex:1;padding:10px;border-radius:10px;border:2px solid #e2e8f0;background:var(--light);color:var(--gray);font-weight:700;cursor:pointer;font-size:0.88rem';
+    tr.style.cssText = 'flex:1;padding:10px;border-radius:10px;border:2px solid #2b6cb0;background:#ebf8ff;color:#2b6cb0;font-weight:700;cursor:pointer;font-size:0.88rem';
+  }
+}
+
+function abrirCobroFio(docId) {
+  const f = fiosCache.find(x => x._docId === docId);
+  if (!f) return;
+  $('cf-docid').value = docId;
+  $('cf-monto').value = fmtRaw(f.monto);
+  $('cf-error').textContent = '';
+  $('cf-info').innerHTML = `<strong>${f.cliente}</strong>${f.desc ? ` — ${f.desc}` : ''}<br><span style="color:var(--gray);font-size:0.78rem">Fío del ${f.fecha||''} por ${fmt(f.monto)}</span>`;
+  cfSetTipo('efectivo');
+  openModal('modal-cobrar-fio');
+}
+
+async function confirmarCobroFio() {
+  const docId = $('cf-docid').value;
+  const monto = moneyVal('cf-monto');
+  if (!monto) { $('cf-error').textContent = 'Ingresa el monto cobrado.'; return; }
+  const f = fiosCache.find(x => x._docId === docId);
+  if (!f) return;
+  $('cf-error').textContent = '';
+  const fechaCobro = today();
+  try {
+    // 1. Si el fío está en el borrador de HOY, convertirlo directamente
+    const facturaHoy = state.facturas.find(fa => fa.tipo==='fio' && fa._docId && f.facturaNum && fa.num===f.facturaNum);
+    if(facturaHoy){
+      // Actualizar la factura del día de fío a pagada
+      await DRAFT().doc('current').collection('facturas').doc(facturaHoy._docId).update({
+        tipo: cfTipo, monto, cobradoEn: fechaCobro
+      });
+    } else {
+      // El fío es de otro día: crear nueva factura en el día actual
+      const num = String(nextFacturaNum());
+      await DRAFT().doc('current').collection('facturas').add({
+        num,
+        desc: `Cobro fío — ${f.cliente}${f.desc ? ' / ' + f.desc : ''}`,
+        monto,
+        tipo: cfTipo,
+        mixto: false,
+        esCobro: true,
+        fioDocId: docId,
+        createdAt: TS(),
+        createdBy: currentUser.uid
+      });
+    }
+    // 2. Marcar fío como cobrado
+    await FIOS_COL().doc(docId).update({
+      estado: 'cobrado',
+      fechaCobro,
+      tipoCobro: cfTipo,
+      montoCobrado: monto
+    });
+    closeModal('modal-cobrar-fio');
+    goTab(0);
+  } catch(e) { $('cf-error').textContent = 'Error: ' + e.message; }
 }
 
 // ══════════════════════════════════════
