@@ -1844,10 +1844,16 @@
       <div style="display:flex;justify-content:space-between;font-weight:800;font-size:0.95rem;border-top:1px solid var(--border);padding-top:6px"><span>Total a cobrar</span><span id="cc-total" style="color:var(--primary)">$ 0</span></div>
     </div>
     <div style="font-weight:700;font-size:0.84rem;margin-bottom:8px">Forma de pago</div>
-    <div style="display:flex;gap:8px;margin-bottom:10px">
-      <button id="btn-cc-ef" onclick="setCcTipo('efectivo')" style="flex:1;padding:10px;border-radius:10px;border:2px solid #48bb78;background:#f0fff4;color:#276749;font-weight:700;cursor:pointer;font-size:0.84rem">💵 Efectivo</button>
-      <button id="btn-cc-tr" onclick="setCcTipo('transferencia')" style="flex:1;padding:10px;border-radius:10px;border:2px solid #e2e8f0;background:#fff;color:#4a5568;font-weight:700;cursor:pointer;font-size:0.84rem">🏦 Transf.</button>
-      <button id="btn-cc-mix" onclick="setCcTipo('mixto')" style="flex:1;padding:10px;border-radius:10px;border:2px solid #e2e8f0;background:#fff;color:#4a5568;font-weight:700;cursor:pointer;font-size:0.84rem">💳 Mixto</button>
+    <div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap">
+      <button id="btn-cc-ef" onclick="setCcTipo('efectivo')" style="flex:1;min-width:70px;padding:10px;border-radius:10px;border:2px solid #48bb78;background:#f0fff4;color:#276749;font-weight:700;cursor:pointer;font-size:0.84rem">💵 Efectivo</button>
+      <button id="btn-cc-tr" onclick="setCcTipo('transferencia')" style="flex:1;min-width:70px;padding:10px;border-radius:10px;border:2px solid #e2e8f0;background:#fff;color:#4a5568;font-weight:700;cursor:pointer;font-size:0.84rem">🏦 Transf.</button>
+      <button id="btn-cc-mix" onclick="setCcTipo('mixto')" style="flex:1;min-width:70px;padding:10px;border-radius:10px;border:2px solid #e2e8f0;background:#fff;color:#4a5568;font-weight:700;cursor:pointer;font-size:0.84rem">💳 Mixto</button>
+      <button id="btn-cc-fio" onclick="setCcTipo('fio')" style="flex:1;min-width:70px;padding:10px;border-radius:10px;border:2px solid #e2e8f0;background:#fff;color:#4a5568;font-weight:700;cursor:pointer;font-size:0.84rem">📋 Fío</button>
+    </div>
+    <!-- Campo cliente para fío desde comanda -->
+    <div id="cc-fio-cliente-wrap" style="display:none;margin-bottom:10px">
+      <label style="font-size:0.78rem;font-weight:600;color:#6d28d9;display:block;margin-bottom:4px">Cliente (fío)</label>
+      <input type="text" id="cc-fio-cliente" placeholder="Nombre del cliente" style="width:100%;padding:8px 12px;border-radius:8px;border:1.5px solid #a78bfa;background:var(--card);color:var(--text);font-size:0.9rem;box-sizing:border-box"/>
     </div>
     <!-- Mixto parciales -->
     <div id="cc-mixto-section" style="display:none;margin-bottom:10px;padding:10px;background:#fffbeb;border:1.5px solid #f6e05e;border-radius:8px">
@@ -6154,6 +6160,7 @@ function abrirCobro(docId){
   const itemsHtml=(c.items||[]).map(i=>`<div style="display:flex;justify-content:space-between;font-size:0.8rem;margin-bottom:3px"><span>${i.cantidad}x ${i.nombre}</span><span>${fmt(i.precio*i.cantidad)}</span></div>`).join('');
   $('cc-resumen-items').innerHTML=itemsHtml+(c.descuento>0?`<div style="font-size:0.8rem;color:var(--red);margin-top:4px">(&#8722;) Descuento: ${fmt(c.descuento)}</div>`:'');
   setCcTipo('efectivo');
+  if($('cc-fio-cliente')) $('cc-fio-cliente').value='';
   renderCcPagos();
   closeModal('modal-comanda');
   openModal('modal-cerrar-comanda');
@@ -6161,14 +6168,23 @@ function abrirCobro(docId){
 
 function setCcTipo(tipo){
   ccTipo=tipo;
+  // Botones ef / tr / mix
   ['ef','tr','mix'].forEach(t=>{
     const btn=$('btn-cc-'+t); if(!btn) return;
     const active=((t==='ef'&&tipo==='efectivo')||(t==='tr'&&tipo==='transferencia')||(t==='mix'&&tipo==='mixto'));
     btn.style.borderColor=active?'#667eea':'#e2e8f0';
-    btn.style.background=active?'#ebf4ff':'#fff';
+    btn.style.background=active?'#ebf4ff':(isDark?'var(--light)':'#fff');
     btn.style.color=active?'#434190':'#4a5568';
   });
+  // Botón fío
+  const btnFio=$('btn-cc-fio'); if(btnFio){
+    const actFio=tipo==='fio';
+    btnFio.style.borderColor=actFio?'#a78bfa':'#e2e8f0';
+    btnFio.style.background=actFio?'#f5f3ff':(isDark?'var(--light)':'#fff');
+    btnFio.style.color=actFio?'#6d28d9':'#4a5568';
+  }
   $('cc-mixto-section').style.display=tipo==='mixto'?'block':'none';
+  const fw=$('cc-fio-cliente-wrap'); if(fw) fw.style.display=tipo==='fio'?'':'none';
 }
 
 function addCcPago(){
@@ -6255,6 +6271,19 @@ async function cerrarComanda(){
     factData={num,desc,monto:c.total,tipo:'efectivo',mixto:false,modoDetalle:true,mesa:c.mesa,hora:c.hora,items:c.items,subtotal:c.subtotal,descuento:c.descuento,comandaId:docId,...domExtra};
   } else if(ccTipo==='transferencia'){
     factData={num,desc,monto:c.total,tipo:'transferencia',mixto:false,modoDetalle:true,mesa:c.mesa,hora:c.hora,items:c.items,subtotal:c.subtotal,descuento:c.descuento,comandaId:docId,...domExtra};
+  } else if(ccTipo==='fio'){
+    const cliente=($('cc-fio-cliente').value||'').trim();
+    if(!cliente){ $('cc-error').textContent='Ingresa el nombre del cliente para el fío.'; $('cc-fio-cliente').focus(); return; }
+    factData={num,desc,monto:c.total,tipo:'fio',mixto:false,cliente,modoDetalle:true,mesa:c.mesa,hora:c.hora,items:c.items,subtotal:c.subtotal,descuento:c.descuento,comandaId:docId,...domExtra};
+    // Registrar en colección global de fíos
+    try{
+      await FIOS_COL().add({
+        cliente, desc, monto:c.total, fecha:today(),
+        estado:'pendiente', facturaNum:String(num),
+        creadoPor:currentUser.uid, createdAt:TS()
+      });
+    } catch(e){ console.warn('No se pudo guardar en fios:', e); }
+    $('cc-fio-cliente').value='';
   } else {
     const pagado=ccPagos.reduce((s,p)=>s+p.monto,0);
     if(Math.abs(pagado-c.total)>1){ $('cc-error').textContent='El total de pagos no coincide con el total de la comanda.'; return; }
