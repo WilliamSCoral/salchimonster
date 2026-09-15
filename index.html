@@ -720,6 +720,11 @@
           <button id="btn-etipo-tr" onclick="setEmpleadoTipo('transferencia')" style="flex:1;padding:10px;border-radius:10px;border:2px solid #e2e8f0;background:#fff;color:#4a5568;font-weight:700;cursor:pointer;font-size:0.88rem">🏦 Transferencia</button>
         </div>
       </div>
+      <label style="display:flex;align-items:center;gap:10px;margin-top:10px;cursor:pointer;font-size:0.85rem;font-weight:600;color:var(--text)">
+        <input type="checkbox" id="e-es-abono" checked style="width:17px;height:17px;cursor:pointer;accent-color:#f97316"/>
+        🔸 Descuenta del día (abono / pago inmediato)
+      </label>
+      <div id="e-abono-hint" style="font-size:0.75rem;color:var(--gray);margin-top:3px;margin-bottom:6px">Desmarca si es el registro del sueldo completo — solo aparece en el resumen, no afecta el neto del día.</div>
       <button class="btn-orange mt8" style="width:100%" id="btn-add-e" onclick="addEmpleado()">+ Agregar empleado</button>
     </div>
   </div>
@@ -1268,6 +1273,40 @@
     </div>
     <div id="ec-error" style="color:var(--red);font-size:0.82rem;min-height:18px;margin-bottom:6px"></div>
     <button class="btn-purple" style="width:100%;padding:12px;font-size:0.95rem" onclick="saveEditCompra()">💾 Guardar cambios</button>
+  </div>
+</div>
+
+<!-- ═══ MODAL: Editar empleado ═══ -->
+<div class="modal-bg" id="modal-edit-empleado">
+  <div class="modal">
+    <div class="modal-title">✏️ Editar pago empleado <button class="btn-sm btn-ghost" onclick="closeModal('modal-edit-empleado')">✕</button></div>
+    <input type="hidden" id="ee-docid"/>
+    <input type="hidden" id="ee-es-hist"/> <!-- '1' si es edición de historial -->
+    <input type="hidden" id="ee-hist-key"/>
+    <div class="form-row" style="margin-bottom:10px">
+      <div class="fg">
+        <label>Nombre</label>
+        <input type="text" id="ee-nombre" placeholder="Nombre del empleado"/>
+      </div>
+      <div class="fg" style="max-width:140px">
+        <label>Pago</label>
+        <input type="text" inputmode="numeric" id="ee-pago" placeholder="0" oninput="moneyFmt(this)"/>
+      </div>
+    </div>
+    <div style="margin-bottom:12px">
+      <label style="font-size:0.82rem;font-weight:600;color:var(--gray);display:block;margin-bottom:6px">Tipo de pago</label>
+      <div style="display:flex;gap:8px">
+        <button id="ee-btn-ef" onclick="eeSetTipo('efectivo')" style="flex:1;padding:10px;border-radius:10px;border:2px solid #48bb78;background:#f0fff4;color:#276749;font-weight:700;cursor:pointer;font-size:0.88rem">💵 Efectivo</button>
+        <button id="ee-btn-tr" onclick="eeSetTipo('transferencia')" style="flex:1;padding:10px;border-radius:10px;border:2px solid #e2e8f0;background:var(--light);color:var(--gray);font-weight:700;cursor:pointer;font-size:0.88rem">🏦 Transferencia</button>
+      </div>
+    </div>
+    <label style="display:flex;align-items:center;gap:10px;margin-bottom:6px;cursor:pointer;font-size:0.88rem;font-weight:600;color:var(--text)">
+      <input type="checkbox" id="ee-es-abono" style="width:17px;height:17px;cursor:pointer;accent-color:#f97316"/>
+      🔸 Descuenta del día (abono)
+    </label>
+    <div style="font-size:0.75rem;color:var(--gray);margin-bottom:12px">Desmarca si es solo registro de sueldo para el resumen — no afectará el neto del día.</div>
+    <div id="ee-error" style="color:var(--red);font-size:0.82rem;min-height:18px;margin-bottom:6px"></div>
+    <button class="btn-orange" style="width:100%;padding:12px;font-size:0.95rem" onclick="saveEditEmpleado()">💾 Guardar cambios</button>
   </div>
 </div>
 
@@ -2244,9 +2283,13 @@ function totals() {
   const tgEf=state.gastos.filter(g=>g.tipo!=='transferencia').reduce((s,g)=>s+g.monto,0);
   const tgTr=state.gastos.filter(g=>g.tipo==='transferencia').reduce((s,g)=>s+g.monto,0);
   const tg=tgEf+tgTr;
-  const teEf=state.empleados.filter(e=>e.tipo!=='transferencia').reduce((s,e)=>s+e.pago,0);
-  const teTr=state.empleados.filter(e=>e.tipo==='transferencia').reduce((s,e)=>s+e.pago,0);
+  // Solo descontan del día los marcados como abono (esAbono !== false; undefined/true = sí descuenta)
+  const teEf=state.empleados.filter(e=>e.tipo!=='transferencia'&&e.esAbono!==false).reduce((s,e)=>s+e.pago,0);
+  const teTr=state.empleados.filter(e=>e.tipo==='transferencia'&&e.esAbono!==false).reduce((s,e)=>s+e.pago,0);
   const te=teEf+teTr;
+  // Totales de referencia (no descuentan del día)
+  const teRefEf=state.empleados.filter(e=>e.tipo!=='transferencia'&&e.esAbono===false).reduce((s,e)=>s+e.pago,0);
+  const teRefTr=state.empleados.filter(e=>e.tipo==='transferencia'&&e.esAbono===false).reduce((s,e)=>s+e.pago,0);
   const tcEf=state.compras.filter(c=>c.tipo==='efectivo').reduce((s,c)=>s+c.monto,0);
   const tcTr=state.compras.filter(c=>c.tipo==='transferencia').reduce((s,c)=>s+c.monto,0);
   const tc=tcEf+tcTr;
@@ -2255,7 +2298,7 @@ function totals() {
   const ventaDia=ef+tr;
   const efNeto=ef-tgEf-teEf, trNeto=tr-tgTr-teTr, netoDia=efNeto+trNeto;
   const dispEf=efNeto+saldoCajaEf, dispTr=trNeto+saldoCajaTr, total=dispEf+dispTr;
-  return {ef,tr,bruto,ventaDia,tg,tgEf,tgTr,te,teEf,teTr,tc,tcEf,tcTr,baseEf,baseTr,saldoCajaEf,saldoCajaTr,saldoCaja,efNeto,trNeto,netoDia,dispEf,dispTr,total,cnt:state.facturas.length};
+  return {ef,tr,bruto,ventaDia,tg,tgEf,tgTr,te,teEf,teTr,teRefEf,teRefTr,tc,tcEf,tcTr,baseEf,baseTr,saldoCajaEf,saldoCajaTr,saldoCaja,efNeto,trNeto,netoDia,dispEf,dispTr,total,cnt:state.facturas.length};
 }
 
 // ══════════════════════════════════════
@@ -2575,12 +2618,96 @@ async function addEmpleado(){
   const nombre=$('e-nombre').value.trim(), pago=moneyVal('e-pago');
   if(!nombre){ alert('Ingresa el nombre.'); return; }
   if(pago<=0){ alert('Ingresa un pago válido.'); return; }
+  const esAbono = $('e-es-abono') ? $('e-es-abono').checked : true;
   $('e-nombre').value=''; $('e-pago').value=''; $('e-nombre').focus();
-  try{ await DRAFT().doc('current').collection('empleados').add({nombre,pago,tipo:empleadoTipo,createdAt:TS(),createdBy:currentUser.uid}); }
+  try{ await DRAFT().doc('current').collection('empleados').add({nombre,pago,tipo:empleadoTipo,esAbono,createdAt:TS(),createdBy:currentUser.uid}); }
   catch(e){ alert('Error: '+e.message); }
 }
 async function delEmpleado(docId){ if(locked) return; try{ await DRAFT().doc('current').collection('empleados').doc(docId).delete(); }catch(e){ alert('Error: '+e.message); } }
 async function clearEmpleados(){ if(locked) return; if(!confirm('¿Eliminar todos los empleados?')) return; const snap=await DRAFT().doc('current').collection('empleados').get(); const batch=db.batch(); snap.docs.forEach(d=>batch.delete(d.ref)); await batch.commit(); }
+
+let eeTipo = 'efectivo';
+function eeSetTipo(tipo){
+  eeTipo=tipo;
+  const ef=$('ee-btn-ef'), tr=$('ee-btn-tr');
+  if(tipo==='efectivo'){ ef.style.cssText='flex:1;padding:10px;border-radius:10px;border:2px solid #48bb78;background:#f0fff4;color:#276749;font-weight:700;cursor:pointer;font-size:0.88rem'; tr.style.cssText='flex:1;padding:10px;border-radius:10px;border:2px solid #e2e8f0;background:var(--light);color:var(--gray);font-weight:700;cursor:pointer;font-size:0.88rem'; }
+  else{ ef.style.cssText='flex:1;padding:10px;border-radius:10px;border:2px solid #e2e8f0;background:var(--light);color:var(--gray);font-weight:700;cursor:pointer;font-size:0.88rem'; tr.style.cssText='flex:1;padding:10px;border-radius:10px;border:2px solid #2b6cb0;background:#ebf8ff;color:#2b6cb0;font-weight:700;cursor:pointer;font-size:0.88rem'; }
+}
+
+function editEmpleado(docId, esHist, histKey, empData){
+  // esHist: true si es edición desde historial guardado
+  const e = esHist ? empData : state.empleados.find(x=>x._docId===docId);
+  if(!e) return;
+  $('ee-docid').value = docId||'';
+  $('ee-es-hist').value = esHist ? '1' : '0';
+  $('ee-hist-key').value = histKey||'';
+  $('ee-nombre').value = e.nombre||'';
+  $('ee-pago').value = fmtRaw(e.pago||0);
+  $('ee-es-abono').checked = e.esAbono !== false; // undefined/true → checked
+  $('ee-error').textContent = '';
+  eeSetTipo(e.tipo||'efectivo');
+  openModal('modal-edit-empleado');
+}
+
+async function saveEditEmpleado(){
+  const nombre=$('ee-nombre').value.trim();
+  const pago=moneyVal('ee-pago');
+  if(!nombre){ $('ee-error').textContent='Ingresa el nombre.'; return; }
+  if(!pago){ $('ee-error').textContent='Ingresa un pago válido.'; return; }
+  const esAbono=$('ee-es-abono').checked;
+  const esHist=$('ee-es-hist').value==='1';
+  $('ee-error').textContent='';
+  try{
+    if(!esHist){
+      // Editar en borrador actual
+      await DRAFT().doc('current').collection('empleados').doc($('ee-docid').value).update({nombre, pago, tipo:eeTipo, esAbono});
+    } else {
+      // Editar en registro guardado del historial
+      const histKey=$('ee-hist-key').value;
+      const idx=parseInt($('ee-docid').value,10);
+      await _saveHistEmpleado(histKey, idx, nombre, pago, eeTipo, esAbono);
+      closeModal('modal-edit-empleado');
+      showRecord(histKey);
+      return;
+    }
+    closeModal('modal-edit-empleado');
+  } catch(e){ $('ee-error').textContent='Error: '+e.message; }
+}
+
+async function _saveHistEmpleado(histKey, idx, nombre, pago, tipo, esAbono){
+  const snap=await HIST().doc(histKey).get();
+  if(!snap.exists) throw new Error('Registro no encontrado.');
+  const r=snap.data();
+  const empleados=[...(r.state?.empleados||[])];
+  if(isNaN(idx)||!empleados[idx]) throw new Error('Empleado no encontrado.');
+  empleados[idx]={...empleados[idx], nombre, pago, tipo, esAbono};
+  // Normalizar y recomputar totales
+  const savedSt={...r.state, empleados};
+  savedSt.gastos=(savedSt.gastos||[]).map(g=>({...g,tipo:g.tipo||'efectivo'}));
+  savedSt.compras=(savedSt.compras||[]).map(c=>({...c,tipo:c.tipo||'efectivo'}));
+  const origState=state; state=savedSt; const newTotals=totals(); state=origState;
+  await HIST().doc(histKey).update({'state.empleados': empleados, totals: newTotals});
+}
+
+// Llamado desde el modal de historial (evita pasar JSON inline en onclick)
+async function editEmpHistorial(histKey, idx){
+  try{
+    const snap=await HIST().doc(histKey).get();
+    if(!snap.exists){ alert('Registro no encontrado.'); return; }
+    const r=snap.data();
+    const e=(r.state?.empleados||[])[idx];
+    if(!e){ alert('Empleado no encontrado.'); return; }
+    $('ee-docid').value=String(idx);
+    $('ee-es-hist').value='1';
+    $('ee-hist-key').value=histKey;
+    $('ee-nombre').value=e.nombre||'';
+    $('ee-pago').value=fmtRaw(e.pago||0);
+    $('ee-es-abono').checked=e.esAbono!==false;
+    $('ee-error').textContent='';
+    eeSetTipo(e.tipo||'efectivo');
+    openModal('modal-edit-empleado');
+  } catch(err){ alert('Error: '+err.message); }
+}
 
 function renderEmpleados(){
   const tb=$('tb-empleados');
@@ -2588,8 +2715,13 @@ function renderEmpleados(){
   const totalEf=state.empleados.filter(e=>e.tipo!=='transferencia').reduce((s,e)=>s+e.pago,0);
   const totalTr=state.empleados.filter(e=>e.tipo==='transferencia').reduce((s,e)=>s+e.pago,0);
   tb.innerHTML=state.empleados.map((e,i)=>{
-    const badge=e.tipo==='transferencia'?'<span class="badge badge-tr">🏦</span>':'<span class="badge badge-ef">💵</span>';
-    return `<tr><td>${i+1}</td><td>${e.nombre}</td><td><strong>${fmt(e.pago)}</strong></td><td>${badge}</td><td><button class="btn-sm btn-danger" onclick="delEmpleado('${e._docId}')">✕</button></td></tr>`;
+    const tipoBadge=e.tipo==='transferencia'?'<span class="badge badge-tr">🏦</span>':'<span class="badge badge-ef">💵</span>';
+    const esRef=e.esAbono===false;
+    const abonoBadge=esRef
+      ?'<span style="font-size:0.65rem;background:#fef3c7;color:#92400e;border:1px solid #fde68a;border-radius:4px;padding:1px 5px;margin-left:3px">📊 Ref</span>'
+      :'<span style="font-size:0.65rem;background:#fff7ed;color:#c2410c;border:1px solid #fb923c;border-radius:4px;padding:1px 5px;margin-left:3px">🔸 Abono</span>';
+    const editBtn=locked?'':` <button class="btn-sm btn-ghost" onclick="editEmpleado('${e._docId}')" style="padding:2px 5px;font-size:0.72rem" title="Editar">✏️</button>`;
+    return `<tr style="${esRef?'opacity:0.75':''}"><td>${i+1}</td><td>${e.nombre}${abonoBadge}</td><td><strong style="${esRef?'color:var(--gray)':''}">${fmt(e.pago)}</strong></td><td>${tipoBadge}</td><td style="white-space:nowrap">${editBtn}<button class="btn-sm btn-danger" onclick="delEmpleado('${e._docId}')">✕</button></td></tr>`;
   }).join('')+`<tr class="total-row"><td colspan="2">TOTAL</td><td>${fmt(totalEf+totalTr)}</td><td colspan="2" style="font-size:0.7rem;color:var(--gray)">💵${fmt(totalEf)} 🏦${fmt(totalTr)}</td></tr>`;
 }
 
@@ -3899,7 +4031,12 @@ async function showRecord(docId){
     if(!doc.exists) return;
     const r=doc.data();
     currentHistRecord=r;
-    const t=r.totals;
+    // Recomputar totales dinámicamente con la lógica actual (esAbono, fíos, etc.)
+    const savedState=r.state||{};
+    savedState.gastos=(savedState.gastos||[]).map(g=>({...g,tipo:g.tipo||'efectivo'}));
+    savedState.empleados=(savedState.empleados||[]).map(e=>({...e,tipo:e.tipo||'efectivo'}));
+    savedState.compras=(savedState.compras||[]).map(c=>({...c,tipo:c.tipo||'efectivo'}));
+    const origState=state; state=savedState; const t=totals(); state=origState;
     const ventaDiaTotal=(t.ventaDia||0);
     $('hist-modal-fecha').textContent=r.fecha;
     const rows=(items,cols)=>items.length
@@ -3919,14 +4056,26 @@ async function showRecord(docId){
       }
     });
 
+    // Empleados render con badge esAbono y botón de edición
+    const empRows=(r.state.empleados||[]).map((e,idx)=>{
+      const esRef=e.esAbono===false;
+      const badge=esRef
+        ?'<span style="font-size:0.68rem;background:#ebf8ff;color:#2b6cb0;border-radius:4px;padding:1px 5px;font-weight:700">📊 Ref</span>'
+        :'<span style="font-size:0.68rem;background:#fffbeb;color:#b7791f;border-radius:4px;padding:1px 5px;font-weight:700">🔸 Abono</span>';
+      const editBtn=currentRole==='admin'
+        ?`<button onclick="editEmpHistorial('${docId}',${idx})" style="background:none;border:none;cursor:pointer;font-size:0.85rem;padding:1px 4px" title="Editar">✏️</button>`
+        :'';
+      return [e.nombre,fmt(e.pago),e.tipo==='transferencia'?'🏦 Tr.':'💵 Ef.',badge,editBtn];
+    });
+
     $('hist-modal-body').innerHTML=`
       <p style="font-size:0.78rem;color:var(--gray);margin-bottom:12px">Guardado el: ${new Date(r.savedAt).toLocaleString('es-CO')}${r.savedByName?' por '+r.savedByName:''}</p>
       <div style="font-weight:700;margin-bottom:6px;font-size:0.82rem">🧾 Facturas</div>
       ${rows(factRows,['#Fact','Desc','Monto','Tipo'])}
       <div style="font-weight:700;margin:12px 0 6px;font-size:0.82rem">💸 Gastos</div>
-      ${rows((r.state.gastos||[]).map(g=>[g.desc,fmt(g.monto)]),['Concepto','Monto'])}
+      ${rows((r.state.gastos||[]).map(g=>[g.desc,fmt(g.monto),g.tipo==='transferencia'?'🏦 Tr.':'💵 Ef.']),['Concepto','Monto','Tipo'])}
       <div style="font-weight:700;margin:12px 0 6px;font-size:0.82rem">👷 Empleados</div>
-      ${rows((r.state.empleados||[]).map(e=>[e.nombre,fmt(e.pago),e.tipo==='transferencia'?'🏦 Transferencia':'💵 Efectivo']),['Nombre','Pago','Tipo'])}
+      ${rows(empRows,['Nombre','Pago','Tipo','Estado',''])}
       <div style="font-weight:700;margin:12px 0 6px;font-size:0.82rem">🛒 Compras de caja</div>
       ${rows((r.state.compras||[]).map(c=>[c.desc,fmt(c.monto),c.tipo==='efectivo'?'💵 Efectivo':'🏦 Transferencia']),['Ítem','Valor','Tipo'])}
       <hr class="divider"/>
