@@ -877,6 +877,21 @@
       <span style="display:flex;align-items:center;gap:5px"><span style="width:14px;height:14px;border-radius:5px;background:#f7fafc;display:inline-block"></span>Sin registro</span>
     </div>
   </div>
+  <!-- Exportar rango de fechas -->
+  <div class="card" style="margin-top:14px">
+    <div class="card-title">📤 Exportar rango de fechas</div>
+    <div class="form-row" style="margin-bottom:10px">
+      <div class="fg"><label style="font-size:0.75rem;color:var(--gray);font-weight:600">Desde</label><input type="date" id="rango-desde" style="width:100%;padding:9px 10px;border-radius:9px;border:1.5px solid var(--border);font-size:0.88rem"/></div>
+      <div class="fg"><label style="font-size:0.75rem;color:var(--gray);font-weight:600">Hasta</label><input type="date" id="rango-hasta" style="width:100%;padding:9px 10px;border-radius:9px;border:1.5px solid var(--border);font-size:0.88rem"/></div>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button onclick="setRangoUltimas(6)" style="flex:1;padding:8px;background:#f0f4f8;border:1.5px solid #e2e8f0;border-radius:9px;font-size:0.78rem;font-weight:600;cursor:pointer;color:#4a5568">6 semanas</button>
+      <button onclick="setRangoUltimas(4)" style="flex:1;padding:8px;background:#f0f4f8;border:1.5px solid #e2e8f0;border-radius:9px;font-size:0.78rem;font-weight:600;cursor:pointer;color:#4a5568">4 semanas</button>
+      <button onclick="setRangoUltimas(2)" style="flex:1;padding:8px;background:#f0f4f8;border:1.5px solid #e2e8f0;border-radius:9px;font-size:0.78rem;font-weight:600;cursor:pointer;color:#4a5568">2 semanas</button>
+    </div>
+    <div id="rango-info" style="font-size:0.78rem;color:var(--gray);margin-top:8px;min-height:18px"></div>
+    <button onclick="exportarRango()" id="btn-exportar-rango" class="btn-blue" style="width:100%;padding:12px;margin-top:10px;font-weight:700">📊 Exportar a Excel</button>
+  </div>
   <!-- Registros con formato antiguo -->
   <div id="cal-legacy-card" style="display:none" class="card">
     <div class="card-title">📋 Registros anteriores</div>
@@ -4022,6 +4037,165 @@ function calPrevMonth(){
 }
 function calNextMonth(){
   calMonth++; if(calMonth>11){calMonth=0;calYear++;} loadCalendarRecords();
+}
+
+// ══════════════════════════════════════
+//   EXPORTAR RANGO DE FECHAS
+// ══════════════════════════════════════
+function setRangoUltimas(semanas){
+  const hasta=new Date(); hasta.setHours(0,0,0,0);
+  const desde=new Date(hasta); desde.setDate(desde.getDate()-semanas*7);
+  const fmt2=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  $('rango-desde').value=fmt2(desde);
+  $('rango-hasta').value=fmt2(hasta);
+  $('rango-info').textContent=`Últimas ${semanas} semanas: ${fmt2(desde)} → ${fmt2(hasta)}`;
+}
+
+async function exportarRango(){
+  const desde=$('rango-desde').value;
+  const hasta=$('rango-hasta').value;
+  if(!desde||!hasta){ alert('Selecciona un rango de fechas.'); return; }
+  if(desde>hasta){ alert('La fecha de inicio debe ser anterior a la fecha fin.'); return; }
+  const btn=$('btn-exportar-rango');
+  btn.textContent='⏳ Cargando datos...'; btn.disabled=true;
+  try{
+    // Cargar todos los documentos del historial en el rango
+    const snap=await HIST().where(firebase.firestore.FieldPath.documentId(),'>=',desde)
+                            .where(firebase.firestore.FieldPath.documentId(),'<=',hasta)
+                            .orderBy(firebase.firestore.FieldPath.documentId())
+                            .get();
+    if(snap.empty){ alert('No hay registros guardados en ese rango de fechas.'); btn.textContent='📊 Exportar a Excel'; btn.disabled=false; return; }
+
+    const dias=snap.docs.filter(d=>DATE_KEY_RE.test(d.id)).map(d=>({fecha:d.id,...d.data()}));
+    if(!dias.length){ alert('Sin registros en el rango.'); btn.textContent='📊 Exportar a Excel'; btn.disabled=false; return; }
+
+    $('rango-info').textContent=`Procesando ${dias.length} día(s)...`;
+
+    // Construir workbook con SheetJS
+    const wb=XLSX.utils.book_new();
+
+    // ── Hoja 1: Resumen por día ──
+    const resumenRows=[
+      ['REPORTE RANGO: '+desde+' — '+hasta,'','','','','','','',''],
+      [],
+      ['Fecha','Venta Ef.','Venta Tr.','Total Venta','Gastos Ef.','Gastos Tr.','Compras Ef.','Compras Tr.','Emp. Abonos Ef.','Emp. Abonos Tr.','Neto Ef.','Neto Tr.','Neto Día','Total Disponible']
+    ];
+    let sumVE=0,sumVT=0,sumGE=0,sumGT=0,sumCE=0,sumCT=0,sumAE=0,sumAT=0,sumNE=0,sumNT=0,sumND=0,sumDisp=0;
+
+    // ── Hoja 2: Detalle por día ──
+    const detalleRows=[['DETALLE POR DÍA'],[]];
+
+    for(const dia of dias){
+      const st=dia.state||{};
+      // Normalizar tipos
+      st.gastos=(st.gastos||[]).map(g=>({...g,tipo:g.tipo||'efectivo'}));
+      st.empleados=(st.empleados||[]).map(e=>({...e,tipo:e.tipo||'efectivo'}));
+      st.compras=(st.compras||[]).map(c=>({...c,tipo:c.tipo||'efectivo'}));
+      st.facturas=st.facturas||[];
+      // Recomputar totales con lógica actual
+      const origState=state; state=st; const t=totals(); state=origState;
+
+      // Fila de resumen
+      resumenRows.push([
+        dia.fecha, t.ef, t.tr, t.ventaDia||t.bruto,
+        t.tgEf, t.tgTr, t.tcEf||0, t.tcTr||0,
+        t.teEf, t.teTr, t.efNeto, t.trNeto||0, t.netoDia||0, t.total
+      ]);
+      sumVE+=t.ef; sumVT+=t.tr; sumGE+=t.tgEf; sumGT+=t.tgTr;
+      sumCE+=(t.tcEf||0); sumCT+=(t.tcTr||0); sumAE+=t.teEf; sumAT+=t.teTr;
+      sumNE+=t.efNeto; sumNT+=(t.trNeto||0); sumND+=(t.netoDia||0); sumDisp+=t.total;
+
+      // Detalle del día
+      detalleRows.push([`📅 ${dia.fecha}`,'','','','']);
+      detalleRows.push([]);
+
+      // Facturas
+      detalleRows.push(['  🧾 FACTURAS','','','','']);
+      let hayFact=false;
+      st.facturas.forEach(f=>{
+        if(f.tipo==='fio'){
+          detalleRows.push(['    '+f.num, f.desc||'—', f.cliente||'', '(Fío pendiente)', '']);
+        } else if(f.mixto){
+          (f.pagos||[]).forEach(p=>{ detalleRows.push(['    '+f.num, f.desc||'—', '', p.monto||0, p.tipo==='efectivo'?'Efectivo':'Transferencia']); });
+        } else {
+          detalleRows.push(['    '+f.num, f.desc||'—', '', f.monto||f.total||0, f.tipo==='efectivo'?'Efectivo':'Transferencia']);
+        }
+        hayFact=true;
+      });
+      if(!hayFact) detalleRows.push(['    (Sin facturas)']);
+      detalleRows.push(['  ', 'Total efectivo', '', t.ef, '']);
+      detalleRows.push(['  ', 'Total transferencias', '', t.tr, '']);
+      detalleRows.push(['  ', 'TOTAL VENTA', '', t.ventaDia||t.bruto, '']);
+      detalleRows.push([]);
+
+      // Gastos del día
+      detalleRows.push(['  💸 GASTOS DEL DÍA','','','','']);
+      if(st.gastos.length){
+        st.gastos.forEach(g=>detalleRows.push(['    '+g.desc,'','',g.monto,g.tipo==='transferencia'?'Transferencia':'Efectivo']));
+        detalleRows.push(['  ','Total gastos ef.','',t.tgEf,'']);
+        detalleRows.push(['  ','Total gastos tr.','',t.tgTr,'']);
+      } else { detalleRows.push(['    (Sin gastos)']); }
+      detalleRows.push([]);
+
+      // Compras de caja
+      detalleRows.push(['  🛒 COMPRAS DE CAJA','','','','']);
+      if(st.compras.length){
+        st.compras.forEach(c=>detalleRows.push(['    '+c.desc,'','',c.monto,c.tipo==='transferencia'?'Transferencia':'Efectivo']));
+        detalleRows.push(['  ','Total compras ef.','',t.tcEf||0,'']);
+        detalleRows.push(['  ','Total compras tr.','',t.tcTr||0,'']);
+      } else { detalleRows.push(['    (Sin compras de caja)']); }
+      detalleRows.push([]);
+
+      // Empleados
+      detalleRows.push(['  👷 EMPLEADOS','','','','']);
+      if(st.empleados.length){
+        st.empleados.forEach(e=>{
+          const tipo=e.tipo==='transferencia'?'Transferencia':'Efectivo';
+          const badge=e.esAbono===false?'[Referencia]':'[Abono]';
+          detalleRows.push(['    '+e.nombre,'','',e.pago,tipo+' '+badge]);
+        });
+        detalleRows.push(['  ','Abonos ef. (descuenta)','',t.teEf,'']);
+        detalleRows.push(['  ','Abonos tr. (descuenta)','',t.teTr,'']);
+        if((t.teRefEf||0)+(t.teRefTr||0)>0){
+          detalleRows.push(['  ','Ref. ef. (solo info)','',t.teRefEf||0,'']);
+          detalleRows.push(['  ','Ref. tr. (solo info)','',t.teRefTr||0,'']);
+        }
+      } else { detalleRows.push(['    (Sin empleados)']); }
+      detalleRows.push([]);
+
+      // Neto del día
+      detalleRows.push(['  📊 NETO DEL DÍA','','','','']);
+      detalleRows.push(['  ','Efectivo neto','',t.efNeto,'']);
+      detalleRows.push(['  ','Transferencias netas','',t.trNeto||0,'']);
+      detalleRows.push(['  ','Neto del día','',t.netoDia||0,'']);
+      detalleRows.push(['  ','Total disponible','',t.total,'']);
+      detalleRows.push([]);
+      detalleRows.push(['────────────────────────────────────────']);
+      detalleRows.push([]);
+    }
+
+    // Fila de totales en resumen
+    resumenRows.push([]);
+    resumenRows.push(['TOTALES',sumVE,sumVT,sumVE+sumVT,sumGE,sumGT,sumCE,sumCT,sumAE,sumAT,sumNE,sumNT,sumND,sumDisp]);
+
+    const wsRes=XLSX.utils.aoa_to_sheet(resumenRows);
+    const wsDet=XLSX.utils.aoa_to_sheet(detalleRows);
+
+    // Anchos de columna
+    wsRes['!cols']=[{wch:14},{wch:13},{wch:13},{wch:14},{wch:12},{wch:12},{wch:12},{wch:12},{wch:14},{wch:14},{wch:12},{wch:12},{wch:13},{wch:14}];
+    wsDet['!cols']=[{wch:30},{wch:22},{wch:18},{wch:16},{wch:22}];
+
+    XLSX.utils.book_append_sheet(wb,wsRes,'Resumen');
+    XLSX.utils.book_append_sheet(wb,wsDet,'Detalle por día');
+
+    const fileName=`Reporte_${desde}_${hasta}.xlsx`;
+    XLSX.writeFile(wb,fileName);
+    $('rango-info').textContent=`✅ Exportados ${dias.length} día(s) — ${fileName}`;
+  } catch(e){
+    alert('Error al exportar: '+e.message);
+    console.error(e);
+  }
+  btn.textContent='📊 Exportar a Excel'; btn.disabled=false;
 }
 
 async function showRecord(docId){
