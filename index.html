@@ -603,6 +603,26 @@
 
   </div><!-- /col izquierda -->
   <div><!-- col derecha -->
+  <!-- Banner: total vendido del día -->
+  <div id="banner-total-dia" style="background:linear-gradient(135deg,#276749,#2b6cb0);border-radius:14px;padding:12px 14px;margin-bottom:10px;color:#fff;display:none">
+    <div style="font-size:0.7rem;font-weight:700;letter-spacing:0.06em;opacity:0.85;margin-bottom:6px;text-transform:uppercase">📊 Total vendido hoy</div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:8px">
+      <div style="flex:1;min-width:90px;background:rgba(255,255,255,0.12);border-radius:10px;padding:7px 10px">
+        <div style="font-size:0.65rem;opacity:0.8;margin-bottom:2px">✅ Ya cobrado</div>
+        <div id="btd-cobrado" style="font-size:1rem;font-weight:800">$0</div>
+      </div>
+      <div style="flex:1;min-width:90px;background:rgba(255,255,255,0.12);border-radius:10px;padding:7px 10px">
+        <div style="font-size:0.65rem;opacity:0.8;margin-bottom:2px">⏳ Mesas abiertas</div>
+        <div id="btd-abiertas" style="font-size:1rem;font-weight:800">$0</div>
+        <div id="btd-mesas-cnt" style="font-size:0.6rem;opacity:0.75"></div>
+      </div>
+    </div>
+    <div style="border-top:1px solid rgba(255,255,255,0.25);padding-top:7px;display:flex;justify-content:space-between;align-items:center">
+      <span style="font-size:0.75rem;opacity:0.9">Total general</span>
+      <span id="btd-total" style="font-size:1.2rem;font-weight:900">$0</span>
+    </div>
+  </div>
+
   <!-- Lista facturas (ambos modos) -->
   <div class="card">
     <div class="card-title">
@@ -2508,8 +2528,30 @@ async function clearFacturas(){
   const batch=db.batch(); snap.docs.forEach(d=>batch.delete(d.ref)); await batch.commit();
 }
 
+function updateBannerTotalDia(){
+  const banner=$('banner-total-dia'); if(!banner) return;
+  // Total cobrado: facturas pagadas (excluye fíos pendientes)
+  const cobrado=state.facturas.reduce((s,f)=>{
+    if(f.tipo==='fio') return s;
+    if(f.mixto) return s+(f.pagos||[]).reduce((ss,p)=>ss+(p.monto||0),0);
+    return s+(f.monto||f.total||0);
+  },0);
+  // Total mesas abiertas
+  const abiertas=comandasAbiertas.reduce((s,c)=>s+(c.total||0),0);
+  const mesasCnt=comandasAbiertas.length;
+  const total=cobrado+abiertas;
+  // Solo mostrar si hay algo
+  if(total===0 && cobrado===0 && abiertas===0){ banner.style.display='none'; return; }
+  banner.style.display='block';
+  $('btd-cobrado').textContent=fmt(cobrado);
+  $('btd-abiertas').textContent=fmt(abiertas);
+  $('btd-mesas-cnt').textContent=mesasCnt>0?`${mesasCnt} mesa${mesasCnt>1?'s':''}  abierta${mesasCnt>1?'s':''}` :'';
+  $('btd-total').textContent=fmt(total);
+}
+
 function renderFacturas(){
   const tb=$('tb-facturas');
+  updateBannerTotalDia();
   if(!state.facturas.length){ tb.innerHTML='<tr><td colspan="5" class="empty-msg">Sin facturas</td></tr>'; return; }
   let html='';
   let totalDomicilios=0;
@@ -5721,6 +5763,7 @@ function setupComandasListener(){
     comandasAbiertas = snap.docs.map(d=>({_docId:d.id,...d.data()}));
     comandasAbiertas.sort((a,b)=>(a.hora||'').localeCompare(b.hora||''));
     renderComandasAbiertas();
+    updateBannerTotalDia();
   }, e=>console.error(e));
   unsubs.push(unsub);
 
