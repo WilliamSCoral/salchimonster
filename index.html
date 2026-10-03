@@ -2398,6 +2398,7 @@ function totals() {
   let ef=0, tr=0;
   state.facturas.forEach(f => {
     if(f.tipo==='fio') return; // fíos pendientes no cuentan como ingreso
+    if(f.cancelada) return; // facturas canceladas no cuentan como ingreso
     if(f.mixto){ (f.pagos||[]).forEach(p=>{ if(p.tipo==='efectivo') ef+=(p.monto||0); else tr+=(p.monto||0); }); }
     else { if(f.tipo==='efectivo') ef+=(f.monto||f.total||0); else tr+=(f.monto||f.total||0); }
   });
@@ -2420,7 +2421,9 @@ function totals() {
   const ventaDia=ef+tr;
   const efNeto=ef-tgEf-teEf, trNeto=tr-tgTr-teTr, netoDia=efNeto+trNeto;
   const dispEf=efNeto+saldoCajaEf, dispTr=trNeto+saldoCajaTr, total=dispEf+dispTr;
-  return {ef,tr,bruto,ventaDia,tg,tgEf,tgTr,te,teEf,teTr,teRefEf,teRefTr,tc,tcEf,tcTr,baseEf,baseTr,saldoCajaEf,saldoCajaTr,saldoCaja,efNeto,trNeto,netoDia,dispEf,dispTr,total,cnt:state.facturas.length};
+  const cntActivas=state.facturas.filter(f=>!f.cancelada&&f.tipo!=='fio').length;
+  const cntCanceladas=state.facturas.filter(f=>f.cancelada).length;
+  return {ef,tr,bruto,ventaDia,tg,tgEf,tgTr,te,teEf,teTr,teRefEf,teRefTr,tc,tcEf,tcTr,baseEf,baseTr,saldoCajaEf,saldoCajaTr,saldoCaja,efNeto,trNeto,netoDia,dispEf,dispTr,total,cnt:cntActivas,cntCanceladas};
 }
 
 // ══════════════════════════════════════
@@ -2669,6 +2672,12 @@ function renderFacturas(){
       :`<strong>${fmt(montoBase)}</strong>`;
     const rowBg=esDom?'background:#fff7ed;':'';
     const pagoEditBtn = currentRole==='admin' && !locked && f.tipo!=='fio' ? `<button class="btn-sm" onclick="editFactura('${did}')" style="padding:2px 6px;font-size:0.72rem;background:#fef9c3;color:#854d0e;border:1px solid #fde047;border-radius:5px;cursor:pointer;margin-left:2px" title="Editar pago">💳</button>` : '';
+    if(f.cancelada){
+      const motivoBadge=f.motivoCancelacion&&f.motivoCancelacion!=='Sin motivo'?`<span style="font-size:0.68rem;color:#c53030;margin-left:4px">(${f.motivoCancelacion})</span>`:'';
+      const cancelBadge='<span style="background:#fff5f5;color:#c53030;border:1px solid #fc8181;border-radius:5px;padding:1px 7px;font-size:0.72rem;font-weight:800">🚫 CANCELADA</span>';
+      html+=`<tr style="background:#fff5f5;opacity:0.8"><td style="color:#a0aec0;font-size:0.75rem">${seq}</td><td><strong style="text-decoration:line-through;color:#a0aec0">${f.num}</strong>${editBtn}${mesaTag}${motivoBadge}${f.desc?`<br><span style="font-size:0.7rem;color:#fc8181;text-decoration:line-through">${f.desc}</span>`:''}</td><td><strong style="text-decoration:line-through;color:#a0aec0">${fmt(f.monto||0)}</strong></td><td>${cancelBadge}</td><td>${currentRole==='admin'?`<button class="btn-sm btn-danger" onclick="delFactura('${did}')">✕</button>`:''}</td></tr>`;
+      return;
+    }
     if(f.tipo==='fio'){
       const fioBadge='<span style="background:#f5f3ff;color:#6d28d9;border:1px solid #a78bfa;border-radius:5px;padding:1px 7px;font-size:0.72rem;font-weight:700">📋 Fío</span>';
       const clienteLabel=f.cliente?`<span style="font-size:0.7rem;color:#6d28d9;font-weight:600"> ${f.cliente}</span>`:'';
@@ -2692,7 +2701,8 @@ function renderFacturas(){
   const totalFios=fiosPend.reduce((s,f)=>s+(f.monto||0),0);
   const fioRow=fiosPend.length?` &nbsp;<span style="color:#6d28d9;font-weight:700">📋${fmt(totalFios)}</span>`:'';
   const domRow=totalDomicilios>0?` &nbsp;🛵<span style="color:#c2410c;font-weight:700">${fmt(totalDomicilios)}</span>`:'';
-  tb.innerHTML=html+`<tr class="total-row"><td colspan="2">TOTAL (${state.facturas.length})</td><td>${fmt(t.bruto)}</td><td colspan="2" style="font-size:0.7rem;color:var(--gray)">💵${fmt(t.ef)} 🏦${fmt(t.tr)}${fioRow}${domRow}</td></tr>`;
+  const canceladasRow=t.cntCanceladas>0?` &nbsp;<span style="color:#c53030;font-weight:700">🚫${t.cntCanceladas}</span>`:'';
+  tb.innerHTML=html+`<tr class="total-row"><td colspan="2">TOTAL (${t.cnt}${t.cntCanceladas>0?' + '+t.cntCanceladas+' canc.':''})</td><td>${fmt(t.bruto)}</td><td colspan="2" style="font-size:0.7rem;color:var(--gray)">💵${fmt(t.ef)} 🏦${fmt(t.tr)}${fioRow}${domRow}${canceladasRow}</td></tr>`;
 }
 
 // ══════════════════════════════════════
@@ -4075,7 +4085,7 @@ function consolidadoProductos(facturas){
     return resultado;
   }
 
-  (facturas||[]).forEach(f => {
+  (facturas||[]).filter(f=>!f.cancelada).forEach(f => {
     // 1) Prioridad: campo items estructurado (facturas de comanda modernas)
     if(Array.isArray(f.items) && f.items.length){
       f.items.forEach(item => {
@@ -4923,7 +4933,13 @@ function buildExcelData(st, t, fecha) {
   data.push(['FACTURAS']);
   data.push(['N° Factura','Descripción','Monto','Tipo','Domicilio']);
   let totalDomiciliosXls=0;
+  let cntCanceladasXls=0;
   st.facturas.forEach(f=>{
+    if(f.cancelada){
+      cntCanceladasXls++;
+      data.push([f.num,'[CANCELADA] '+(f.desc||''),f.monto||0,'Cancelada — '+(f.motivoCancelacion||'Sin motivo'),'']);
+      return;
+    }
     const esDom=f.tipoPedido==='domicilio';
     const domVal=f.domicilioValor||0;
     if(esDom) totalDomiciliosXls+=domVal;
@@ -4936,6 +4952,7 @@ function buildExcelData(st, t, fecha) {
       transfers.forEach((p,ti)=>data.push([`${f.num}-${ti+1}`,f.desc||'',p.monto,'Transferencia','']));
     }
   });
+  if(cntCanceladasXls>0) data.push(['','— Facturas canceladas (no cuentan en totales)',0,'',`(${cntCanceladasXls} cancelada${cntCanceladasXls!==1?'s':''})`]);
   data.push(['','Total Efectivo',t.ef,'','']);
   data.push(['','Total Transferencias',t.tr,'','']);
   data.push(['','TOTAL BRUTO',t.bruto,'','']);
@@ -6243,6 +6260,7 @@ function renderComandasAbiertas(){
           <button class="btn-sm btn-ghost" onclick="editarComanda('${c._docId}')">✏️ Editar</button>
           <button class="btn-sm btn-blue" onclick="abrirCobro('${c._docId}')">💳 Cobrar</button>
           ${!despachada ? `<button class="btn-sm btn-green" onclick="despacharDesdeMesa('${c.mesa||''}')" title="Marcar como despachado en cocina">🍳 Despachado</button>` : ''}
+          ${!despachada ? `<button class="btn-sm" onclick="cancelarComanda('${c._docId}')" title="Cancelar pedido" style="background:#fff5f5;color:#c53030;border:1px solid #fc8181;border-radius:6px;padding:3px 8px;font-size:0.78rem;cursor:pointer">🚫 Cancelar</button>` : ''}
           ${!despachada ? `<button class="btn-sm btn-danger" onclick="eliminarComanda('${c._docId}','${c.mesa||''}')" title="Eliminar comanda">🗑️</button>` : ''}
         </div>
       </div>
@@ -6923,6 +6941,39 @@ async function eliminarComanda(docId, mesa){
     batch.delete(DRAFT().doc('current').collection('comandas').doc(docId));
     await batch.commit();
     logAudit('eliminar','comandas',`Eliminó comanda de Mesa ${mesa}`,{mesa,docId});
+  } catch(e){ alert('Error: '+e.message); }
+}
+
+async function cancelarComanda(docId){
+  const c = comandasAbiertas.find(x=>x._docId===docId); if(!c) return;
+  const motivo = prompt(`⚠️ ¿Cancelar el pedido de Mesa ${c.mesa}?\n\nEl pedido quedará registrado como CANCELADO (no se elimina).\n\nMOTIVO (opcional):`);
+  if(motivo === null) return; // user pressed Cancel
+  try{
+    const num = nextFacturaNum();
+    const desc = `Mesa ${c.mesa||''} (${(c.items||[]).map(i=>`${i.cantidad}x ${i.nombre}`).join(', ')})`;
+    const factData = {
+      num, desc,
+      monto: c.total||0,
+      tipo: 'cancelada',
+      cancelada: true,
+      motivoCancelacion: motivo.trim()||'Sin motivo',
+      mesa: c.mesa,
+      hora: c.hora,
+      items: c.items||[],
+      subtotal: c.subtotal||c.total||0,
+      descuento: c.descuento||0,
+      comandaId: docId,
+      tipoPedido: c.tipoPedido||'',
+      createdAt: TS(), createdBy: currentUser.uid, cerradaAt: TS()
+    };
+    const batch = db.batch();
+    batch.set(DRAFT().doc('current').collection('facturas').doc(), factData);
+    batch.delete(DRAFT().doc('current').collection('comandas').doc(docId));
+    // Cancelar pedidos cocina si existen
+    const snapCocina = await db.collection('pedidos_cocina').where('comandaId','==',docId).get();
+    snapCocina.docs.forEach(d => batch.delete(d.ref));
+    await batch.commit();
+    logAudit('cancelar','facturas',`Canceló pedido Mesa ${c.mesa} — ${fmt(c.total||0)}${motivo.trim()?' — Motivo: '+motivo.trim():''}`,{mesa:c.mesa,total:c.total,motivo:motivo.trim()||'Sin motivo',items:(c.items||[]).map(i=>`${i.cantidad}x ${i.nombre}`).join(', ')});
   } catch(e){ alert('Error: '+e.message); }
 }
 
