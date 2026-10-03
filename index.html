@@ -878,6 +878,11 @@
     <div class="divider"></div>
     <div class="neto-box neto-pos" id="neto-total-box" style="margin:0"><span class="neto-label">💼 Total disponible</span><span class="neto-value" id="r-total">$ 0</span></div>
   </div>
+  <!-- Consolidado de productos vendidos -->
+  <div class="card" id="r-consolidado-card" style="margin-top:12px;display:none">
+    <div class="card-title">📦 Consolidado de productos vendidos</div>
+    <div id="r-consolidado-body"><p style="color:var(--gray);font-size:0.82rem">Sin facturas</p></div>
+  </div>
 </div>
 
 <input type="file" id="import-file" accept=".xlsx,.xls" style="display:none" onchange="handleImport(event)"/>
@@ -1619,10 +1624,15 @@
       </select>
       <select id="aud-accion" style="flex:1;min-width:120px;padding:8px 10px;border-radius:9px;border:1.5px solid var(--border);font-size:0.82rem;background:#fff">
         <option value="">Todas las acciones</option>
+        <option value="login">🔐 Login</option>
+        <option value="logout">🚪 Logout</option>
+        <option value="navegar">🗂️ Navegar</option>
+        <option value="ver">👁️ Ver</option>
         <option value="crear">➕ Crear</option>
         <option value="editar">✏️ Editar</option>
         <option value="eliminar">🗑️ Eliminar</option>
         <option value="cobrar">💰 Cobrar</option>
+        <option value="exportar">📤 Exportar</option>
         <option value="guardar">💾 Guardar</option>
         <option value="limpiar">🧹 Limpiar</option>
       </select>
@@ -2040,6 +2050,7 @@ let currentHistRecord = null;
 let currentUser  = null;
 let currentRole  = null;
 let currentUserName  = null;
+let _pendingLoginAudit = null;
 let currentDiscountCode = null;
 let currentTestMode = false;
 
@@ -2112,6 +2123,10 @@ auth.onAuthStateChanged(async user => {
     const banner = $('test-mode-banner');
     if(banner) banner.style.display = currentTestMode ? 'flex' : 'none';
     setupListeners();
+    if(_pendingLoginAudit){
+      setTimeout(()=>logAudit('login','sistema',`Inicio de sesión: ${currentUserName} (${currentRole})`,{usuario:currentUserName,rol:currentRole}),500);
+      _pendingLoginAudit = null;
+    }
   } else {
     currentUser = null;
     currentRole = null;
@@ -2127,10 +2142,12 @@ async function doLogin() {
   if (!username || !pass) { $('login-error').textContent = 'Ingresa usuario y contraseña.'; return; }
   const email = username.includes('@') ? username : username + '@salchimonster.app';
   try {
+    _pendingLoginAudit = username;
     await auth.signInWithEmailAndPassword(email, pass);
     $('login-user').value = '';
     $('login-pass').value = '';
   } catch(e) {
+    _pendingLoginAudit = null;
     $('login-error').textContent = 'Usuario o contraseña incorrectos.';
   }
 }
@@ -2150,6 +2167,7 @@ function toggleTheme(){
 
 async function doLogout() {
   if (!confirm('¿Cerrar sesión?')) return;
+  logAudit('logout','sistema',`Cerró sesión: ${currentUserName}`,{usuario:currentUserName,rol:currentRole});
   clearListeners();
   await auth.signOut();
 }
@@ -2265,6 +2283,7 @@ function clearListeners() {
 // ══════════════════════════════════════
 //   TABS
 // ══════════════════════════════════════
+const _TAB_NOMBRES = ['Facturas','Gastos','Empleados','Caja','Resumen','Historial','Usuarios','Semanal','Menú','Inventario','Fíos','Auditoría'];
 function goTab(i) {
   document.querySelectorAll('.tab').forEach((t,j) => t.classList.toggle('active', i===j));
   document.querySelectorAll('.page').forEach((p,j) => p.classList.toggle('active', i===j));
@@ -2275,6 +2294,7 @@ function goTab(i) {
   if (i===9) renderInventarioTab();
   if (i===10) renderFios();
   if (i===11) initAuditoria();
+  if (i !== 11) logAudit('navegar','sistema',`Visitó pestaña: ${_TAB_NOMBRES[i]||'Tab '+i}`,{tab:i});
 }
 
 // ══════════════════════════════════════
@@ -2945,6 +2965,7 @@ function exportarCuadresExcel(){
   const cols = Object.keys(rows[0]).map(k => ({ wch: Math.max(k.length, 18) }));
   ws['!cols'] = cols;
   XLSX.writeFile(wb, `cuadres_semanales_${today()}.xlsx`);
+  logAudit('exportar','excel',`Exportó cuadres semanales a Excel (${cuadresGuardados.length} cuadre${cuadresGuardados.length!==1?'s':''})`,{cantidad:cuadresGuardados.length});
 }
 
 /* ── Importar cuadres desde Excel ── */
@@ -3183,6 +3204,7 @@ async function guardarCuadreSemanal(){
   };
   try{
     await CUADRES_COL().doc(`${semPeriodoDesde}_${semPeriodoHasta}`).set(record);
+    logAudit('guardar','semanal',`Guardó cuadre semanal ${semPeriodoDesde} → ${semPeriodoHasta} — utilidad: ${fmt(utilidad)}`,{desde:semPeriodoDesde,hasta:semPeriodoHasta,utilidad,totalVentasNetas});
     alert('✅ Cuadre guardado correctamente.');
   } catch(e){ alert('Error: '+e.message); }
 }
@@ -3195,6 +3217,7 @@ function verCuadreGuardado(docId){
   const gastosAdicStr = (c.gastosAdicionales||[]).length
     ? '\n💸 Gastos adicionales:\n' + (c.gastosAdicionales||[]).map(g=>`  • ${g.desc}: ${fmt(g.monto)}`).join('\n') + `\n  Total: ${fmt(c.totalGastosAdicionales||0)}`
     : '';
+  logAudit('ver','semanal',`Consultó cuadre semanal: ${fmtD(c.desde)} — ${fmtD(c.hasta)}`,{desde:c.desde,hasta:c.hasta});
   alert(`📅 CUADRE ${fmtD(c.desde)} — ${fmtD(c.hasta)}\n\n💰 Venta neta: ${fmt(c.totalVentasNetas||0)}\n🛒 Compras caja: ${fmt(c.totalComprasCaja||0)}\n💼 Lo que debe haber: ${fmt(c.deberiaHaber||0)}\n👷 Empleados pagados: ${fmt(c.totalEmpleados||0)}${gastosAdicStr}\n📈 Utilidad: ${fmt(c.utilidad||0)}\n\n🤝 Reparto:\n${sociosStr}`);
 }
 
@@ -4010,6 +4033,55 @@ function renderCaja(){
 }
 
 // ══════════════════════════════════════
+//   CONSOLIDADO DE PRODUCTOS
+// ══════════════════════════════════════
+function consolidadoProductos(facturas){
+  const mapa = {};
+  (facturas||[]).forEach(f => {
+    if(f.items && f.items.length){
+      f.items.forEach(item => {
+        const nombre = (item.nombre||'Sin nombre').trim();
+        if(!mapa[nombre]) mapa[nombre]={cantidad:0,total:0};
+        mapa[nombre].cantidad += Number(item.cantidad)||1;
+        mapa[nombre].total   += (Number(item.precio)||0)*(Number(item.cantidad)||1);
+      });
+    } else {
+      const nombre = (f.desc||'Sin descripción').trim();
+      if(!mapa[nombre]) mapa[nombre]={cantidad:0,total:0};
+      mapa[nombre].cantidad += 1;
+      mapa[nombre].total   += f.monto||f.total||0;
+    }
+  });
+  return Object.entries(mapa)
+    .sort((a,b)=>b[1].cantidad-a[1].cantidad||b[1].total-a[1].total)
+    .map(([nombre,v])=>({nombre,...v}));
+}
+
+function renderConsolidado(facturas, containerId){
+  const el = $(containerId); if(!el) return;
+  const items = consolidadoProductos(facturas);
+  if(!items.length){
+    el.innerHTML='<p style="color:var(--gray);font-size:0.82rem">Sin facturas con detalle de productos</p>';
+    return;
+  }
+  const total = items.reduce((s,i)=>s+i.cantidad,0);
+  const maxCant = items[0].cantidad;
+  el.innerHTML = '<div style="font-size:0.75rem;color:var(--gray);margin-bottom:10px">'+total+' unidades en '+items.length+' producto'+(items.length!==1?'s':'')+'</div>'+
+    items.map(function(item){
+      var pct = maxCant>0?Math.round((item.cantidad/maxCant)*100):0;
+      return '<div style="margin-bottom:9px">'+
+        '<div style="display:flex;justify-content:space-between;font-size:0.84rem;margin-bottom:3px">'+
+        '<span style="font-weight:600;color:var(--text)">'+item.nombre+'</span>'+
+        '<span style="font-weight:800;color:var(--primary);min-width:40px;text-align:right">'+item.cantidad+'x</span>'+
+        '</div>'+
+        '<div style="background:#e2e8f0;border-radius:6px;height:7px;overflow:hidden">'+
+        '<div style="background:var(--primary);height:100%;width:'+pct+'%;border-radius:6px"></div></div>'+
+        (item.total>0?'<div style="font-size:0.72rem;color:var(--gray);text-align:right;margin-top:1px">'+fmt(item.total)+'</div>':'')
+        +'</div>';
+    }).join('');
+}
+
+// ══════════════════════════════════════
 //   RESUMEN
 // ══════════════════════════════════════
 function renderResumen(){
@@ -4028,6 +4100,12 @@ function renderResumen(){
   $('r4-efneto').textContent=fmt(t.efNeto); $('r4-saldo-ef').textContent=fmt(t.saldoCajaEf); $('r4-disp-ef').textContent=fmt(t.dispEf);
   $('r4-trneto').textContent=fmt(t.trNeto); $('r4-saldo-tr').textContent=fmt(t.saldoCajaTr); $('r4-disp-tr').textContent=fmt(t.dispTr);
   $('r-total').textContent=fmt(t.total); $('neto-total-box').className='neto-box '+(t.total>=0?'neto-pos':'neto-neg');
+  // Consolidado de productos
+  const rcCard=$('r-consolidado-card');
+  if(rcCard){
+    rcCard.style.display=state.facturas.length?'':'none';
+    renderConsolidado(state.facturas,'r-consolidado-body');
+  }
 }
 
 // ══════════════════════════════════════
@@ -4361,6 +4439,7 @@ async function exportarRango(){
 
     const fileName=`Reporte_${desde}_${hasta}.xlsx`;
     XLSX.writeFile(wb,fileName);
+    logAudit('exportar','excel',`Exportó rango de fechas: ${desde} → ${hasta} (${dias.length} días)`,{desde,hasta,dias:dias.length,fileName});
     $('rango-info').textContent=`✅ Exportados ${dias.length} día(s) — ${fileName}`;
   } catch(e){
     alert('Error al exportar: '+e.message);
@@ -4417,6 +4496,8 @@ async function showRecord(docId){
       <p style="font-size:0.78rem;color:var(--gray);margin-bottom:12px">Guardado el: ${new Date(r.savedAt).toLocaleString('es-CO')}${r.savedByName?' por '+r.savedByName:''}</p>
       <div style="font-weight:700;margin-bottom:6px;font-size:0.82rem">🧾 Facturas</div>
       ${rows(factRows,['#Fact','Desc','Monto','Tipo'])}
+      <div style="font-weight:700;margin:12px 0 6px;font-size:0.82rem">📦 Consolidado de productos</div>
+      <div id="hist-consolidado-body" style="margin-bottom:4px"></div>
       <div style="font-weight:700;margin:12px 0 6px;font-size:0.82rem">💸 Gastos</div>
       ${rows((r.state.gastos||[]).map(g=>[g.desc,fmt(g.monto),g.tipo==='transferencia'?'🏦 Tr.':'💵 Ef.']),['Concepto','Monto','Tipo'])}
       <div style="font-weight:700;margin:12px 0 6px;font-size:0.82rem">👷 Empleados</div>
@@ -4456,7 +4537,9 @@ async function showRecord(docId){
         <div style="display:flex;justify-content:space-between;font-weight:800;background:#ebf8ff;padding:6px 10px;border-radius:8px;margin-bottom:8px;color:#2b6cb0"><span>🏦 Disponible transferencias</span><span>${fmt(t.dispTr||0)}</span></div>
         <div style="display:flex;justify-content:space-between;font-size:1rem;font-weight:800;border-top:2px solid var(--border);padding-top:8px;color:${t.total>=0?'#276749':'var(--red)'}"><span>💼 Total disponible</span><span>${fmt(t.total)}</span></div>
       </div>`;
+    logAudit('ver','historial',`Consultó registro histórico: "${r.fecha}"`,{key:docId,fecha:r.fecha});
     openModal('modal-hist');
+    setTimeout(()=>renderConsolidado(r.state.facturas||[],'hist-consolidado-body'),50);
   } catch(e){ alert('Error al cargar el registro: '+e.message); }
 }
 
@@ -4800,6 +4883,7 @@ function exportExcel(){
   ws['!cols']=[{wch:32},{wch:18},{wch:14},{wch:14}];
   XLSX.utils.book_append_sheet(wb,ws,'Resumen');
   XLSX.writeFile(wb,nombre+'.xlsx');
+  logAudit('exportar','excel',`Exportó Excel del día: "${nombre}"`,{nombre});
 }
 
 function exportExcelFromRecord(){
@@ -4819,6 +4903,7 @@ function exportExcelFromRecord(){
   ws['!cols']=[{wch:32},{wch:18},{wch:14},{wch:14}];
   XLSX.utils.book_append_sheet(wb,ws,'Resumen');
   XLSX.writeFile(wb,nombre+'.xlsx');
+  logAudit('exportar','excel',`Exportó Excel del historial: "${r.fecha}"`,{fecha:r.fecha,nombre});
 }
 
 function importExcel(){ if(locked){alert('El día está bloqueado. No se puede importar.');return;} $('import-file').click(); }
@@ -6392,6 +6477,12 @@ async function guardarComandaAbierta(silencioso=false){
         comandaId: comaRef.id
       });
     }
+    const itemsDesc=(comandaItems||[]).map(i=>`${i.cantidad}x ${i.nombre}`).join(', ');
+    if(docId){
+      logAudit('editar','comandas',`Actualizó comanda Mesa ${mesa} — ${fmt(total)} — Items: ${itemsDesc}`,{mesa,total,items:itemsDesc});
+    } else {
+      logAudit('crear','comandas',`Abrió mesa ${mesa} — ${fmt(total)} — Items: ${itemsDesc}`,{mesa,total,items:itemsDesc,tipoPedido:comandaTipoPedido});
+    }
     if(!silencioso) closeModal('modal-comanda');
     return true;
   } catch(e){ $('com-error').textContent='Error: '+e.message; return false; }
@@ -6741,6 +6832,7 @@ async function eliminarComanda(docId, mesa){
     todosDocs.forEach(d => batch.delete(d.ref));
     batch.delete(DRAFT().doc('current').collection('comandas').doc(docId));
     await batch.commit();
+    logAudit('eliminar','comandas',`Eliminó comanda de Mesa ${mesa}`,{mesa,docId});
   } catch(e){ alert('Error: '+e.message); }
 }
 
@@ -6912,6 +7004,7 @@ async function cerrarComanda(){
       batch.update(d.ref,{estado:'despachado',despachadoAt:now});
     });
     await batch.commit();
+    logAudit('cobrar','facturas',`Cobró mesa ${c.mesa} — ${fmt(c.total)} (${ccTipo==='mixto'?'Mixto':ccTipo}) — Factura #${num}`,{num,mesa:c.mesa,total:c.total,tipo:ccTipo,items:(c.items||[]).map(i=>`${i.cantidad}x ${i.nombre}`).join(', ')});
     closeModal('modal-cerrar-comanda');
 
     // Descontar inventario según recetas — separado del cobro para no bloquearlo
@@ -7005,6 +7098,7 @@ async function cargarCuadreSemanal() {
   if(desde > hasta){ alert('La fecha "Desde" no puede ser posterior a "Hasta".'); return; }
   semPeriodoDesde = desde;
   semPeriodoHasta = hasta;
+  logAudit('ver','semanal',`Cargó cuadre semanal: ${desde} → ${hasta}`,{desde,hasta});
 
   // Generar array de fechas en el rango
   const fechas = [];
