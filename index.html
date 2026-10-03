@@ -4053,21 +4053,53 @@ function renderCaja(){
 // ══════════════════════════════════════
 function consolidadoProductos(facturas){
   const mapa = {};
+
+  function sumar(nombre, cantidad, totalPrecio){
+    nombre = (nombre||'Sin nombre').trim();
+    if(!nombre) return;
+    if(!mapa[nombre]) mapa[nombre]={cantidad:0,total:0};
+    mapa[nombre].cantidad += cantidad||1;
+    mapa[nombre].total   += totalPrecio||0;
+  }
+
+  function parsearDesc(desc){
+    // Formato generado por cerrarComanda: "Mesa X (1x Producto A, 2x Producto B, ...)"
+    // También acepta el formato simple: "3x Salchicarne"
+    const sinParens = desc.replace(/^Mesa\s+\S+\s*/i,'').replace(/^\(|\)$/g,'').trim();
+    const partes = sinParens.split(/,\s*/);
+    const resultado = [];
+    partes.forEach(p => {
+      const m = p.trim().match(/^(\d+(?:\.\d+)?)x\s+(.+)$/i);
+      if(m) resultado.push({ nombre: m[2].trim(), cantidad: parseFloat(m[1])||1 });
+    });
+    return resultado;
+  }
+
   (facturas||[]).forEach(f => {
-    if(f.items && f.items.length){
+    // 1) Prioridad: campo items estructurado (facturas de comanda modernas)
+    if(Array.isArray(f.items) && f.items.length){
       f.items.forEach(item => {
-        const nombre = (item.nombre||'Sin nombre').trim();
-        if(!mapa[nombre]) mapa[nombre]={cantidad:0,total:0};
-        mapa[nombre].cantidad += Number(item.cantidad)||1;
-        mapa[nombre].total   += (Number(item.precio)||0)*(Number(item.cantidad)||1);
+        const cant = Number(item.cantidad)||1;
+        const precio = (Number(item.precio)||0)*cant;
+        sumar(item.nombre, cant, precio);
       });
-    } else {
-      const nombre = (f.desc||'Sin descripción').trim();
-      if(!mapa[nombre]) mapa[nombre]={cantidad:0,total:0};
-      mapa[nombre].cantidad += 1;
-      mapa[nombre].total   += f.monto||f.total||0;
+      return; // listo para esta factura
     }
+
+    // 2) Intentar parsear el campo desc si tiene formato de comanda
+    const desc = f.desc||'';
+    if(desc.includes('x ')){
+      const parsed = parsearDesc(desc);
+      if(parsed.length){
+        parsed.forEach(p => sumar(p.nombre, p.cantidad, 0));
+        return;
+      }
+    }
+
+    // 3) Fallback: factura manual — usar descripción como producto único
+    if(desc) sumar(desc, 1, f.monto||f.total||0);
   });
+
   return Object.entries(mapa)
     .sort((a,b)=>b[1].cantidad-a[1].cantidad||b[1].total-a[1].total)
     .map(([nombre,v])=>({nombre,...v}));
