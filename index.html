@@ -509,6 +509,7 @@
   <div class="tab" id="tab-8" onclick="goTab(8)"><span class="tab-icon">🍽️</span>Menú</div>
   <div class="tab" id="tab-9" onclick="goTab(9)"><span class="tab-icon">📦</span>Inventario</div>
   <div class="tab" id="tab-10" onclick="goTab(10)"><span class="tab-icon">📋</span>Fíos <span id="fios-badge" style="display:none;background:#ef4444;color:#fff;border-radius:99px;font-size:0.65rem;padding:1px 5px;font-weight:700;vertical-align:middle"></span></div>
+  <div class="tab" id="tab-11" onclick="goTab(11)" style="display:none"><span class="tab-icon">🔍</span>Auditoría</div>
 </div>
 
 <!-- ═══ PAGE 0: FACTURAS ═══ -->
@@ -991,10 +992,23 @@
         </div>
       </div>
     </div>
+    <!-- Gastos adicionales -->
+    <div class="card" id="sem-gastos-adic-card" style="display:none">
+      <div class="card-title">💸 Gastos adicionales <small style="font-weight:400;font-size:0.75rem;color:var(--gray)">(arriendo, imprevistos, etc.)</small></div>
+      <div id="sem-gastos-adic-lista"></div>
+      <div style="display:flex;gap:7px;margin-top:10px;align-items:center">
+        <input type="text" id="sem-ga-desc" placeholder="Concepto" style="flex:2;padding:9px 10px;border-radius:9px;border:1.5px solid var(--border);font-size:0.85rem"/>
+        <input type="text" inputmode="numeric" id="sem-ga-monto" placeholder="Monto" oninput="moneyFmt(this)" style="flex:1;padding:9px 10px;border-radius:9px;border:1.5px solid var(--border);font-size:0.85rem;text-align:right;min-width:90px"/>
+        <button onclick="agregarGastoAdicSemanal()" style="padding:9px 14px;border-radius:9px;background:#276749;color:#fff;border:none;font-weight:800;font-size:1rem;cursor:pointer">+</button>
+      </div>
+      <div style="border-top:2px solid var(--border);padding-top:10px;margin-top:10px;display:flex;justify-content:space-between;font-weight:800;font-size:0.9rem">
+        <span>Total gastos adicionales</span><span id="sem-total-gastos-adic" style="color:var(--red)">$0</span>
+      </div>
+    </div>
     <!-- Utilidad -->
     <div class="card">
       <div class="neto-box" id="sem-utilidad-box">
-        <span class="neto-label">📈 Utilidad del período<br><small style="font-weight:400;font-size:0.75rem">(lo que debe haber − empleados pagados)</small></span>
+        <span class="neto-label">📈 Utilidad del período<br><small style="font-weight:400;font-size:0.75rem">(lo que debe haber − empleados − gastos adicionales)</small></span>
         <span class="neto-value" id="sem-utilidad">$0</span>
       </div>
     </div>
@@ -1581,6 +1595,49 @@
   </div>
 </div><!-- page-10 -->
 
+<!-- ═══ PAGE 11: AUDITORÍA ═══ -->
+<div class="page" id="page-11">
+  <div class="card">
+    <div class="card-title">🔍 Historial de auditoría</div>
+    <div style="font-size:0.78rem;color:var(--gray);margin-bottom:12px">Registro de todas las acciones. Solo lectura — no se puede modificar ni eliminar.</div>
+    <!-- Filtros -->
+    <div class="form-row" style="margin-bottom:10px">
+      <div class="fg"><label style="font-size:0.75rem;color:var(--gray);font-weight:600">Desde</label><input type="date" id="aud-desde" style="width:100%;padding:9px 10px;border-radius:9px;border:1.5px solid var(--border);font-size:0.88rem"/></div>
+      <div class="fg"><label style="font-size:0.75rem;color:var(--gray);font-weight:600">Hasta</label><input type="date" id="aud-hasta" style="width:100%;padding:9px 10px;border-radius:9px;border:1.5px solid var(--border);font-size:0.88rem"/></div>
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap">
+      <select id="aud-modulo" style="flex:1;min-width:120px;padding:8px 10px;border-radius:9px;border:1.5px solid var(--border);font-size:0.82rem;background:#fff">
+        <option value="">Todos los módulos</option>
+        <option value="facturas">🧾 Facturas</option>
+        <option value="gastos">💸 Gastos</option>
+        <option value="empleados">👷 Empleados</option>
+        <option value="compras">🛒 Compras de caja</option>
+        <option value="fios">📋 Fíos</option>
+        <option value="historial">📅 Historial</option>
+        <option value="usuarios">👥 Usuarios</option>
+        <option value="sistema">⚙️ Sistema</option>
+      </select>
+      <select id="aud-accion" style="flex:1;min-width:120px;padding:8px 10px;border-radius:9px;border:1.5px solid var(--border);font-size:0.82rem;background:#fff">
+        <option value="">Todas las acciones</option>
+        <option value="crear">➕ Crear</option>
+        <option value="editar">✏️ Editar</option>
+        <option value="eliminar">🗑️ Eliminar</option>
+        <option value="cobrar">💰 Cobrar</option>
+        <option value="guardar">💾 Guardar</option>
+        <option value="limpiar">🧹 Limpiar</option>
+      </select>
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:10px">
+      <button onclick="setAudRango(1)" style="flex:1;padding:7px;background:#f0f4f8;border:1.5px solid #e2e8f0;border-radius:9px;font-size:0.75rem;font-weight:600;cursor:pointer;color:#4a5568">Hoy</button>
+      <button onclick="setAudRango(7)" style="flex:1;padding:7px;background:#f0f4f8;border:1.5px solid #e2e8f0;border-radius:9px;font-size:0.75rem;font-weight:600;cursor:pointer;color:#4a5568">7 días</button>
+      <button onclick="setAudRango(30)" style="flex:1;padding:7px;background:#f0f4f8;border:1.5px solid #e2e8f0;border-radius:9px;font-size:0.75rem;font-weight:600;cursor:pointer;color:#4a5568">30 días</button>
+      <button onclick="cargarAuditoria()" class="btn-blue" style="flex:2;padding:7px;font-weight:700">🔍 Buscar</button>
+    </div>
+    <div id="aud-info" style="font-size:0.75rem;color:var(--gray);margin-bottom:8px;min-height:16px"></div>
+  </div>
+  <div id="aud-list"><div class="empty-msg">Usa los filtros y presiona Buscar</div></div>
+</div><!-- page-11 -->
+
 </div><!-- end app-wrapper -->
 
 <!-- ═══ MODAL: Configurar empleado registrado ═══ -->
@@ -2119,12 +2176,13 @@ function applyRoleUI() {
   }
 
   // Primero mostrar TODOS los tabs (reset limpio)
-  const allTabs = ['tab-0','tab-1','tab-2','tab-3','tab-4','tab-5','tab-6','tab-7','tab-8','tab-9'];
+  const allTabs = ['tab-0','tab-1','tab-2','tab-3','tab-4','tab-5','tab-6','tab-7','tab-8','tab-9','tab-10'];
   allTabs.forEach(id => { const el=$(id); if(el) el.style.display=''; });
 
   if (currentRole === 'admin') {
     ['resumen-caja-section','resumen-total-section','resumen-export-section','resumen-neto-section'].forEach(id => { const el=$(id); if(el) el.style.display=''; });
     const sb = $('top-save-btn'); if(sb) sb.style.display='';
+    const tabAud=$('tab-11'); if(tabAud) tabAud.style.display='';
   } else {
     // Mesero: ocultar empleados, caja, historial, usuarios
     ['tab-2','tab-3','tab-5','tab-6'].forEach(id => { const el=$(id); if(el) el.style.display='none'; });
@@ -2216,6 +2274,7 @@ function goTab(i) {
   if (i===8) renderMenuList();
   if (i===9) renderInventarioTab();
   if (i===10) renderFios();
+  if (i===11) initAuditoria();
 }
 
 // ══════════════════════════════════════
@@ -2387,7 +2446,11 @@ async function addFactura() {
   $('f-desc').value=''; $('f-monto').value='';
   setFacturaTipo('efectivo');
   $('f-desc').focus();
-  try { await DRAFT().doc('current').collection('facturas').add(data); }
+  try {
+    await DRAFT().doc('current').collection('facturas').add(data);
+    const tipoLog = data.tipo==='fio'?`Fío — cliente: ${data.cliente}` : data.mixto?'Mixto':data.tipo;
+    logAudit('crear','facturas',`Creó factura #${num} — "${desc||'sin desc'}" — ${fmt(monto)} (${tipoLog})`,{num,desc,monto,tipo:data.tipo});
+  }
   catch(e){ alert('Error al guardar: '+e.message); }
 }
 
@@ -2473,6 +2536,7 @@ async function saveEditFactura(){
     if(!monto){ $('ef-error').textContent='Ingresa un valor válido.'; return; }
     try{
       await DRAFT().doc('current').collection('facturas').doc(docId).update({desc, monto, tipo:efTipo});
+      logAudit('editar','facturas',`Editó factura — desc: "${desc}", monto: ${fmt(monto)}, tipo: ${efTipo}`,{docId,desc,monto,tipo:efTipo});
       closeModal('modal-edit-factura');
     } catch(e){ $('ef-error').textContent='Error: '+e.message; }
   } else {
@@ -2483,6 +2547,7 @@ async function saveEditFactura(){
     if(pagosGuardar.some(p=>!p.monto)){ $('ef-error').textContent='Todos los pagos deben tener un valor.'; return; }
     try{
       await DRAFT().doc('current').collection('facturas').doc(docId).update({desc, pagos:pagosGuardar, total:totalMixto, monto:totalMixto});
+      logAudit('editar','facturas',`Editó factura mixta — desc: "${desc}", total: ${fmt(totalMixto)}`,{docId,desc,totalMixto});
       closeModal('modal-edit-factura');
     } catch(e){ $('ef-error').textContent='Error: '+e.message; }
   }
@@ -2499,6 +2564,7 @@ async function editarNumFactura(docId, numActual){
   if(duplicado && !confirm(`⚠️ La factura #${n} ya existe. ¿Continuar de todas formas?`)) return;
   try{
     await DRAFT().doc('current').collection('facturas').doc(docId).update({num:String(n)});
+    logAudit('editar','facturas',`Cambió número de factura: ${numActual} → ${n}`);
   } catch(e){ alert('Error: '+e.message); }
 }
 
@@ -2517,6 +2583,7 @@ async function delFactura(docId){
       snap.docs.forEach(d => batch.delete(d.ref));
     }
     await batch.commit();
+    logAudit('eliminar','facturas',`Eliminó factura #${factData.num||'?'} — ${factData.desc||''} — ${fmt(factData.monto||factData.total||0)}`,{num:factData.num,monto:factData.monto||factData.total});
   }
   catch(e){ alert('Error: '+e.message); }
 }
@@ -2526,6 +2593,7 @@ async function clearFacturas(){
   if(!confirm('¿Eliminar todas las facturas?')) return;
   const snap=await DRAFT().doc('current').collection('facturas').get();
   const batch=db.batch(); snap.docs.forEach(d=>batch.delete(d.ref)); await batch.commit();
+  logAudit('limpiar','facturas',`Limpió todas las facturas del día (${snap.size} registros)`);
 }
 
 function updateBannerTotalDia(){
@@ -2607,11 +2675,28 @@ async function addGasto(){
   $('g-desc').value=''; $('g-monto').value='';
   setGastoTipo('efectivo');
   $('g-desc').focus();
-  try{ await DRAFT().doc('current').collection('gastos').add({desc,monto,tipo,createdAt:TS(),createdBy:currentUser.uid}); }
+  try{
+    await DRAFT().doc('current').collection('gastos').add({desc,monto,tipo,createdAt:TS(),createdBy:currentUser.uid});
+    logAudit('crear','gastos',`Creó gasto: "${desc}" — ${fmt(monto)} (${tipo})`,{desc,monto,tipo});
+  }
   catch(e){ alert('Error: '+e.message); }
 }
-async function delGasto(docId){ if(locked) return; try{ await DRAFT().doc('current').collection('gastos').doc(docId).delete(); }catch(e){ alert('Error: '+e.message); } }
-async function clearGastos(){ if(locked) return; if(!confirm('¿Eliminar todos los gastos?')) return; const snap=await DRAFT().doc('current').collection('gastos').get(); const batch=db.batch(); snap.docs.forEach(d=>batch.delete(d.ref)); await batch.commit(); }
+async function delGasto(docId){
+  if(locked) return;
+  try{
+    const docSnap=await DRAFT().doc('current').collection('gastos').doc(docId).get();
+    const d=docSnap.data()||{};
+    await DRAFT().doc('current').collection('gastos').doc(docId).delete();
+    logAudit('eliminar','gastos',`Eliminó gasto: "${d.desc||'?'}" — ${fmt(d.monto||0)}`,{desc:d.desc,monto:d.monto});
+  }catch(e){ alert('Error: '+e.message); }
+}
+async function clearGastos(){
+  if(locked) return;
+  if(!confirm('¿Eliminar todos los gastos?')) return;
+  const snap=await DRAFT().doc('current').collection('gastos').get();
+  const batch=db.batch(); snap.docs.forEach(d=>batch.delete(d.ref)); await batch.commit();
+  logAudit('limpiar','gastos',`Limpió todos los gastos del día (${snap.size} registros)`);
+}
 
 function renderGastos(){
   const tb=$('tb-gastos');
@@ -2677,11 +2762,28 @@ async function addEmpleado(){
   if(pago<=0){ alert('Ingresa un pago válido.'); return; }
   const esAbono = $('e-es-abono') ? $('e-es-abono').checked : true;
   $('e-nombre').value=''; $('e-pago').value=''; $('e-nombre').focus();
-  try{ await DRAFT().doc('current').collection('empleados').add({nombre,pago,tipo:empleadoTipo,esAbono,createdAt:TS(),createdBy:currentUser.uid}); }
+  try{
+    await DRAFT().doc('current').collection('empleados').add({nombre,pago,tipo:empleadoTipo,esAbono,createdAt:TS(),createdBy:currentUser.uid});
+    logAudit('crear','empleados',`Registró abono a empleado: "${nombre}" — ${fmt(pago)} (${empleadoTipo}, ${esAbono?'abono':'referencia'})`,{nombre,pago,tipo:empleadoTipo,esAbono});
+  }
   catch(e){ alert('Error: '+e.message); }
 }
-async function delEmpleado(docId){ if(locked) return; try{ await DRAFT().doc('current').collection('empleados').doc(docId).delete(); }catch(e){ alert('Error: '+e.message); } }
-async function clearEmpleados(){ if(locked) return; if(!confirm('¿Eliminar todos los empleados?')) return; const snap=await DRAFT().doc('current').collection('empleados').get(); const batch=db.batch(); snap.docs.forEach(d=>batch.delete(d.ref)); await batch.commit(); }
+async function delEmpleado(docId){
+  if(locked) return;
+  try{
+    const docSnap=await DRAFT().doc('current').collection('empleados').doc(docId).get();
+    const d=docSnap.data()||{};
+    await DRAFT().doc('current').collection('empleados').doc(docId).delete();
+    logAudit('eliminar','empleados',`Eliminó empleado: "${d.nombre||'?'}" — ${fmt(d.pago||0)}`,{nombre:d.nombre,pago:d.pago});
+  }catch(e){ alert('Error: '+e.message); }
+}
+async function clearEmpleados(){
+  if(locked) return;
+  if(!confirm('¿Eliminar todos los empleados?')) return;
+  const snap=await DRAFT().doc('current').collection('empleados').get();
+  const batch=db.batch(); snap.docs.forEach(d=>batch.delete(d.ref)); await batch.commit();
+  logAudit('limpiar','empleados',`Limpió todos los empleados del día (${snap.size} registros)`);
+}
 
 let eeTipo = 'efectivo';
 function eeSetTipo(tipo){
@@ -2718,6 +2820,7 @@ async function saveEditEmpleado(){
     if(!esHist){
       // Editar en borrador actual
       await DRAFT().doc('current').collection('empleados').doc($('ee-docid').value).update({nombre, pago, tipo:eeTipo, esAbono});
+      logAudit('editar','empleados',`Editó empleado: "${nombre}" — ${fmt(pago)} (${eeTipo}, ${esAbono?'abono':'referencia'})`,{nombre,pago,tipo:eeTipo,esAbono});
     } else {
       // Editar en registro guardado del historial
       const histKey=$('ee-hist-key').value;
@@ -3062,6 +3165,7 @@ async function guardarCuadreSemanal(){
   const totalEmpleados   = parseInt(($('sem-total-empleados')?.textContent||'0').replace(/[^0-9]/g,''),10)||0;
   const utilidad         = semUtilidadActual;
 
+  const totalGastosAdic = semGastosAdicionales.reduce((s,g)=>s+g.monto,0);
   const record = {
     desde: semPeriodoDesde,
     hasta: semPeriodoHasta,
@@ -3069,6 +3173,8 @@ async function guardarCuadreSemanal(){
     totalComprasCaja,
     deberiaHaber,
     totalEmpleados,
+    gastosAdicionales: semGastosAdicionales,
+    totalGastosAdicionales: totalGastosAdic,
     utilidad,
     socios: sociosData.map(s=>({ nombre:s.nombre, porcentaje:s.porcentaje, monto:Math.round(utilidad*(s.porcentaje||0)/100) })),
     guardadoAt: TS(),
@@ -3086,7 +3192,10 @@ function verCuadreGuardado(docId){
   if(!c) return;
   const fmtD = f => { if(!f) return '—'; const [y,m,d]=f.split('-'); return `${d}/${m}/${y}`; };
   const sociosStr = (c.socios||[]).map(s=>`${s.nombre}: ${fmt(s.monto||0)} (${s.porcentaje}%)`).join('\n') || 'Sin socios';
-  alert(`📅 CUADRE ${fmtD(c.desde)} — ${fmtD(c.hasta)}\n\n💰 Venta neta: ${fmt(c.totalVentasNetas||0)}\n🛒 Compras caja: ${fmt(c.totalComprasCaja||0)}\n💼 Lo que debe haber: ${fmt(c.deberiaHaber||0)}\n👷 Empleados pagados: ${fmt(c.totalEmpleados||0)}\n📈 Utilidad: ${fmt(c.utilidad||0)}\n\n🤝 Reparto:\n${sociosStr}`);
+  const gastosAdicStr = (c.gastosAdicionales||[]).length
+    ? '\n💸 Gastos adicionales:\n' + (c.gastosAdicionales||[]).map(g=>`  • ${g.desc}: ${fmt(g.monto)}`).join('\n') + `\n  Total: ${fmt(c.totalGastosAdicionales||0)}`
+    : '';
+  alert(`📅 CUADRE ${fmtD(c.desde)} — ${fmtD(c.hasta)}\n\n💰 Venta neta: ${fmt(c.totalVentasNetas||0)}\n🛒 Compras caja: ${fmt(c.totalComprasCaja||0)}\n💼 Lo que debe haber: ${fmt(c.deberiaHaber||0)}\n👷 Empleados pagados: ${fmt(c.totalEmpleados||0)}${gastosAdicStr}\n📈 Utilidad: ${fmt(c.utilidad||0)}\n\n🤝 Reparto:\n${sociosStr}`);
 }
 
 async function eliminarCuadre(docId){
@@ -3818,11 +3927,28 @@ async function addCompra(){
   if(!desc){ alert('Ingresa el ítem.'); return; }
   if(monto<=0){ alert('Ingresa un valor válido.'); return; }
   $('c-desc').value=''; $('c-monto').value=''; $('c-desc').focus();
-  try{ await DRAFT().doc('current').collection('compras').add({desc,monto,tipo:compraTipo,createdAt:TS(),createdBy:currentUser.uid}); }
+  try{
+    await DRAFT().doc('current').collection('compras').add({desc,monto,tipo:compraTipo,createdAt:TS(),createdBy:currentUser.uid});
+    logAudit('crear','compras',`Creó compra de caja: "${desc}" — ${fmt(monto)} (${compraTipo})`,{desc,monto,tipo:compraTipo});
+  }
   catch(e){ alert('Error: '+e.message); }
 }
-async function delCompra(docId){ if(locked) return; try{ await DRAFT().doc('current').collection('compras').doc(docId).delete(); }catch(e){ alert('Error: '+e.message); } }
-async function clearCompras(){ if(locked) return; if(!confirm('¿Eliminar todas las compras?')) return; const snap=await DRAFT().doc('current').collection('compras').get(); const batch=db.batch(); snap.docs.forEach(d=>batch.delete(d.ref)); await batch.commit(); }
+async function delCompra(docId){
+  if(locked) return;
+  try{
+    const docSnap=await DRAFT().doc('current').collection('compras').doc(docId).get();
+    const d=docSnap.data()||{};
+    await DRAFT().doc('current').collection('compras').doc(docId).delete();
+    logAudit('eliminar','compras',`Eliminó compra: "${d.desc||'?'}" — ${fmt(d.monto||0)}`,{desc:d.desc,monto:d.monto});
+  }catch(e){ alert('Error: '+e.message); }
+}
+async function clearCompras(){
+  if(locked) return;
+  if(!confirm('¿Eliminar todas las compras?')) return;
+  const snap=await DRAFT().doc('current').collection('compras').get();
+  const batch=db.batch(); snap.docs.forEach(d=>batch.delete(d.ref)); await batch.commit();
+  logAudit('limpiar','compras',`Limpió todas las compras de caja (${snap.size} registros)`);
+}
 
 let ecTipo = 'efectivo';
 
@@ -3859,6 +3985,7 @@ async function saveEditCompra(){
   $('ec-error').textContent = '';
   try{
     await DRAFT().doc('current').collection('compras').doc(docId).update({desc, monto, tipo: ecTipo});
+    logAudit('editar','compras',`Editó compra: "${desc}" — ${fmt(monto)} (${ecTipo})`,{docId,desc,monto,tipo:ecTipo});
     closeModal('modal-edit-compra');
   } catch(e){ $('ec-error').textContent = 'Error: '+e.message; }
 }
@@ -3944,6 +4071,7 @@ async function saveDay(){
   try{
     await HIST().doc(key).set(record);
     await DRAFT().doc('current').set({locked:true},{merge:true});
+    logAudit('guardar','historial',`Guardó el día: "${nombre}" (${key}) — venta: ${fmt(record.totals?.ventaDia||0)}, neto: ${fmt(record.totals?.netoDia||0)}`,{key,nombre});
     closeModal('modal-save');
     renderHistorial();
     alert('✅ Registro guardado: "'+nombre+'"\n\nEl día ha sido bloqueado.');
@@ -3970,6 +4098,7 @@ async function newDay(){
     $('base-efectivo').value=''; $('base-tr').value='';
     unlockUI();
     locked=false;
+    logAudit('sistema','sistema','Inició un nuevo día (borrado de datos del día anterior)');
     goTab(0);
   } catch(e){ alert('Error: '+e.message); }
 }
@@ -4333,8 +4462,106 @@ async function showRecord(docId){
 
 async function deleteRecord(){
   if(!confirm('¿Eliminar este registro?')) return;
-  try{ await HIST().doc(currentHistKey).delete(); closeModal('modal-hist'); renderHistorial(); }
+  try{
+    const docSnap=await HIST().doc(currentHistKey).get();
+    const fecha=docSnap.exists?(docSnap.data().fecha||currentHistKey):currentHistKey;
+    await HIST().doc(currentHistKey).delete();
+    logAudit('eliminar','historial',`Eliminó registro histórico: "${fecha}" (${currentHistKey})`,{key:currentHistKey,fecha});
+    closeModal('modal-hist'); renderHistorial();
+  }
   catch(e){ alert('Error: '+e.message); }
+}
+
+// ══════════════════════════════════════
+//   AUDITORÍA
+// ══════════════════════════════════════
+const AUDIT_LOG = () => db.collection('audit_log');
+
+// Helper: registra una acción en audit_log. Fire-and-forget, nunca bloquea.
+function logAudit(accion, modulo, detalle, datos){
+  try{
+    const now = new Date();
+    const fecha = now.toISOString().slice(0,10);
+    const hora  = now.toTimeString().slice(0,8);
+    AUDIT_LOG().add({
+      ts: firebase.firestore.FieldValue.serverTimestamp(),
+      fecha, hora,
+      uid: currentUser?.uid || '',
+      usuario: currentUserName || 'desconocido',
+      accion,   // 'crear'|'editar'|'eliminar'|'cobrar'|'guardar'|'limpiar'
+      modulo,   // 'facturas'|'gastos'|'empleados'|'compras'|'fios'|'historial'|'usuarios'|'sistema'
+      detalle,  // texto legible
+      datos: datos || {}
+    }).catch(()=>{}); // silencioso
+  } catch(_){}
+}
+
+// ── UI de Auditoría ──
+function setAudRango(dias){
+  const hoy = new Date();
+  const desde = new Date(hoy); desde.setDate(desde.getDate()-(dias-1));
+  const fmt2=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  $('aud-desde').value = fmt2(desde);
+  $('aud-hasta').value = fmt2(hoy);
+}
+
+function initAuditoria(){
+  if(!$('aud-desde').value) setAudRango(7);
+}
+
+async function cargarAuditoria(){
+  const desde = $('aud-desde').value;
+  const hasta = $('aud-hasta').value;
+  const filtroModulo = $('aud-modulo').value;
+  const filtroAccion = $('aud-accion').value;
+  if(!desde||!hasta){ alert('Selecciona un rango de fechas.'); return; }
+  const info=$('aud-info'), list=$('aud-list');
+  info.textContent='Cargando...'; list.innerHTML='';
+  try{
+    let q = AUDIT_LOG()
+      .where('fecha','>=',desde)
+      .where('fecha','<=',hasta)
+      .orderBy('fecha','desc');
+    const snap = await q.get();
+    // Ordenar por fecha+hora descendente en cliente (evita índice compuesto)
+    let docs = snap.docs.map(d=>d.data()).sort((a,b)=>{
+      const ka=(a.fecha||'')+' '+(a.hora||'');
+      const kb=(b.fecha||'')+' '+(b.hora||'');
+      return kb.localeCompare(ka);
+    });
+    if(filtroModulo) docs=docs.filter(d=>d.modulo===filtroModulo);
+    if(filtroAccion) docs=docs.filter(d=>d.accion===filtroAccion);
+    info.textContent = `${docs.length} registro${docs.length!==1?'s':''} encontrado${docs.length!==1?'s':''}`;
+    if(!docs.length){ list.innerHTML='<div class="empty-msg">Sin registros para ese filtro</div>'; return; }
+
+    const ACCION_COLOR={'crear':'#276749','editar':'#2b6cb0','eliminar':'#e53e3e','cobrar':'#6d28d9','guardar':'#c05621','limpiar':'#718096'};
+    const MOD_ICON={'facturas':'🧾','gastos':'💸','empleados':'👷','compras':'🛒','fios':'📋','historial':'📅','usuarios':'👥','sistema':'⚙️'};
+
+    list.innerHTML = docs.map(d=>{
+      const color = ACCION_COLOR[d.accion]||'#4a5568';
+      const icon  = MOD_ICON[d.modulo]||'📝';
+      return `<div style="background:#fff;border:1.5px solid #e2e8f0;border-radius:12px;padding:10px 12px;margin-bottom:8px;border-left:4px solid ${color}">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
+          <div style="flex:1">
+            <div style="font-size:0.72rem;color:var(--gray);margin-bottom:3px">
+              ${icon} <strong style="color:#4a5568">${d.modulo||''}</strong>
+              &nbsp;·&nbsp;
+              <span style="background:${color};color:#fff;border-radius:5px;padding:1px 6px;font-size:0.68rem;font-weight:700">${d.accion||''}</span>
+            </div>
+            <div style="font-size:0.84rem;color:var(--dark);font-weight:500;line-height:1.4">${d.detalle||''}</div>
+            <div style="font-size:0.7rem;color:var(--gray);margin-top:4px">👤 ${d.usuario||'—'}</div>
+          </div>
+          <div style="text-align:right;flex-shrink:0">
+            <div style="font-size:0.72rem;font-weight:700;color:#4a5568">${d.fecha||''}</div>
+            <div style="font-size:0.7rem;color:var(--gray)">${d.hora||''}</div>
+          </div>
+        </div>
+      </div>`;
+    }).join('');
+  } catch(e){
+    info.textContent='Error al cargar.';
+    console.error(e);
+  }
 }
 
 // ══════════════════════════════════════
@@ -4372,7 +4599,11 @@ function updateFiosBadge() {
 
 async function delFio(docId) {
   if (!confirm('¿Eliminar este fío?')) return;
-  try { await FIOS_COL().doc(docId).delete(); } catch(e) { alert('Error: ' + e.message); }
+  try {
+    const f = fiosCache.find(x=>x._docId===docId)||{};
+    await FIOS_COL().doc(docId).delete();
+    logAudit('eliminar','fios',`Eliminó fío de "${f.cliente||'?'}" — ${fmt(f.monto||0)} — del ${f.fecha||'?'}`,{cliente:f.cliente,monto:f.monto});
+  } catch(e) { alert('Error: ' + e.message); }
 }
 
 function renderFios() {
@@ -4503,6 +4734,7 @@ async function confirmarCobroFio() {
       tipoCobro: cfTipo,
       montoCobrado: monto
     });
+    logAudit('cobrar','fios',`Cobró fío de "${f.cliente||'?'}" — ${fmt(monto)} (${cfTipo}) — fío del ${f.fecha||'?'}`,{cliente:f.cliente,monto,tipo:cfTipo,fechaFio:f.fecha});
     closeModal('modal-cobrar-fio');
     goTab(0);
   } catch(e) { $('cf-error').textContent = 'Error: ' + e.message; }
@@ -4516,18 +4748,30 @@ function buildExcelData(st, t, fecha) {
   data.push(['CONTROL DE FACTURAS — '+fecha]);
   data.push([]);
   data.push(['FACTURAS']);
-  data.push(['N° Factura','Descripción','Monto','Tipo']);
+  data.push(['N° Factura','Descripción','Monto','Tipo','Domicilio']);
+  let totalDomiciliosXls=0;
   st.facturas.forEach(f=>{
-    if(!f.mixto){ data.push([f.num,f.desc||'',f.monto,f.tipo==='efectivo'?'Efectivo':'Transferencia']); }
+    const esDom=f.tipoPedido==='domicilio';
+    const domVal=f.domicilioValor||0;
+    if(esDom) totalDomiciliosXls+=domVal;
+    if(!f.mixto){ data.push([f.num,f.desc||'',f.monto,f.tipo==='efectivo'?'Efectivo':'Transferencia',esDom?domVal:'']); }
     else{
       const pagos3=f.pagos||[];
       const efTotal=pagos3.filter(p=>p.tipo==='efectivo').reduce((a,p)=>a+(p.monto||0),0);
       const transfers=pagos3.filter(p=>p.tipo==='transferencia');
-      if(efTotal>0) data.push([f.num,f.desc||'',efTotal,'Efectivo']);
-      transfers.forEach((p,ti)=>data.push([`${f.num}-${ti+1}`,f.desc||'',p.monto,'Transferencia']));
+      if(efTotal>0) data.push([f.num,f.desc||'',efTotal,'Efectivo',esDom?domVal:'']);
+      transfers.forEach((p,ti)=>data.push([`${f.num}-${ti+1}`,f.desc||'',p.monto,'Transferencia','']));
     }
   });
-  data.push(['','Total Efectivo',t.ef]); data.push(['','Total Transferencias',t.tr]); data.push(['','TOTAL BRUTO',t.bruto]); data.push([]);
+  data.push(['','Total Efectivo',t.ef,'','']);
+  data.push(['','Total Transferencias',t.tr,'','']);
+  data.push(['','TOTAL BRUTO',t.bruto,'','']);
+  if(totalDomiciliosXls>0){
+    const cntDom=st.facturas.filter(f=>f.tipoPedido==='domicilio').length;
+    data.push(['','— de los cuales domicilios',totalDomiciliosXls,'',`(${cntDom} pedido${cntDom!==1?'s':''})`]);
+    data.push(['','— venta sin domicilios',t.bruto-totalDomiciliosXls,'','']);
+  }
+  data.push([]);
   data.push(['GASTOS DEL DÍA']); data.push(['Concepto','Monto','Tipo']);
   st.gastos.forEach(g=>data.push([g.desc,g.monto,g.tipo==='transferencia'?'Transferencia':'Efectivo']));
   data.push(['TOTAL GASTOS EFECTIVO',t.tgEf]); data.push(['TOTAL GASTOS TRANSFERENCIAS',t.tgTr]); data.push(['TOTAL GASTOS',t.tg]); data.push([]);
@@ -6959,18 +7203,19 @@ async function cargarCuadreSemanal() {
           </div>` : ''}
         </div>`;
       }
-      $('sem-empleados-contenido').innerHTML = htmlEmps;
+      // Wrap en grid de 2 columnas
+      $('sem-empleados-contenido').innerHTML = `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px">${htmlEmps}</div>`;
     }
 
     $('sem-total-empleados').textContent = fmt(totalEmpleados);
 
-    // Utilidad
-    $('sem-utilidad').textContent = fmt(utilidad);
-    $('sem-utilidad-box').className = 'neto-box ' + (utilidad >= 0 ? 'neto-pos' : 'neto-neg');
-
-    // Socios — actualizar reparto con la utilidad calculada
-    semUtilidadActual = utilidad;
-    renderSocios();
+    // Gastos adicionales — reset al recargar el período
+    semGastosAdicionales = [];
+    semDeberiaHaberBase  = deberiaHaber;
+    semTotalEmpleadosBase = totalEmpleados;
+    const gAdicCard = $('sem-gastos-adic-card');
+    if(gAdicCard) gAdicCard.style.display = '';
+    renderGastosAdicSemanal();
 
     resDiv.style.display = 'block';
     window._semResultadoVisible = true;
@@ -6978,6 +7223,58 @@ async function cargarCuadreSemanal() {
     alert('Error al cargar el cuadre semanal: ' + e.message);
     console.error(e);
   }
+}
+
+// ══════════════════════════════════════
+//   GASTOS ADICIONALES SEMANAL
+// ══════════════════════════════════════
+let semGastosAdicionales   = [];  // [{desc, monto}]
+let semDeberiaHaberBase    = 0;
+let semTotalEmpleadosBase  = 0;
+
+function agregarGastoAdicSemanal(){
+  const desc  = ($('sem-ga-desc').value||'').trim();
+  const monto = moneyVal('sem-ga-monto');
+  if(!desc){ alert('Ingresa el concepto del gasto.'); return; }
+  if(!monto){ alert('Ingresa un monto válido.'); return; }
+  semGastosAdicionales.push({desc, monto});
+  $('sem-ga-desc').value  = '';
+  $('sem-ga-monto').value = '';
+  renderGastosAdicSemanal();
+}
+
+function quitarGastoAdicSemanal(i){
+  semGastosAdicionales.splice(i,1);
+  renderGastosAdicSemanal();
+}
+
+function renderGastosAdicSemanal(){
+  const lista   = $('sem-gastos-adic-lista'); if(!lista) return;
+  const totalEl = $('sem-total-gastos-adic');
+  const totalGA = semGastosAdicionales.reduce((s,g)=>s+g.monto,0);
+  if(totalEl) totalEl.textContent = fmt(totalGA);
+
+  lista.innerHTML = semGastosAdicionales.length === 0
+    ? '<p style="color:var(--gray);font-size:0.8rem;margin:4px 0">Sin gastos adicionales aún</p>'
+    : semGastosAdicionales.map((g,i)=>`
+        <div style="display:flex;justify-content:space-between;align-items:center;background:#fff7ed;border:1px solid #f6ad55;border-radius:9px;padding:7px 10px;margin-bottom:6px">
+          <span style="font-size:0.84rem;font-weight:600">${g.desc}</span>
+          <div style="display:flex;align-items:center;gap:8px">
+            <strong style="color:#c05621">${fmt(g.monto)}</strong>
+            <button onclick="quitarGastoAdicSemanal(${i})" style="background:none;border:none;color:#e53e3e;cursor:pointer;font-size:0.9rem;padding:0 2px" title="Quitar">✕</button>
+          </div>
+        </div>`).join('');
+
+  // Recalcular y actualizar utilidad
+  const utilidad = semDeberiaHaberBase - semTotalEmpleadosBase - totalGA;
+  const utilEl   = $('sem-utilidad');
+  const utilBox  = $('sem-utilidad-box');
+  if(utilEl)  utilEl.textContent = fmt(utilidad);
+  if(utilBox) utilBox.className  = 'neto-box ' + (utilidad >= 0 ? 'neto-pos' : 'neto-neg');
+
+  // Actualizar reparto de socios
+  semUtilidadActual = utilidad;
+  if(typeof renderSocios === 'function') renderSocios();
 }
 
 </script>
