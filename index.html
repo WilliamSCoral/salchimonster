@@ -3098,6 +3098,20 @@ function abrirResumenSemanal(){
   const utilidad       = semUtilidadActual;
   const utilColor      = utilidad >= 0 ? '#276749' : 'var(--red)';
 
+  // Gastos adicionales
+  const totalGA = semGastosAdicionales.reduce((s,g)=>s+g.monto,0);
+  const gastosAdicHTML = semGastosAdicionales.length
+    ? semGastosAdicionales.map(g=>
+        `<div style="display:flex;justify-content:space-between;padding:4px 0;font-size:0.84rem">
+          <span style="color:#c05621">💸 ${g.desc}</span>
+          <strong style="color:#c05621">− ${fmt(g.monto)}</strong>
+        </div>`).join('')
+    + `<div style="display:flex;justify-content:space-between;padding:5px 0;font-size:0.88rem;border-top:1px dashed #fed7aa;margin-top:4px">
+        <span>Total gastos adicionales</span>
+        <strong style="color:var(--red)">− ${fmt(totalGA)}</strong>
+      </div>`
+    : '';
+
   // Socios
   const sociosHTML = sociosData.length
     ? sociosData.map(s => {
@@ -3145,8 +3159,13 @@ function abrirResumenSemanal(){
       </div>
       <div style="display:flex;justify-content:space-between;padding:5px 0;font-size:0.88rem">
         <span>👷 Pago empleados</span>
-        <strong style="color:#c05621">${totalEmpleados}</strong>
+        <strong style="color:#c05621">− ${totalEmpleados}</strong>
       </div>
+      ${gastosAdicHTML ? `
+      <div style="background:#fff7ed;border:1px solid #f6ad55;border-radius:8px;padding:8px 10px;margin:6px 0">
+        <div style="font-size:0.72rem;font-weight:700;color:#c05621;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:6px">💸 Gastos adicionales</div>
+        ${gastosAdicHTML}
+      </div>` : ''}
       <div style="display:flex;justify-content:space-between;padding:8px 0 4px;font-size:1rem;border-top:2px solid var(--border);margin-top:6px">
         <span style="font-weight:800">📈 Utilidad</span>
         <strong style="color:${utilColor};font-size:1.15rem">${fmt(utilidad)}</strong>
