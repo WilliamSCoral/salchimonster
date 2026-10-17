@@ -670,7 +670,8 @@ const auth = firebase.auth();
 const db   = firebase.firestore();
 
 // ── Helpers colecciones ──
-const today = () => new Date().toISOString().slice(0, 10);
+// Fecha local YYYY-MM-DD (toISOString usa UTC y en Colombia cambiaría de día a las 7 p. m.)
+const today = () => new Date().toLocaleDateString('en-CA');
 const TS    = () => firebase.firestore.FieldValue.serverTimestamp();
 const DIA   = () => db.collection('granizados_dia').doc(today());
 const VENTAS    = () => DIA().collection('ventas');
