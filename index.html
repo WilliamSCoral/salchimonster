@@ -1538,11 +1538,21 @@
       <div class="card-title">📦 Productos
         <button class="btn-sm btn-green" onclick="openModalInvItem()">+ Agregar</button>
       </div>
-      <div style="margin-bottom:10px">
-        <select id="inv-filtro-cat" onchange="renderInventarioList()" style="font-size:0.82rem;padding:7px 10px;border-radius:8px;border:1.5px solid var(--border)">
-          <option value="">Todas las categorías</option>
-        </select>
+      <!-- Buscador + filtros productos -->
+      <div style="display:flex;flex-direction:column;gap:7px;margin-bottom:10px">
+        <input type="text" id="inv-buscar" placeholder="🔍 Buscar ingrediente..." oninput="renderInventarioList()" style="width:100%;padding:8px 11px;border:1.5px solid var(--border);border-radius:8px;font-size:0.84rem;box-sizing:border-box;background:var(--card);color:var(--text)"/>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+          <select id="inv-filtro-cat" onchange="renderInventarioList()" style="flex:1;min-width:120px;font-size:0.82rem;padding:7px 8px;border-radius:8px;border:1.5px solid var(--border);background:var(--card);color:var(--text)">
+            <option value="">Todas las categorías</option>
+          </select>
+          <div style="display:flex;gap:4px">
+            <button id="inv-stock-btn-todos"  onclick="setInvStockFiltro('todos')"  style="padding:6px 10px;border-radius:8px;border:1.5px solid #3182ce;background:#3182ce;color:#fff;font-weight:700;font-size:0.76rem;cursor:pointer">Todos</button>
+            <button id="inv-stock-btn-bajo"   onclick="setInvStockFiltro('bajo')"   style="padding:6px 10px;border-radius:8px;border:1.5px solid var(--border);background:var(--card);color:var(--text);font-weight:700;font-size:0.76rem;cursor:pointer">⚠️ Bajo</button>
+            <button id="inv-stock-btn-ok"     onclick="setInvStockFiltro('ok')"     style="padding:6px 10px;border-radius:8px;border:1.5px solid var(--border);background:var(--card);color:var(--text);font-weight:700;font-size:0.76rem;cursor:pointer">✅ OK</button>
+          </div>
+        </div>
       </div>
+      <div id="inv-resultados-txt" style="font-size:0.75rem;color:var(--gray);margin-bottom:6px"></div>
       <div id="inv-item-list"><div class="empty-msg">Sin productos registrados</div></div>
     </div>
     </div><!-- /dt-grid-2 -->
@@ -1575,6 +1585,16 @@
     <div class="card">
       <div class="card-title">🍽️ Recetas por plato</div>
       <div style="font-size:0.78rem;color:var(--gray);margin-bottom:10px">Configura qué ingredientes se descuentan del inventario al cobrar cada plato.</div>
+      <!-- Buscador + filtros recetas -->
+      <div style="display:flex;flex-direction:column;gap:7px;margin-bottom:10px">
+        <input type="text" id="rec-buscar" placeholder="🔍 Buscar plato o ingrediente..." oninput="renderRecetasList()" style="width:100%;padding:8px 11px;border:1.5px solid var(--border);border-radius:8px;font-size:0.84rem;box-sizing:border-box;background:var(--card);color:var(--text)"/>
+        <div style="display:flex;gap:4px">
+          <button id="rec-filtro-btn-todos"     onclick="setRecFiltro('todos')"     style="flex:1;padding:6px 8px;border-radius:8px;border:1.5px solid #3182ce;background:#3182ce;color:#fff;font-weight:700;font-size:0.76rem;cursor:pointer">Todos</button>
+          <button id="rec-filtro-btn-con"       onclick="setRecFiltro('con')"       style="flex:1;padding:6px 8px;border-radius:8px;border:1.5px solid var(--border);background:var(--card);color:var(--text);font-weight:700;font-size:0.76rem;cursor:pointer">✅ Con receta</button>
+          <button id="rec-filtro-btn-sin"       onclick="setRecFiltro('sin')"       style="flex:1;padding:6px 8px;border-radius:8px;border:1.5px solid var(--border);background:var(--card);color:var(--text);font-weight:700;font-size:0.76rem;cursor:pointer">❌ Sin receta</button>
+        </div>
+      </div>
+      <div id="rec-resultados-txt" style="font-size:0.75rem;color:var(--gray);margin-bottom:6px"></div>
       <div id="inv-recetas-list"><div class="empty-msg">Sin platos en el menú</div></div>
     </div>
   </div>
@@ -5703,11 +5723,49 @@ async function deleteCategoria(docId, nombre){
 }
 
 /* ── Productos ── */
+let invStockFiltro = 'todos'; // 'todos' | 'bajo' | 'ok'
+let recFiltro      = 'todos'; // 'todos' | 'con' | 'sin'
+
+function setInvStockFiltro(modo){
+  invStockFiltro = modo;
+  ['todos','bajo','ok'].forEach(m=>{
+    const btn=$('inv-stock-btn-'+m); if(!btn) return;
+    const activo = m === modo;
+    btn.style.background  = activo ? '#3182ce' : 'var(--card)';
+    btn.style.color       = activo ? '#fff'    : 'var(--text)';
+    btn.style.borderColor = activo ? '#3182ce' : 'var(--border)';
+  });
+  renderInventarioList();
+}
+
+function setRecFiltro(modo){
+  recFiltro = modo;
+  ['todos','con','sin'].forEach(m=>{
+    const btn=$('rec-filtro-btn-'+m); if(!btn) return;
+    const activo = m === modo;
+    btn.style.background  = activo ? '#3182ce' : 'var(--card)';
+    btn.style.color       = activo ? '#fff'    : 'var(--text)';
+    btn.style.borderColor = activo ? '#3182ce' : 'var(--border)';
+  });
+  renderRecetasList();
+}
+
 function renderInventarioList(){
   const div=$('inv-item-list'); if(!div) return;
-  const filtro=($('inv-filtro-cat')||{}).value||'';
-  const items=filtro?invItems.filter(i=>i.categoria===filtro):invItems;
-  if(!items.length){ div.innerHTML='<div class="empty-msg">Sin productos'+(filtro?' en esta categoría':'')+'. Agrega el primero →</div>'; return; }
+  const filtrocat=($('inv-filtro-cat')||{}).value||'';
+  const busq=(($('inv-buscar')||{}).value||'').trim().toLowerCase();
+
+  let items = filtrocat ? invItems.filter(i=>i.categoria===filtrocat) : invItems;
+  if(busq)          items = items.filter(i=>(i.nombre||'').toLowerCase().includes(busq));
+  if(invStockFiltro==='bajo') items = items.filter(i=>(i.stock||0)<=(i.stockMin||0));
+  if(invStockFiltro==='ok')   items = items.filter(i=>(i.stock||0)> (i.stockMin||0));
+
+  const resEl=$('inv-resultados-txt');
+  if(resEl) resEl.textContent = items.length !== invItems.length
+    ? `${items.length} de ${invItems.length} productos`
+    : '';
+
+  if(!items.length){ div.innerHTML='<div class="empty-msg">Sin productos que coincidan con los filtros.</div>'; return; }
 
   div.innerHTML=items.map(it=>{
     const cat=invCategorias.find(c=>c._docId===it.categoria);
@@ -6081,16 +6139,49 @@ function renderMovimientos(){
 function renderRecetasList(){
   const div=$('inv-recetas-list'); if(!div) return;
   if(!menuCache.length){ div.innerHTML='<div class="empty-msg">Sin platos en el menú. Agrega platos primero.</div>'; return; }
-  div.innerHTML=menuCache.map(plato=>{
+
+  const busq=(($('rec-buscar')||{}).value||'').trim().toLowerCase();
+
+  let platos = menuCache;
+
+  // Filtro con/sin receta
+  if(recFiltro==='con') platos = platos.filter(p=>(invRecetas[p.nombre]?.ingredientes||[]).length>0);
+  if(recFiltro==='sin') platos = platos.filter(p=>!(invRecetas[p.nombre]?.ingredientes||[]).length);
+
+  // Búsqueda: por nombre de plato O por ingrediente en la receta
+  if(busq){
+    platos = platos.filter(p=>{
+      if((p.nombre||'').toLowerCase().includes(busq)) return true;
+      const ings = invRecetas[p.nombre]?.ingredientes||[];
+      return ings.some(i=>(i.nombreProducto||'').toLowerCase().includes(busq));
+    });
+  }
+
+  const resEl=$('rec-resultados-txt');
+  if(resEl) resEl.textContent = platos.length !== menuCache.length
+    ? `${platos.length} de ${menuCache.length} platos`
+    : '';
+
+  if(!platos.length){ div.innerHTML='<div class="empty-msg">Sin platos que coincidan con los filtros.</div>'; return; }
+
+  div.innerHTML=platos.map(plato=>{
     const receta=invRecetas[plato.nombre];
     const ingredientes=receta?.ingredientes||[];
     const tag=ingredientes.length
       ?`<span style="font-size:0.7rem;background:#ebf8ff;color:#2b6cb0;border-radius:8px;padding:2px 8px;font-weight:700">${ingredientes.length} ingrediente${ingredientes.length>1?'s':''}</span>`
       :`<span style="font-size:0.7rem;background:#fff5f5;color:#c53030;border-radius:8px;padding:2px 8px;font-weight:700">Sin receta</span>`;
-    return `<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 12px;border-radius:10px;border:1.5px solid var(--border);background:#fff;margin-bottom:7px">
+    // Si hay búsqueda activa, resaltar ingredientes coincidentes
+    let ingsExtra='';
+    if(busq && ingredientes.length){
+      const coincidentes=ingredientes.filter(i=>(i.nombreProducto||'').toLowerCase().includes(busq));
+      if(coincidentes.length){
+        ingsExtra=`<div style="margin-top:4px;font-size:0.72rem;color:#2b6cb0">${coincidentes.map(i=>`🔹 ${i.nombreProducto} (${i.cantidad} ${i.unidadReceta||i.unidad})`).join(' · ')}</div>`;
+      }
+    }
+    return `<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;padding:10px 12px;border-radius:10px;border:1.5px solid var(--border);background:var(--card);margin-bottom:7px">
       <div style="min-width:0;flex:1">
         <div style="font-weight:700;font-size:0.88rem">${plato.nombre}</div>
-        <div style="margin-top:4px">${tag}</div>
+        <div style="margin-top:4px">${tag}${ingsExtra}</div>
       </div>
       <button onclick="openModalReceta('${plato.nombre.replace(/'/g,"\\'")}')" class="btn-sm btn-blue" style="flex-shrink:0">✏️ Editar</button>
     </div>`;

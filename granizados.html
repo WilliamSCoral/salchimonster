@@ -1,0 +1,1059 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🧊 Granizados — Salchimonster</title>
+<style>
+  :root {
+    --bg:      #f0f9ff;
+    --surface: #ffffff;
+    --card:    #ffffff;
+    --accent:  #0ea5e9;
+    --accent2: #0284c7;
+    --green:   #16a34a;
+    --red:     #dc2626;
+    --yellow:  #d97706;
+    --purple:  #7c3aed;
+    --text:    #1e293b;
+    --gray:    #64748b;
+    --border:  #e2e8f0;
+    --light:   #f8fafc;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding-bottom: 30px;
+  }
+
+  /* ─── LOGIN ─── */
+  #login-screen {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    padding: 24px;
+    gap: 12px;
+    background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%);
+  }
+  .login-logo  { font-size: 3.5rem; }
+  .login-title { font-size: 1.5rem; font-weight: 900; color: #fff; }
+  .login-sub   { font-size: 0.85rem; color: rgba(255,255,255,0.8); }
+  .login-box {
+    background: #fff;
+    border-radius: 20px;
+    padding: 28px 24px;
+    width: 100%;
+    max-width: 340px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-top: 10px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+  }
+  .login-label { font-size: 0.78rem; color: var(--gray); font-weight: 700; margin-bottom: 2px; }
+  .login-input {
+    width: 100%;
+    padding: 11px 14px;
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    font-size: 0.95rem;
+    outline: none;
+    transition: border-color 0.2s;
+    background: var(--light);
+  }
+  .login-input:focus { border-color: var(--accent); background: #fff; }
+  .btn-login {
+    width: 100%;
+    padding: 13px;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    font-size: 1rem;
+    font-weight: 800;
+    cursor: pointer;
+    margin-top: 4px;
+  }
+  .btn-login:active { opacity: 0.88; }
+  .login-error { color: var(--red); font-size: 0.82rem; font-weight: 600; text-align: center; }
+
+  /* ─── HEADER ─── */
+  #main-screen { display: none; }
+  header {
+    background: linear-gradient(135deg, #0ea5e9, #0284c7);
+    padding: 14px 16px 10px;
+    color: #fff;
+  }
+  .header-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+  }
+  .header-logo  { font-size: 1.25rem; font-weight: 900; }
+  .header-user  { font-size: 0.72rem; opacity: 0.85; }
+  #reloj        { font-size: 0.88rem; font-weight: 700; opacity: 0.9; }
+  .btn-logout {
+    background: rgba(255,255,255,0.2);
+    border: 1px solid rgba(255,255,255,0.3);
+    color: #fff;
+    padding: 5px 12px;
+    border-radius: 8px;
+    font-size: 0.76rem;
+    cursor: pointer;
+    font-weight: 700;
+  }
+  .btn-logout:active { opacity: 0.75; }
+
+  /* Resumen rápido en header */
+  .header-stats {
+    display: flex;
+    gap: 10px;
+    margin-top: 8px;
+    flex-wrap: wrap;
+  }
+  .stat-pill {
+    background: rgba(255,255,255,0.18);
+    border: 1px solid rgba(255,255,255,0.25);
+    border-radius: 20px;
+    padding: 4px 12px;
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: #fff;
+  }
+
+  /* ─── TABS ─── */
+  .tab-bar {
+    display: flex;
+    background: #fff;
+    border-bottom: 2px solid var(--border);
+    position: sticky;
+    top: 0;
+    z-index: 50;
+  }
+  .tab-btn {
+    flex: 1;
+    padding: 12px 4px;
+    border: none;
+    background: none;
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: var(--gray);
+    cursor: pointer;
+    border-bottom: 3px solid transparent;
+    transition: all 0.2s;
+  }
+  .tab-btn.active {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+  }
+
+  /* ─── CONTENIDO ─── */
+  .tab-content { display: none; padding: 14px 14px 0; }
+  .tab-content.active { display: block; }
+
+  /* ─── CARDS ─── */
+  .card {
+    background: var(--card);
+    border: 1.5px solid var(--border);
+    border-radius: 14px;
+    padding: 14px 15px;
+    margin-bottom: 14px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+  }
+  .card-title {
+    font-weight: 800;
+    font-size: 0.9rem;
+    margin-bottom: 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  /* ─── RESUMEN CAJA ─── */
+  .caja-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+  .caja-box {
+    border-radius: 12px;
+    padding: 12px 14px;
+    text-align: center;
+  }
+  .caja-box-label { font-size: 0.72rem; font-weight: 700; opacity: 0.8; margin-bottom: 4px; }
+  .caja-box-val   { font-size: 1.25rem; font-weight: 900; }
+  .caja-box-ef    { background: #f0fff4; border: 1.5px solid #9ae6b4; color: #276749; }
+  .caja-box-tr    { background: #ebf8ff; border: 1.5px solid #90cdf4; color: #2b6cb0; }
+  .caja-total {
+    text-align: center;
+    padding: 10px;
+    background: linear-gradient(135deg, #0ea5e9, #0284c7);
+    border-radius: 12px;
+    color: #fff;
+    margin-bottom: 12px;
+  }
+  .caja-total-label { font-size: 0.75rem; font-weight: 700; opacity: 0.85; }
+  .caja-total-val   { font-size: 1.6rem; font-weight: 900; }
+
+  /* ─── CAJA FUERTE ─── */
+  .safe-box {
+    background: linear-gradient(135deg, #4c1d95, #6d28d9);
+    border-radius: 14px;
+    padding: 16px;
+    color: #fff;
+    margin-bottom: 14px;
+    text-align: center;
+  }
+  .safe-label { font-size: 0.78rem; font-weight: 700; opacity: 0.8; margin-bottom: 4px; }
+  .safe-val   { font-size: 2rem; font-weight: 900; margin-bottom: 12px; }
+  .safe-btns  { display: flex; gap: 8px; justify-content: center; }
+  .btn-safe-dep {
+    flex: 1;
+    padding: 9px 14px;
+    background: rgba(255,255,255,0.2);
+    border: 1.5px solid rgba(255,255,255,0.4);
+    border-radius: 10px;
+    color: #fff;
+    font-weight: 700;
+    font-size: 0.84rem;
+    cursor: pointer;
+    max-width: 140px;
+  }
+  .btn-safe-dep:active { opacity: 0.75; }
+
+  /* ─── FORM ─── */
+  .form-row { display: flex; gap: 8px; flex-wrap: wrap; }
+  .fg { flex: 1; min-width: 100px; }
+  label { display: block; font-size: 0.74rem; font-weight: 700; color: var(--gray); margin-bottom: 4px; }
+  input[type=text], input[type=number], select, textarea {
+    width: 100%;
+    padding: 9px 11px;
+    border: 1.5px solid var(--border);
+    border-radius: 9px;
+    font-size: 0.9rem;
+    color: var(--text);
+    background: var(--light);
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  input:focus, select:focus { border-color: var(--accent); background: #fff; }
+
+  .btn         { padding: 10px 18px; border-radius: 10px; border: none; font-weight: 700; font-size: 0.88rem; cursor: pointer; }
+  .btn-primary { background: var(--accent); color: #fff; width: 100%; padding: 12px; margin-top: 8px; font-size: 0.95rem; border-radius: 10px; border: none; font-weight: 800; cursor: pointer; }
+  .btn-primary:active { opacity: 0.85; }
+  .btn-sm      { padding: 5px 11px; border-radius: 8px; font-size: 0.78rem; font-weight: 700; cursor: pointer; border: none; }
+  .btn-danger  { background: #fff5f5; color: var(--red); border: 1px solid #fed7d7 !important; }
+  .btn-ghost   { background: var(--light); border: 1.5px solid var(--border); color: var(--text); }
+
+  /* Tipo pago botones */
+  .tipo-btns { display: flex; gap: 6px; margin-bottom: 10px; }
+  .tipo-btn {
+    flex: 1;
+    padding: 9px;
+    border-radius: 10px;
+    border: 2px solid var(--border);
+    background: var(--light);
+    color: var(--gray);
+    font-weight: 700;
+    font-size: 0.84rem;
+    cursor: pointer;
+    text-align: center;
+  }
+  .tipo-btn.active-ef { border-color: #16a34a; background: #f0fff4; color: #16a34a; }
+  .tipo-btn.active-tr { border-color: #2563eb; background: #eff6ff; color: #2563eb; }
+
+  /* ─── LISTA TRANSACCIONES ─── */
+  .tx-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 9px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 0.85rem;
+    gap: 8px;
+  }
+  .tx-item:last-child { border-bottom: none; }
+  .tx-desc  { flex: 1; min-width: 0; }
+  .tx-desc-main  { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .tx-desc-sub   { font-size: 0.7rem; color: var(--gray); margin-top: 1px; }
+  .tx-monto { font-weight: 800; font-size: 0.95rem; white-space: nowrap; }
+  .badge-ef { background: #f0fff4; color: #16a34a; border: 1px solid #9ae6b4; border-radius: 6px; padding: 1px 7px; font-size: 0.7rem; font-weight: 700; }
+  .badge-tr { background: #eff6ff; color: #2563eb; border: 1px solid #93c5fd; border-radius: 6px; padding: 1px 7px; font-size: 0.7rem; font-weight: 700; }
+  .badge-compra { background: #fff7ed; color: #c2410c; border: 1px solid #fed7aa; border-radius: 6px; padding: 1px 7px; font-size: 0.7rem; font-weight: 700; }
+
+  /* ─── INVENTARIO ─── */
+  .inv-item {
+    border: 1.5px solid var(--border);
+    border-radius: 12px;
+    padding: 11px 13px;
+    margin-bottom: 8px;
+    background: #fff;
+  }
+  .inv-item.stock-bajo { border-color: #feb2b2; background: #fffafa; }
+  .inv-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+  .inv-nombre { font-weight: 700; font-size: 0.9rem; }
+  .inv-stock  { font-size: 1.1rem; font-weight: 900; }
+  .stock-ok   { color: #16a34a; }
+  .stock-low  { color: var(--red); }
+  .stock-badge-low {
+    font-size: 0.65rem; font-weight: 800;
+    background: #fff5f5; color: var(--red);
+    border: 1px solid #feb2b2;
+    border-radius: 8px; padding: 2px 7px;
+  }
+  .inv-btns { display: flex; gap: 6px; }
+  .btn-entrada { flex: 1; padding: 7px; background: #f0fff4; border: 1.5px solid #9ae6b4; color: #16a34a; border-radius: 8px; font-weight: 700; font-size: 0.78rem; cursor: pointer; }
+  .btn-salida  { flex: 1; padding: 7px; background: #fff5f5; border: 1.5px solid #fed7d7; color: var(--red);   border-radius: 8px; font-weight: 700; font-size: 0.78rem; cursor: pointer; }
+  .btn-edit-inv { padding: 7px 10px; background: var(--light); border: 1.5px solid var(--border); color: var(--text); border-radius: 8px; font-size: 0.78rem; cursor: pointer; }
+
+  /* ─── MODAL ─── */
+  .modal-bg {
+    display: none;
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.45);
+    z-index: 200;
+    align-items: flex-end;
+    justify-content: center;
+  }
+  .modal-bg.open { display: flex; }
+  .modal {
+    background: #fff;
+    border-radius: 20px 20px 0 0;
+    padding: 20px 18px 30px;
+    width: 100%;
+    max-width: 480px;
+    max-height: 90vh;
+    overflow-y: auto;
+    animation: slideUp 0.25s ease;
+  }
+  @keyframes slideUp { from{transform:translateY(100%)} to{transform:translateY(0)} }
+  .modal-title {
+    font-weight: 800;
+    font-size: 1rem;
+    margin-bottom: 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .btn-close { background: none; border: none; font-size: 1.3rem; cursor: pointer; color: var(--gray); padding: 0 4px; }
+
+  /* ─── TOAST ─── */
+  #toast {
+    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+    background: #1e293b; color: #fff;
+    padding: 10px 22px; border-radius: 30px;
+    font-size: 0.88rem; font-weight: 700;
+    opacity: 0; transition: opacity 0.3s;
+    z-index: 999; pointer-events: none; white-space: nowrap;
+  }
+  #toast.show { opacity: 1; }
+
+  .empty-msg { color: var(--gray); font-size: 0.82rem; text-align: center; padding: 14px 0; }
+  .error-msg { color: var(--red); font-size: 0.8rem; margin-top: 6px; min-height: 16px; }
+
+  /* ─── HISTORIAL SEGURO ─── */
+  .safe-mov {
+    font-size: 0.78rem;
+    display: flex;
+    justify-content: space-between;
+    padding: 5px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .safe-mov:last-child { border-bottom: none; }
+  .mov-deposito { color: var(--green); font-weight: 700; }
+  .mov-retiro   { color: var(--red);   font-weight: 700; }
+</style>
+</head>
+<body>
+
+<!-- ═══ LOGIN ═══ -->
+<div id="login-screen">
+  <div class="login-logo">🧊</div>
+  <div class="login-title">Granizados</div>
+  <div class="login-sub">Salchimonster</div>
+  <div class="login-box">
+    <div>
+      <div class="login-label">Correo</div>
+      <input class="login-input" type="email" id="l-email" placeholder="correo@ejemplo.com" autocomplete="email"/>
+    </div>
+    <div>
+      <div class="login-label">Contraseña</div>
+      <input class="login-input" type="password" id="l-pass" placeholder="••••••••" autocomplete="current-password"/>
+    </div>
+    <button class="btn-login" onclick="doLogin()">Ingresar</button>
+    <div class="login-error" id="l-error"></div>
+  </div>
+</div>
+
+<!-- ═══ MAIN ═══ -->
+<div id="main-screen">
+
+  <!-- Header -->
+  <header>
+    <div class="header-top">
+      <div>
+        <div class="header-logo">🧊 Granizados</div>
+        <div class="header-user" id="h-user"></div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <span id="reloj"></span>
+        <button class="btn-logout" onclick="doLogout()">Salir</button>
+      </div>
+    </div>
+    <div class="header-stats">
+      <div class="stat-pill">💵 Ef: <span id="h-ef">$0</span></div>
+      <div class="stat-pill">🏦 Tr: <span id="h-tr">$0</span></div>
+      <div class="stat-pill">📊 Total: <span id="h-total">$0</span></div>
+    </div>
+  </header>
+
+  <!-- Tabs -->
+  <div class="tab-bar">
+    <button class="tab-btn active" id="tab-btn-caja"      onclick="goTab('caja')">💰 Caja</button>
+    <button class="tab-btn"        id="tab-btn-compras"   onclick="goTab('compras')">🛒 Compras</button>
+    <button class="tab-btn"        id="tab-btn-inventario" onclick="goTab('inventario')">📦 Inventario</button>
+  </div>
+
+  <!-- ══ TAB: CAJA ══ -->
+  <div class="tab-content active" id="tab-caja">
+
+    <!-- Resumen del día -->
+    <div class="caja-total">
+      <div class="caja-total-label">💰 TOTAL DEL DÍA</div>
+      <div class="caja-total-val" id="caja-total-dia">$0</div>
+    </div>
+    <div class="caja-grid">
+      <div class="caja-box caja-box-ef">
+        <div class="caja-box-label">💵 EFECTIVO</div>
+        <div class="caja-box-val" id="caja-ef">$0</div>
+      </div>
+      <div class="caja-box caja-box-tr">
+        <div class="caja-box-label">🏦 TRANSFERENCIA</div>
+        <div class="caja-box-val" id="caja-tr">$0</div>
+      </div>
+    </div>
+
+    <!-- Caja fuerte -->
+    <div class="safe-box">
+      <div class="safe-label">🔐 CAJA FUERTE</div>
+      <div class="safe-val" id="safe-val">$0</div>
+      <div class="safe-btns">
+        <button class="btn-safe-dep" onclick="openModalSafe('deposito')">⬆️ Depositar</button>
+        <button class="btn-safe-dep" onclick="openModalSafe('retiro')">⬇️ Retirar</button>
+        <button class="btn-safe-dep" onclick="toggleSafeHist()">📋 Ver</button>
+      </div>
+    </div>
+    <div id="safe-hist-wrap" style="display:none;margin-bottom:14px">
+      <div class="card" style="margin-bottom:0">
+        <div class="card-title" style="font-size:0.82rem">Historial caja fuerte <button class="btn-sm btn-ghost" onclick="toggleSafeHist()">✕</button></div>
+        <div id="safe-hist-list"><div class="empty-msg">Sin movimientos</div></div>
+      </div>
+    </div>
+
+    <!-- Agregar venta -->
+    <div class="card">
+      <div class="card-title">➕ Registrar ingreso</div>
+      <div class="tipo-btns">
+        <button class="tipo-btn active-ef" id="vta-btn-ef" onclick="setVtaTipo('efectivo')">💵 Efectivo</button>
+        <button class="tipo-btn"           id="vta-btn-tr" onclick="setVtaTipo('transferencia')">🏦 Transf.</button>
+      </div>
+      <div class="form-row" style="margin-bottom:8px">
+        <div class="fg">
+          <label>Descripción (opcional)</label>
+          <input type="text" id="vta-desc" placeholder="Ej: Granizado fresa"/>
+        </div>
+        <div class="fg" style="max-width:130px">
+          <label>Monto</label>
+          <input type="text" inputmode="numeric" id="vta-monto" placeholder="0" oninput="moneyFmt(this)"/>
+        </div>
+      </div>
+      <div class="error-msg" id="vta-error"></div>
+      <button class="btn-primary" onclick="addVenta()">✅ Registrar</button>
+    </div>
+
+    <!-- Lista ventas -->
+    <div class="card">
+      <div class="card-title">
+        📋 Ventas del día
+        <span id="ventas-cnt" style="font-size:0.75rem;color:var(--gray);font-weight:600"></span>
+      </div>
+      <div id="ventas-list"><div class="empty-msg">Sin ventas registradas hoy</div></div>
+    </div>
+  </div>
+
+  <!-- ══ TAB: COMPRAS ══ -->
+  <div class="tab-content" id="tab-compras">
+    <div class="card">
+      <div class="card-title">
+        🛒 Total compras hoy
+        <span id="compras-total-label" style="font-size:1rem;color:var(--red);font-weight:900">$0</span>
+      </div>
+      <div class="form-row" style="margin-bottom:8px">
+        <div class="fg">
+          <label>Concepto</label>
+          <input type="text" id="cmp-desc" placeholder="Ej: Hielo, frutas..."/>
+        </div>
+        <div class="fg" style="max-width:130px">
+          <label>Monto</label>
+          <input type="text" inputmode="numeric" id="cmp-monto" placeholder="0" oninput="moneyFmt(this)"/>
+        </div>
+      </div>
+      <div class="error-msg" id="cmp-error"></div>
+      <button class="btn-primary" style="background:var(--red)" onclick="addCompra()">🛒 Registrar compra</button>
+    </div>
+    <div class="card">
+      <div class="card-title">Lista de compras</div>
+      <div id="compras-list"><div class="empty-msg">Sin compras registradas hoy</div></div>
+    </div>
+  </div>
+
+  <!-- ══ TAB: INVENTARIO ══ -->
+  <div class="tab-content" id="tab-inventario">
+    <div class="card">
+      <div class="card-title">📦 Inventario
+        <button class="btn-sm btn-ghost" style="background:var(--accent);color:#fff;border:none" onclick="openModalInvAdd()">+ Agregar</button>
+      </div>
+      <input type="text" id="inv-buscar" placeholder="🔍 Buscar producto..." oninput="renderInv()" style="margin-bottom:10px;font-size:0.84rem"/>
+      <div id="inv-alerta" style="display:none;background:#fff5f5;border:1px solid #feb2b2;border-radius:10px;padding:9px 12px;margin-bottom:10px;font-size:0.8rem;color:#c53030;font-weight:700"></div>
+      <div id="inv-list"><div class="empty-msg">Sin productos. Agrega el primero →</div></div>
+    </div>
+  </div>
+
+</div><!-- /main-screen -->
+
+<!-- ═══ MODAL: Caja Fuerte ═══ -->
+<div class="modal-bg" id="modal-safe">
+  <div class="modal">
+    <div class="modal-title">
+      <span id="safe-modal-title">🔐 Caja Fuerte</span>
+      <button class="btn-close" onclick="closeModal('modal-safe')">✕</button>
+    </div>
+    <div style="margin-bottom:8px">
+      <label>Monto</label>
+      <input type="text" inputmode="numeric" id="safe-monto" placeholder="0" oninput="moneyFmt(this)"/>
+    </div>
+    <div style="margin-bottom:8px">
+      <label>Motivo (opcional)</label>
+      <input type="text" id="safe-motivo" placeholder="Ej: Separado para emergencia"/>
+    </div>
+    <div class="error-msg" id="safe-error"></div>
+    <button class="btn-primary" onclick="saveSafeMovimiento()">Guardar</button>
+  </div>
+</div>
+
+<!-- ═══ MODAL: Agregar/Editar Producto ═══ -->
+<div class="modal-bg" id="modal-inv">
+  <div class="modal">
+    <div class="modal-title">
+      <span id="inv-modal-title">📦 Nuevo producto</span>
+      <button class="btn-close" onclick="closeModal('modal-inv')">✕</button>
+    </div>
+    <input type="hidden" id="inv-docid"/>
+    <div style="margin-bottom:8px">
+      <label>Nombre del producto</label>
+      <input type="text" id="inv-nombre" placeholder="Ej: Granizado de fresa"/>
+    </div>
+    <div class="form-row" style="margin-bottom:8px">
+      <div class="fg">
+        <label>Stock actual</label>
+        <input type="number" id="inv-stock" placeholder="0" min="0" step="1"/>
+      </div>
+      <div class="fg">
+        <label>Stock mínimo</label>
+        <input type="number" id="inv-stock-min" placeholder="0" min="0" step="1"/>
+      </div>
+      <div class="fg" style="max-width:100px">
+        <label>Unidad</label>
+        <select id="inv-unidad">
+          <option value="und">und</option>
+          <option value="kg">kg</option>
+          <option value="g">g</option>
+          <option value="L">L</option>
+          <option value="ml">ml</option>
+          <option value="bol">bol</option>
+          <option value="paq">paq</option>
+        </select>
+      </div>
+    </div>
+    <div class="error-msg" id="inv-error"></div>
+    <button class="btn-primary" onclick="saveInvProduct()">Guardar</button>
+  </div>
+</div>
+
+<!-- ═══ MODAL: Entrada/Salida stock ═══ -->
+<div class="modal-bg" id="modal-mov">
+  <div class="modal">
+    <div class="modal-title">
+      <span id="mov-modal-title">📥 Entrada de stock</span>
+      <button class="btn-close" onclick="closeModal('modal-mov')">✕</button>
+    </div>
+    <input type="hidden" id="mov-docid"/>
+    <div id="mov-producto-label" style="font-weight:700;color:var(--accent);margin-bottom:12px;font-size:0.95rem"></div>
+    <div style="margin-bottom:8px">
+      <label>Cantidad</label>
+      <input type="number" id="mov-cantidad" placeholder="0" min="0.1" step="0.1"/>
+    </div>
+    <div style="margin-bottom:8px">
+      <label>Nota (opcional)</label>
+      <input type="text" id="mov-nota" placeholder="Ej: Compra semanal"/>
+    </div>
+    <div class="error-msg" id="mov-error"></div>
+    <button class="btn-primary" onclick="saveMov()">Guardar</button>
+  </div>
+</div>
+
+<!-- Toast -->
+<div id="toast"></div>
+
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+<script>
+'use strict';
+
+// ══════════════════════════════════════
+//   FIREBASE
+// ══════════════════════════════════════
+const firebaseConfig = {
+  apiKey: "AIzaSyD0oZ1f7JpoaTrJDzby5W5XlHh1Q-hSGfk",
+  authDomain: "facturas-salchimonster.firebaseapp.com",
+  projectId: "facturas-salchimonster",
+  storageBucket: "facturas-salchimonster.appspot.com",
+  messagingSenderId: "862583552527",
+  appId: "1:862583552527:web:salchimonster"
+};
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db   = firebase.firestore();
+
+// ── Helpers colecciones ──
+const today = () => new Date().toISOString().slice(0, 10);
+const TS    = () => firebase.firestore.FieldValue.serverTimestamp();
+const DIA   = () => db.collection('granizados_dia').doc(today());
+const VENTAS    = () => DIA().collection('ventas');
+const COMPRAS   = () => DIA().collection('compras');
+const INV_COL   = () => db.collection('granizados_inventario');
+const SAFE_COL  = () => db.collection('granizados_caja_fuerte');
+const SAFE_DOC  = () => SAFE_COL().doc('saldo');
+const SAFE_HIST = () => SAFE_COL().doc('saldo').collection('movimientos');
+
+// ── Formateo ──
+const fmt    = n => '$' + (n||0).toLocaleString('es-CO');
+const fmtRaw = n => (n||0).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+function moneyFmt(el){
+  const raw = el.value.replace(/\D/g,'');
+  if(!raw){ el.value=''; return; }
+  el.value = parseInt(raw,10).toString().replace(/\B(?=(\d{3})+(?!\d))/g,'.');
+}
+function moneyVal(id){
+  return parseInt((document.getElementById(id)?.value||'0').replace(/\./g,''),10)||0;
+}
+const $ = id => document.getElementById(id);
+
+// ── Estado ──
+let currentUser = null;
+let ventasTipo  = 'efectivo';
+let safeAccion  = 'deposito';
+let movTipo     = 'entrada';
+let invItems    = [];
+let safeHist    = [];
+let safeVisible = false;
+let unsubs      = [];
+
+// ══════════════════════════════════════
+//   AUTH
+// ══════════════════════════════════════
+auth.onAuthStateChanged(user => {
+  if(user){
+    currentUser = user;
+    $('login-screen').style.display = 'none';
+    $('main-screen').style.display  = 'block';
+    $('h-user').textContent = user.email;
+    setupListeners();
+    startReloj();
+  } else {
+    $('login-screen').style.display = 'flex';
+    $('main-screen').style.display  = 'none';
+    unsubs.forEach(u=>u()); unsubs=[];
+  }
+});
+
+async function doLogin(){
+  const email = $('l-email').value.trim();
+  const pass  = $('l-pass').value;
+  $('l-error').textContent='';
+  try{
+    await auth.signInWithEmailAndPassword(email, pass);
+  } catch(e){ $('l-error').textContent = 'Correo o contraseña incorrectos.'; }
+}
+$('l-pass').addEventListener('keydown', e=>{ if(e.key==='Enter') doLogin(); });
+
+function doLogout(){ auth.signOut(); }
+
+// ══════════════════════════════════════
+//   RELOJ
+// ══════════════════════════════════════
+function startReloj(){
+  const tick = ()=>{
+    const now = new Date();
+    $('reloj').textContent = now.toLocaleTimeString('es-CO',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  };
+  tick(); setInterval(tick,1000);
+}
+
+// ══════════════════════════════════════
+//   LISTENERS FIRESTORE
+// ══════════════════════════════════════
+function setupListeners(){
+  // Ventas del día
+  const u1 = VENTAS().orderBy('createdAt','desc').onSnapshot(snap=>{
+    const ventas = snap.docs.map(d=>({_id:d.id,...d.data()}));
+    renderVentas(ventas);
+    updateHeaderStats(ventas);
+  }, e=>console.error('ventas',e));
+  unsubs.push(u1);
+
+  // Compras del día
+  const u2 = COMPRAS().orderBy('createdAt','desc').onSnapshot(snap=>{
+    const compras = snap.docs.map(d=>({_id:d.id,...d.data()}));
+    renderCompras(compras);
+  }, e=>console.error('compras',e));
+  unsubs.push(u2);
+
+  // Caja fuerte — saldo
+  const u3 = SAFE_DOC().onSnapshot(snap=>{
+    const saldo = snap.exists ? (snap.data().saldo||0) : 0;
+    $('safe-val').textContent = fmt(saldo);
+  }, e=>console.error('safe',e));
+  unsubs.push(u3);
+
+  // Caja fuerte — historial
+  const u4 = SAFE_HIST().orderBy('createdAt','desc').limit(30).onSnapshot(snap=>{
+    safeHist = snap.docs.map(d=>({_id:d.id,...d.data()}));
+    renderSafeHist();
+  }, e=>console.error('safe-hist',e));
+  unsubs.push(u4);
+
+  // Inventario
+  const u5 = INV_COL().orderBy('nombre').onSnapshot(snap=>{
+    invItems = snap.docs.map(d=>({_id:d.id,...d.data()}));
+    renderInv();
+    renderAlertaStock();
+  }, e=>console.error('inv',e));
+  unsubs.push(u5);
+}
+
+// ══════════════════════════════════════
+//   TABS
+// ══════════════════════════════════════
+function goTab(tab){
+  ['caja','compras','inventario'].forEach(t=>{
+    $('tab-btn-'+t).classList.toggle('active', t===tab);
+    $('tab-'+t).classList.toggle('active', t===tab);
+  });
+}
+
+// ══════════════════════════════════════
+//   CAJA — VENTAS
+// ══════════════════════════════════════
+function setVtaTipo(tipo){
+  ventasTipo = tipo;
+  $('vta-btn-ef').className = 'tipo-btn'+(tipo==='efectivo'?' active-ef':'');
+  $('vta-btn-tr').className = 'tipo-btn'+(tipo==='transferencia'?' active-tr':'');
+}
+
+async function addVenta(){
+  const monto = moneyVal('vta-monto');
+  const desc  = ($('vta-desc').value||'').trim();
+  $('vta-error').textContent='';
+  if(!monto){ $('vta-error').textContent='Ingresa un monto.'; return; }
+  try{
+    await VENTAS().add({
+      monto, tipo: ventasTipo, desc,
+      hora: new Date().toLocaleTimeString('es-CO',{hour:'2-digit',minute:'2-digit'}),
+      createdAt: TS(), creadoPor: currentUser.uid
+    });
+    $('vta-monto').value='';
+    $('vta-desc').value='';
+    showToast('✅ Venta registrada');
+  } catch(e){ $('vta-error').textContent='Error: '+e.message; }
+}
+
+function renderVentas(ventas){
+  const div = $('ventas-list');
+  $('ventas-cnt').textContent = ventas.length ? `${ventas.length} reg.` : '';
+  if(!ventas.length){ div.innerHTML='<div class="empty-msg">Sin ventas registradas hoy</div>'; return; }
+  div.innerHTML = ventas.map(v=>`
+    <div class="tx-item">
+      <div class="tx-desc">
+        <div class="tx-desc-main">${v.desc||'Venta'}</div>
+        <div class="tx-desc-sub">${v.hora||''}</div>
+      </div>
+      <span class="badge-${v.tipo==='efectivo'?'ef':'tr'}">${v.tipo==='efectivo'?'Ef':'Tr'}</span>
+      <span class="tx-monto" style="color:${v.tipo==='efectivo'?'#16a34a':'#2563eb'}">${fmt(v.monto)}</span>
+      <button class="btn-sm btn-danger" onclick="delVenta('${v._id}')" style="margin-left:4px">✕</button>
+    </div>`).join('');
+}
+
+async function delVenta(id){
+  if(!confirm('¿Eliminar esta venta?')) return;
+  try{ await VENTAS().doc(id).delete(); showToast('Venta eliminada'); }
+  catch(e){ alert(e.message); }
+}
+
+function updateHeaderStats(ventas){
+  const ef = ventas.filter(v=>v.tipo==='efectivo').reduce((s,v)=>s+(v.monto||0),0);
+  const tr = ventas.filter(v=>v.tipo==='transferencia').reduce((s,v)=>s+(v.monto||0),0);
+  $('caja-ef').textContent         = fmt(ef);
+  $('caja-tr').textContent         = fmt(tr);
+  $('caja-total-dia').textContent  = fmt(ef+tr);
+  $('h-ef').textContent    = fmt(ef);
+  $('h-tr').textContent    = fmt(tr);
+  $('h-total').textContent = fmt(ef+tr);
+}
+
+// ══════════════════════════════════════
+//   CAJA FUERTE
+// ══════════════════════════════════════
+function openModalSafe(accion){
+  safeAccion = accion;
+  $('safe-modal-title').textContent = accion==='deposito' ? '🔐 Depositar en caja fuerte' : '🔐 Retirar de caja fuerte';
+  $('safe-monto').value='';
+  $('safe-motivo').value='';
+  $('safe-error').textContent='';
+  openModal('modal-safe');
+}
+
+async function saveSafeMovimiento(){
+  const monto  = moneyVal('safe-monto');
+  const motivo = ($('safe-motivo').value||'').trim();
+  $('safe-error').textContent='';
+  if(!monto){ $('safe-error').textContent='Ingresa un monto.'; return; }
+  try{
+    // Actualizar saldo con transacción
+    await db.runTransaction(async tx=>{
+      const ref  = SAFE_DOC();
+      const snap = await tx.get(ref);
+      const actual = snap.exists ? (snap.data().saldo||0) : 0;
+      const nuevo  = safeAccion==='deposito' ? actual+monto : Math.max(0, actual-monto);
+      tx.set(ref, { saldo: nuevo, updatedAt: TS() }, { merge: true });
+    });
+    // Registrar movimiento en historial
+    await SAFE_HIST().add({
+      tipo: safeAccion, monto, motivo,
+      hora: new Date().toLocaleTimeString('es-CO',{hour:'2-digit',minute:'2-digit'}),
+      fecha: today(), createdAt: TS(), creadoPor: currentUser.uid
+    });
+    closeModal('modal-safe');
+    showToast(safeAccion==='deposito'?'⬆️ Depositado en caja fuerte':'⬇️ Retirado de caja fuerte');
+  } catch(e){ $('safe-error').textContent='Error: '+e.message; }
+}
+
+function toggleSafeHist(){
+  safeVisible = !safeVisible;
+  $('safe-hist-wrap').style.display = safeVisible ? 'block' : 'none';
+}
+
+function renderSafeHist(){
+  const div = $('safe-hist-list');
+  if(!div) return;
+  if(!safeHist.length){ div.innerHTML='<div class="empty-msg">Sin movimientos</div>'; return; }
+  div.innerHTML = safeHist.map(m=>`
+    <div class="safe-mov">
+      <span>${m.fecha||''} ${m.hora||''} — ${m.motivo||'Sin motivo'}</span>
+      <span class="${m.tipo==='deposito'?'mov-deposito':'mov-retiro'}">${m.tipo==='deposito'?'▲':'▼'} ${fmt(m.monto)}</span>
+    </div>`).join('');
+}
+
+// ══════════════════════════════════════
+//   COMPRAS
+// ══════════════════════════════════════
+async function addCompra(){
+  const monto = moneyVal('cmp-monto');
+  const desc  = ($('cmp-desc').value||'').trim();
+  $('cmp-error').textContent='';
+  if(!desc){ $('cmp-error').textContent='Ingresa el concepto.'; return; }
+  if(!monto){ $('cmp-error').textContent='Ingresa un monto.'; return; }
+  try{
+    await COMPRAS().add({
+      desc, monto,
+      hora: new Date().toLocaleTimeString('es-CO',{hour:'2-digit',minute:'2-digit'}),
+      createdAt: TS(), creadoPor: currentUser.uid
+    });
+    $('cmp-desc').value='';
+    $('cmp-monto').value='';
+    showToast('🛒 Compra registrada');
+  } catch(e){ $('cmp-error').textContent='Error: '+e.message; }
+}
+
+function renderCompras(compras){
+  const div   = $('compras-list');
+  const total = compras.reduce((s,c)=>s+(c.monto||0),0);
+  $('compras-total-label').textContent = fmt(total);
+  if(!compras.length){ div.innerHTML='<div class="empty-msg">Sin compras registradas hoy</div>'; return; }
+  div.innerHTML = compras.map(c=>`
+    <div class="tx-item">
+      <div class="tx-desc">
+        <div class="tx-desc-main">${c.desc}</div>
+        <div class="tx-desc-sub">${c.hora||''}</div>
+      </div>
+      <span class="badge-compra">Compra</span>
+      <span class="tx-monto" style="color:var(--red)">−${fmt(c.monto)}</span>
+      <button class="btn-sm btn-danger" onclick="delCompra('${c._id}')" style="margin-left:4px">✕</button>
+    </div>`).join('');
+}
+
+async function delCompra(id){
+  if(!confirm('¿Eliminar esta compra?')) return;
+  try{ await COMPRAS().doc(id).delete(); showToast('Compra eliminada'); }
+  catch(e){ alert(e.message); }
+}
+
+// ══════════════════════════════════════
+//   INVENTARIO
+// ══════════════════════════════════════
+function openModalInvAdd(docId){
+  $('inv-docid').value = docId||'';
+  $('inv-modal-title').textContent = docId ? '✏️ Editar producto' : '📦 Nuevo producto';
+  $('inv-error').textContent = '';
+  if(docId){
+    const it = invItems.find(x=>x._id===docId);
+    if(it){
+      $('inv-nombre').value    = it.nombre||'';
+      $('inv-stock').value     = it.stock||0;
+      $('inv-stock-min').value = it.stockMin||0;
+      $('inv-unidad').value    = it.unidad||'und';
+    }
+  } else {
+    $('inv-nombre').value=''; $('inv-stock').value=''; $('inv-stock-min').value=''; $('inv-unidad').value='und';
+  }
+  openModal('modal-inv');
+}
+
+async function saveInvProduct(){
+  const docId   = $('inv-docid').value;
+  const nombre  = $('inv-nombre').value.trim();
+  const stock   = parseFloat($('inv-stock').value)||0;
+  const stockMin= parseFloat($('inv-stock-min').value)||0;
+  const unidad  = $('inv-unidad').value||'und';
+  $('inv-error').textContent='';
+  if(!nombre){ $('inv-error').textContent='Ingresa el nombre.'; return; }
+  try{
+    if(docId){
+      await INV_COL().doc(docId).update({nombre, stock, stockMin, unidad, updatedAt:TS()});
+    } else {
+      await INV_COL().add({nombre, stock, stockMin, unidad, createdAt:TS(), creadoPor:currentUser.uid});
+    }
+    closeModal('modal-inv');
+    showToast(docId?'Producto actualizado':'Producto agregado');
+  } catch(e){ $('inv-error').textContent='Error: '+e.message; }
+}
+
+function renderInv(){
+  const div  = $('inv-list'); if(!div) return;
+  const busq = ($('inv-buscar')?.value||'').toLowerCase().trim();
+  const items = busq ? invItems.filter(i=>(i.nombre||'').toLowerCase().includes(busq)) : invItems;
+  if(!items.length){ div.innerHTML='<div class="empty-msg">Sin productos'+(busq?' que coincidan':'.')+' Agrega el primero</div>'; return; }
+  div.innerHTML = items.map(it=>{
+    const bajo = (it.stock||0) <= (it.stockMin||0);
+    return `<div class="inv-item${bajo?' stock-bajo':''}">
+      <div class="inv-header">
+        <div>
+          <div class="inv-nombre">${it.nombre}</div>
+          ${bajo?'<span class="stock-badge-low">⚠️ STOCK BAJO</span>':''}
+        </div>
+        <div class="inv-stock ${bajo?'stock-low':'stock-ok'}">${it.stock||0} <span style="font-size:0.7rem;font-weight:600">${it.unidad||'und'}</span></div>
+      </div>
+      <div class="inv-btns">
+        <button class="btn-entrada" onclick="openModalMov('${it._id}','entrada')">📥 Entrada</button>
+        <button class="btn-salida"  onclick="openModalMov('${it._id}','salida')">📤 Salida</button>
+        <button class="btn-edit-inv" onclick="openModalInvAdd('${it._id}')">✏️</button>
+        <button class="btn-sm btn-danger" onclick="delInvItem('${it._id}','${it.nombre}')">🗑</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderAlertaStock(){
+  const div  = $('inv-alerta');
+  const bajos = invItems.filter(i=>(i.stock||0)<=(i.stockMin||0));
+  if(bajos.length){
+    div.style.display='block';
+    div.textContent = `⚠️ Stock bajo en: ${bajos.map(i=>i.nombre).join(', ')}`;
+  } else {
+    div.style.display='none';
+  }
+}
+
+async function delInvItem(id, nombre){
+  if(!confirm(`¿Eliminar "${nombre}" del inventario?`)) return;
+  try{ await INV_COL().doc(id).delete(); showToast('Producto eliminado'); }
+  catch(e){ alert(e.message); }
+}
+
+// ── Movimientos stock ──
+function openModalMov(docId, tipo){
+  const it = invItems.find(x=>x._id===docId); if(!it) return;
+  movTipo = tipo;
+  $('mov-docid').value = docId;
+  $('mov-modal-title').textContent = tipo==='entrada' ? `📥 Entrada — ${it.nombre}` : `📤 Salida — ${it.nombre}`;
+  $('mov-producto-label').textContent = `Stock actual: ${it.stock||0} ${it.unidad||'und'}`;
+  $('mov-cantidad').value='';
+  $('mov-nota').value='';
+  $('mov-error').textContent='';
+  openModal('modal-mov');
+}
+
+async function saveMov(){
+  const docId    = $('mov-docid').value;
+  const cantidad = parseFloat($('mov-cantidad').value)||0;
+  const nota     = ($('mov-nota').value||'').trim();
+  $('mov-error').textContent='';
+  if(!cantidad||cantidad<=0){ $('mov-error').textContent='Ingresa una cantidad válida.'; return; }
+  const it = invItems.find(x=>x._id===docId); if(!it) return;
+  const delta    = movTipo==='entrada' ? cantidad : -cantidad;
+  const nuevoStock = Math.max(0, (it.stock||0) + delta);
+  try{
+    await INV_COL().doc(docId).update({ stock: nuevoStock, updatedAt: TS() });
+    // Guardar movimiento en subcolección historial
+    await INV_COL().doc(docId).collection('movimientos').add({
+      tipo: movTipo, cantidad, nota, stockAntes: it.stock||0, stockDespues: nuevoStock,
+      fecha: today(), createdAt: TS(), creadoPor: currentUser.uid
+    });
+    closeModal('modal-mov');
+    showToast(movTipo==='entrada'?`📥 +${cantidad} ${it.unidad||'und'}`:`📤 −${cantidad} ${it.unidad||'und'}`);
+  } catch(e){ $('mov-error').textContent='Error: '+e.message; }
+}
+
+// ══════════════════════════════════════
+//   MODALES
+// ══════════════════════════════════════
+function openModal(id){
+  const m = $(id); if(!m) return;
+  m.classList.add('open');
+  m.addEventListener('click', function handler(e){
+    if(e.target===m){ closeModal(id); m.removeEventListener('click',handler); }
+  });
+}
+function closeModal(id){ const m=$(id); if(m) m.classList.remove('open'); }
+
+// ══════════════════════════════════════
+//   TOAST
+// ══════════════════════════════════════
+let toastTimer;
+function showToast(msg){
+  const t=$('toast');
+  t.textContent=msg; t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer=setTimeout(()=>t.classList.remove('show'),2600);
+}
+</script>
+</body>
+</html>
