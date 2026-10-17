@@ -4,6 +4,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="theme-color" content="#082f49">
+<script>
+  // Tema guardado (oscuro por defecto). Clave propia para no afectar index.html.
+  try{ document.documentElement.setAttribute('data-theme', localStorage.getItem('granizados-theme') || 'dark'); }
+  catch(e){ document.documentElement.setAttribute('data-theme', 'dark'); }
+</script>
 <title>🧊 Granizados — Salchimonster</title>
 <style>
   /* ═══ TEMA OSCURO — azul hielo sobre azul marino ═══ */
@@ -32,6 +37,47 @@
     --er-bg: rgba(248,113,113,0.10); --er-bd: rgba(248,113,113,0.38); --er-tx: #fca5a5;
     --pu-bg: rgba(167,139,250,0.12); --pu-bd: rgba(167,139,250,0.40); --pu-tx: #c4b5fd;
     --shadow: 0 4px 18px rgba(0,0,0,0.35);
+    --header-bg:   linear-gradient(160deg, #0c4a6e 0%, #082f49 60%, #070d1a 100%);
+    --login-bg:    radial-gradient(circle at 50% 0%, #0c4a6e 0%, #070d1a 70%);
+    --debe-bg:     linear-gradient(135deg, #082f49, #0c4a6e);
+    --overlay:     rgba(2,6,16,0.72);
+    --toast-bg:    #e0f2fe;
+    --toast-tx:    #04121f;
+    --placeholder: #4f6384;
+  }
+
+  /* ═══ TEMA CLARO ═══ */
+  :root[data-theme="light"] {
+    color-scheme: light;
+    --bg:       #f0f9ff;
+    --surface:  #ffffff;
+    --card:     #ffffff;
+    --card2:    #f8fafc;
+    --light:    #f1f5f9;
+    --border:   #dbe4ef;
+    --accent:   #0284c7;
+    --accent2:  #0369a1;
+    --on-accent:#ffffff;
+    --grad:     linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%);
+    --green:    #16a34a;
+    --red:      #dc2626;
+    --yellow:   #d97706;
+    --purple:   #7c3aed;
+    --text:     #0f172a;
+    --gray:     #64748b;
+    --ef-bg: #f0fdf4; --ef-bd: #86efac; --ef-tx: #15803d;
+    --tr-bg: #f0f9ff; --tr-bd: #7dd3fc; --tr-tx: #0369a1;
+    --wa-bg: #fffbeb; --wa-bd: #fcd34d; --wa-tx: #92400e;
+    --er-bg: #fef2f2; --er-bd: #fecaca; --er-tx: #b91c1c;
+    --pu-bg: #f5f3ff; --pu-bd: #ddd6fe; --pu-tx: #6d28d9;
+    --shadow: 0 1px 4px rgba(15,23,42,0.08);
+    --header-bg:   linear-gradient(135deg, #0ea5e9, #0284c7);
+    --login-bg:    linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%);
+    --debe-bg:     linear-gradient(135deg, #0c4a6e, #0369a1);
+    --overlay:     rgba(15,23,42,0.45);
+    --toast-bg:    #1e293b;
+    --toast-tx:    #ffffff;
+    --placeholder: #94a3b8;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
@@ -46,11 +92,11 @@
   #login-screen {
     display: flex; flex-direction: column; align-items: center; justify-content: center;
     min-height: 100vh; padding: 24px; gap: 12px;
-    background: radial-gradient(circle at 50% 0%, #0c4a6e 0%, var(--bg) 70%);
+    background: var(--login-bg);
   }
   .login-logo  { font-size: 3.5rem; filter: drop-shadow(0 0 18px rgba(56,189,248,0.5)); }
   .login-title { font-size: 1.5rem; font-weight: 900; color: #fff; }
-  .login-sub   { font-size: 0.85rem; color: var(--tr-tx); }
+  .login-sub   { font-size: 0.85rem; color: rgba(255,255,255,0.8); }
   .login-box {
     background: var(--card); border: 1.5px solid var(--border); border-radius: 20px;
     padding: 28px 24px; width: 100%; max-width: 340px;
@@ -74,22 +120,23 @@
   /* ─── HEADER ─── */
   #main-screen { display: none; }
   header {
-    background: linear-gradient(160deg, #0c4a6e 0%, #082f49 60%, var(--bg) 100%);
+    background: var(--header-bg);
     border-bottom: 1px solid var(--border);
     padding: 14px 16px 12px; color: #fff;
   }
   .header-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
-  .header-logo  { font-size: 1.25rem; font-weight: 900; }
-  .header-user  { font-size: 0.72rem; color: var(--tr-tx); opacity: 0.85; }
+  .header-logo  { font-size: 1.25rem; font-weight: 900; white-space: nowrap; }
+  .header-user  { font-size: 0.72rem; color: #e0f2fe; }
   #reloj        { font-size: 0.88rem; font-weight: 700; }
   .btn-logout {
-    background: rgba(56,189,248,0.12); border: 1px solid var(--tr-bd); color: var(--tr-tx);
+    background: rgba(255,255,255,0.14); border: 1px solid rgba(255,255,255,0.3); color: #fff;
     padding: 5px 12px; border-radius: 8px; font-size: 0.76rem; cursor: pointer; font-weight: 700;
   }
   .btn-logout:active { opacity: 0.75; }
+  #btn-theme { padding: 5px 9px; font-size: 0.85rem; }
   .header-stats { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
   .stat-pill {
-    background: rgba(56,189,248,0.10); border: 1px solid rgba(56,189,248,0.25);
+    background: rgba(255,255,255,0.13); border: 1px solid rgba(255,255,255,0.25);
     border-radius: 20px; padding: 4px 11px; font-size: 0.76rem; font-weight: 700; color: #e0f2fe;
   }
 
@@ -151,20 +198,6 @@
   .caja-col-head { font-size: 0.7rem; font-weight: 800; opacity: 0.85; margin-bottom: 6px; }
   .caja-col-total { border-top: 1px solid currentColor; margin-top: 5px; padding-top: 5px; font-size: 0.95rem; font-weight: 900; display: flex; justify-content: space-between; }
 
-  /* ─── CAJA FUERTE ─── */
-  .safe-box {
-    background: linear-gradient(135deg, #2e1065, #4c1d95); border: 1px solid var(--pu-bd);
-    border-radius: 14px; padding: 16px; color: #fff; margin-bottom: 14px; text-align: center;
-  }
-  .safe-label { font-size: 0.78rem; font-weight: 700; opacity: 0.8; margin-bottom: 4px; }
-  .safe-val   { font-size: 2rem; font-weight: 900; margin-bottom: 12px; }
-  .safe-btns  { display: flex; gap: 8px; justify-content: center; }
-  .btn-safe-dep {
-    flex: 1; padding: 9px 14px; background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.3);
-    border-radius: 10px; color: #fff; font-weight: 700; font-size: 0.84rem; cursor: pointer; max-width: 140px;
-  }
-  .btn-safe-dep:active { opacity: 0.75; }
-
   /* ─── FORM ─── */
   .form-row { display: flex; gap: 8px; flex-wrap: wrap; }
   .fg { flex: 1; min-width: 100px; }
@@ -173,7 +206,7 @@
     width: 100%; padding: 9px 11px; border: 1.5px solid var(--border); border-radius: 9px;
     font-size: 0.9rem; color: var(--text); background: var(--light); outline: none; transition: border-color 0.2s;
   }
-  input::placeholder { color: #4f6384; }
+  input::placeholder { color: var(--placeholder); }
   input:focus, select:focus { border-color: var(--accent); }
   select option { background: var(--card); color: var(--text); }
 
@@ -238,7 +271,7 @@
 
   /* ─── MODAL ─── */
   .modal-bg {
-    display: none; position: fixed; inset: 0; background: rgba(2,6,16,0.72);
+    display: none; position: fixed; inset: 0; background: var(--overlay);
     z-index: 200; align-items: flex-end; justify-content: center;
   }
   .modal-bg.open { display: flex; }
@@ -257,7 +290,7 @@
   /* ─── TOAST ─── */
   #toast {
     position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
-    background: #e0f2fe; color: #04121f; padding: 10px 22px; border-radius: 30px;
+    background: var(--toast-bg); color: var(--toast-tx); padding: 10px 22px; border-radius: 30px;
     font-size: 0.88rem; font-weight: 700; opacity: 0; transition: opacity 0.3s;
     z-index: 999; pointer-events: none; white-space: nowrap; box-shadow: 0 8px 24px rgba(0,0,0,0.5);
   }
@@ -265,12 +298,6 @@
 
   .empty-msg { color: var(--gray); font-size: 0.82rem; text-align: center; padding: 14px 0; }
   .error-msg { color: var(--red); font-size: 0.8rem; margin-top: 6px; min-height: 16px; }
-
-  /* ─── HISTORIAL CAJA FUERTE ─── */
-  .safe-mov { font-size: 0.78rem; display: flex; justify-content: space-between; gap: 8px; padding: 5px 0; border-bottom: 1px solid var(--border); }
-  .safe-mov:last-child { border-bottom: none; }
-  .mov-deposito { color: var(--green); font-weight: 700; white-space: nowrap; }
-  .mov-retiro   { color: var(--red);   font-weight: 700; white-space: nowrap; }
 
   /* ─── BANNERS ─── */
   .banner {
@@ -337,12 +364,12 @@
   .res-tot { border-top: 1px solid var(--border); margin-top: 4px; padding-top: 6px; }
   .res-tot span { font-weight: 900 !important; color: var(--text) !important; }
   .res-debe {
-    background: linear-gradient(135deg, #082f49, #0c4a6e); border: 1px solid var(--tr-bd);
+    background: var(--debe-bg); border: 1px solid var(--tr-bd);
     color: #fff; border-radius: 12px; padding: 12px 14px; margin-bottom: 10px;
   }
   .res-debe-row { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; padding: 4px 0; font-size: 0.86rem; }
   .res-debe-row b { font-size: 1.15rem; color: #e0f2fe; }
-  .res-debe-sub { font-size: 0.7rem; color: var(--tr-tx); opacity: 0.8; margin-bottom: 4px; }
+  .res-debe-sub { font-size: 0.7rem; color: #bae6fd; opacity: 0.85; margin-bottom: 4px; }
   .hist-sub { font-size: 0.72rem; color: var(--gray); }
 
   /* ─── HISTORIAL / CALENDARIO ─── */
@@ -399,11 +426,12 @@
         <div class="header-logo">🧊 Granizados</div>
         <div class="header-user" id="h-user"></div>
       </div>
-      <div style="display:flex;align-items:center;gap:10px">
-        <div style="text-align:right">
+      <div style="display:flex;align-items:center;gap:6px;min-width:0">
+        <div style="text-align:right;min-width:0">
           <div id="reloj"></div>
           <div id="h-fecha" style="font-size:0.68rem;opacity:0.85;text-transform:capitalize"></div>
         </div>
+        <button class="btn-logout" id="btn-theme" onclick="toggleTheme()" title="Cambiar tema"></button>
         <button class="btn-logout" onclick="doLogout()">Salir</button>
       </div>
     </div>
@@ -471,23 +499,6 @@
         <span id="ventas-cnt" style="font-size:0.75rem;color:var(--gray);font-weight:600"></span>
       </div>
       <div id="ventas-list"><div class="empty-msg">Sin ventas registradas hoy</div></div>
-    </div>
-
-    <!-- Caja fuerte -->
-    <div class="safe-box">
-      <div class="safe-label">🔐 CAJA FUERTE</div>
-      <div class="safe-val" id="safe-val">$0</div>
-      <div class="safe-btns">
-        <button class="btn-safe-dep" onclick="openModalSafe('deposito')">⬆️ Depositar</button>
-        <button class="btn-safe-dep solo-admin" onclick="openModalSafe('retiro')">⬇️ Retirar</button>
-        <button class="btn-safe-dep" onclick="toggleSafeHist()">📋 Ver</button>
-      </div>
-    </div>
-    <div id="safe-hist-wrap" style="display:none;margin-bottom:14px">
-      <div class="card" style="margin-bottom:0">
-        <div class="card-title" style="font-size:0.82rem">Historial caja fuerte <button class="btn-sm btn-ghost" onclick="toggleSafeHist()">✕</button></div>
-        <div id="safe-hist-list"><div class="empty-msg">Sin movimientos</div></div>
-      </div>
     </div>
 
     <!-- Cierre del día -->
@@ -610,26 +621,6 @@
   </div>
 
 </div><!-- /main-screen -->
-
-<!-- ═══ MODAL: Caja Fuerte ═══ -->
-<div class="modal-bg" id="modal-safe">
-  <div class="modal">
-    <div class="modal-title">
-      <span id="safe-modal-title">🔐 Caja Fuerte</span>
-      <button class="btn-close" onclick="closeModal('modal-safe')">✕</button>
-    </div>
-    <div style="margin-bottom:8px">
-      <label>Monto</label>
-      <input type="text" inputmode="numeric" id="safe-monto" placeholder="0" oninput="moneyFmt(this)"/>
-    </div>
-    <div style="margin-bottom:8px">
-      <label>Motivo (opcional)</label>
-      <input type="text" id="safe-motivo" placeholder="Ej: Separado para emergencia"/>
-    </div>
-    <div class="error-msg" id="safe-error"></div>
-    <button class="btn-primary" onclick="saveSafeMovimiento()">Guardar</button>
-  </div>
-</div>
 
 <!-- ═══ MODAL: Agregar/Editar Producto ═══ -->
 <div class="modal-bg" id="modal-inv">
@@ -768,9 +759,6 @@ const VENTAS    = () => DIA().collection('ventas');
 const COMPRAS   = () => DIA().collection('compras');
 const INV_COL   = () => db.collection('granizados_inventario');
 const PROD_COL  = () => db.collection('granizados_productos');
-const SAFE_COL  = () => db.collection('granizados_caja_fuerte');
-const SAFE_DOC  = () => SAFE_COL().doc('saldo');
-const SAFE_HIST = () => SAFE_COL().doc('saldo').collection('movimientos');
 
 // ── Formateo ──
 const fmt     = n => (n<0?'−$':'$') + Math.abs(n||0).toLocaleString('es-CO');
@@ -794,13 +782,10 @@ const $ = id => document.getElementById(id);
 let currentUser  = null;
 let ventasTipo   = 'efectivo';
 let compraTipo   = 'efectivo';
-let safeAccion   = 'deposito';
 let movTipo      = 'entrada';
 let invItems     = [];
 let productos    = [];
 let carrito      = {};          // { prodId: cantidad }
-let safeHist     = [];
-let safeVisible  = false;
 let unsubs       = [];
 let diaData      = {};
 let ventasCache  = [];
@@ -857,6 +842,21 @@ async function doLogin(){
 $('l-pass').addEventListener('keydown', e=>{ if(e.key==='Enter') doLogin(); });
 
 function doLogout(){ auth.signOut(); }
+
+// ══════════════════════════════════════
+//   TEMA OSCURO / CLARO
+// ══════════════════════════════════════
+function aplicarTema(t){
+  document.documentElement.setAttribute('data-theme', t);
+  $('btn-theme').textContent = t === 'dark' ? '☀️' : '🌙';
+  document.querySelector('meta[name="theme-color"]').content = t === 'dark' ? '#082f49' : '#0284c7';
+}
+function toggleTheme(){
+  const t = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+  aplicarTema(t);
+  try{ localStorage.setItem('granizados-theme', t); }catch(e){}
+}
+aplicarTema(document.documentElement.getAttribute('data-theme') || 'dark');
 
 // ══════════════════════════════════════
 //   RELOJ Y CAMBIO DE DÍA
@@ -921,20 +921,6 @@ function setupListeners(){
     recalc();
   }, e=>console.error('compras',e));
   unsubs.push(u2);
-
-  // Caja fuerte — saldo
-  const u3 = SAFE_DOC().onSnapshot(snap=>{
-    const saldo = snap.exists ? (snap.data().saldo||0) : 0;
-    $('safe-val').textContent = fmt(saldo);
-  }, e=>console.error('safe',e));
-  unsubs.push(u3);
-
-  // Caja fuerte — historial
-  const u4 = SAFE_HIST().orderBy('createdAt','desc').limit(30).onSnapshot(snap=>{
-    safeHist = snap.docs.map(d=>({_id:d.id,...d.data()}));
-    renderSafeHist();
-  }, e=>console.error('safe-hist',e));
-  unsubs.push(u4);
 
   // Insumos
   const u5 = INV_COL().orderBy('nombre').onSnapshot(snap=>{
@@ -1145,59 +1131,6 @@ async function delVenta(id){
     await batch.commit();
     showToast('Venta eliminada');
   } catch(e){ alert(e.message); }
-}
-
-// ══════════════════════════════════════
-//   CAJA FUERTE
-// ══════════════════════════════════════
-function openModalSafe(accion){
-  if(accion==='retiro' && !soloAdmin('retirar de la caja fuerte')) return;
-  safeAccion = accion;
-  $('safe-modal-title').textContent = accion==='deposito' ? '🔐 Depositar en caja fuerte' : '🔐 Retirar de caja fuerte';
-  $('safe-monto').value='';
-  $('safe-motivo').value='';
-  $('safe-error').textContent='';
-  openModal('modal-safe');
-}
-
-async function saveSafeMovimiento(){
-  const monto  = moneyVal('safe-monto');
-  const motivo = ($('safe-motivo').value||'').trim();
-  $('safe-error').textContent='';
-  if(!monto){ $('safe-error').textContent='Ingresa un monto.'; return; }
-  try{
-    // Actualizar saldo con transacción
-    await db.runTransaction(async tx=>{
-      const ref  = SAFE_DOC();
-      const snap = await tx.get(ref);
-      const actual = snap.exists ? (snap.data().saldo||0) : 0;
-      const nuevo  = safeAccion==='deposito' ? actual+monto : Math.max(0, actual-monto);
-      tx.set(ref, { saldo: nuevo, updatedAt: TS() }, { merge: true });
-    });
-    // Registrar movimiento en historial
-    await SAFE_HIST().add({
-      tipo: safeAccion, monto, motivo,
-      hora: horaAhora(), fecha: today(), createdAt: TS(), creadoPor: currentUser.uid
-    });
-    closeModal('modal-safe');
-    showToast(safeAccion==='deposito'?'⬆️ Depositado en caja fuerte':'⬇️ Retirado de caja fuerte');
-  } catch(e){ $('safe-error').textContent='Error: '+e.message; }
-}
-
-function toggleSafeHist(){
-  safeVisible = !safeVisible;
-  $('safe-hist-wrap').style.display = safeVisible ? 'block' : 'none';
-}
-
-function renderSafeHist(){
-  const div = $('safe-hist-list');
-  if(!div) return;
-  if(!safeHist.length){ div.innerHTML='<div class="empty-msg">Sin movimientos</div>'; return; }
-  div.innerHTML = safeHist.map(m=>`
-    <div class="safe-mov">
-      <span>${esc(m.fecha||'')} ${esc(m.hora||'')} — ${esc(m.motivo||'Sin motivo')}</span>
-      <span class="${m.tipo==='deposito'?'mov-deposito':'mov-retiro'}">${m.tipo==='deposito'?'▲':'▼'} ${fmt(m.monto)}</span>
-    </div>`).join('');
 }
 
 // ══════════════════════════════════════
