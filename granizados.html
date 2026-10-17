@@ -3,22 +3,35 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#082f49">
 <title>🧊 Granizados — Salchimonster</title>
 <style>
+  /* ═══ TEMA OSCURO — azul hielo sobre azul marino ═══ */
   :root {
-    --bg:      #f0f9ff;
-    --surface: #ffffff;
-    --card:    #ffffff;
-    --accent:  #0ea5e9;
-    --accent2: #0284c7;
-    --green:   #16a34a;
-    --red:     #dc2626;
-    --yellow:  #d97706;
-    --purple:  #7c3aed;
-    --text:    #1e293b;
-    --gray:    #64748b;
-    --border:  #e2e8f0;
-    --light:   #f8fafc;
+    color-scheme: dark;
+    --bg:       #070d1a;
+    --surface:  #0e1729;
+    --card:     #101b30;
+    --card2:    #14223b;
+    --light:    #0a1324;
+    --border:   #1f2f4d;
+    --accent:   #38bdf8;
+    --accent2:  #0ea5e9;
+    --on-accent:#04121f;
+    --grad:     linear-gradient(135deg, #0369a1 0%, #0ea5e9 100%);
+    --green:    #4ade80;
+    --red:      #f87171;
+    --yellow:   #fbbf24;
+    --purple:   #a78bfa;
+    --text:     #e2e8f0;
+    --gray:     #8ea3c0;
+    /* Superficies teñidas */
+    --ef-bg: rgba(74,222,128,0.10);  --ef-bd: rgba(74,222,128,0.35);  --ef-tx: #86efac;
+    --tr-bg: rgba(56,189,248,0.10);  --tr-bd: rgba(56,189,248,0.40);  --tr-tx: #7dd3fc;
+    --wa-bg: rgba(251,191,36,0.10);  --wa-bd: rgba(251,191,36,0.38);  --wa-tx: #fcd34d;
+    --er-bg: rgba(248,113,113,0.10); --er-bd: rgba(248,113,113,0.38); --er-tx: #fca5a5;
+    --pu-bg: rgba(167,139,250,0.12); --pu-bd: rgba(167,139,250,0.40); --pu-tx: #c4b5fd;
+    --shadow: 0 4px 18px rgba(0,0,0,0.35);
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
@@ -31,53 +44,29 @@
 
   /* ─── LOGIN ─── */
   #login-screen {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    min-height: 100vh;
-    padding: 24px;
-    gap: 12px;
-    background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    min-height: 100vh; padding: 24px; gap: 12px;
+    background: radial-gradient(circle at 50% 0%, #0c4a6e 0%, var(--bg) 70%);
   }
-  .login-logo  { font-size: 3.5rem; }
+  .login-logo  { font-size: 3.5rem; filter: drop-shadow(0 0 18px rgba(56,189,248,0.5)); }
   .login-title { font-size: 1.5rem; font-weight: 900; color: #fff; }
-  .login-sub   { font-size: 0.85rem; color: rgba(255,255,255,0.8); }
+  .login-sub   { font-size: 0.85rem; color: var(--tr-tx); }
   .login-box {
-    background: #fff;
-    border-radius: 20px;
-    padding: 28px 24px;
-    width: 100%;
-    max-width: 340px;
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    margin-top: 10px;
-    box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+    background: var(--card); border: 1.5px solid var(--border); border-radius: 20px;
+    padding: 28px 24px; width: 100%; max-width: 340px;
+    display: flex; flex-direction: column; gap: 12px; margin-top: 10px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
   }
   .login-label { font-size: 0.78rem; color: var(--gray); font-weight: 700; margin-bottom: 2px; }
   .login-input {
-    width: 100%;
-    padding: 11px 14px;
-    border: 1.5px solid var(--border);
-    border-radius: 10px;
-    font-size: 0.95rem;
-    outline: none;
-    transition: border-color 0.2s;
-    background: var(--light);
+    width: 100%; padding: 11px 14px; border: 1.5px solid var(--border); border-radius: 10px;
+    font-size: 0.95rem; outline: none; transition: border-color 0.2s;
+    background: var(--light); color: var(--text);
   }
-  .login-input:focus { border-color: var(--accent); background: #fff; }
+  .login-input:focus { border-color: var(--accent); }
   .btn-login {
-    width: 100%;
-    padding: 13px;
-    background: var(--accent);
-    color: #fff;
-    border: none;
-    border-radius: 10px;
-    font-size: 1rem;
-    font-weight: 800;
-    cursor: pointer;
-    margin-top: 4px;
+    width: 100%; padding: 13px; background: var(--grad); color: #fff; border: none;
+    border-radius: 10px; font-size: 1rem; font-weight: 800; cursor: pointer; margin-top: 4px;
   }
   .btn-login:active { opacity: 0.88; }
   .login-error { color: var(--red); font-size: 0.82rem; font-weight: 600; text-align: center; }
@@ -85,74 +74,37 @@
   /* ─── HEADER ─── */
   #main-screen { display: none; }
   header {
-    background: linear-gradient(135deg, #0ea5e9, #0284c7);
-    padding: 14px 16px 10px;
-    color: #fff;
+    background: linear-gradient(160deg, #0c4a6e 0%, #082f49 60%, var(--bg) 100%);
+    border-bottom: 1px solid var(--border);
+    padding: 14px 16px 12px; color: #fff;
   }
-  .header-top {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 6px;
-  }
+  .header-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
   .header-logo  { font-size: 1.25rem; font-weight: 900; }
-  .header-user  { font-size: 0.72rem; opacity: 0.85; }
-  #reloj        { font-size: 0.88rem; font-weight: 700; opacity: 0.9; }
+  .header-user  { font-size: 0.72rem; color: var(--tr-tx); opacity: 0.85; }
+  #reloj        { font-size: 0.88rem; font-weight: 700; }
   .btn-logout {
-    background: rgba(255,255,255,0.2);
-    border: 1px solid rgba(255,255,255,0.3);
-    color: #fff;
-    padding: 5px 12px;
-    border-radius: 8px;
-    font-size: 0.76rem;
-    cursor: pointer;
-    font-weight: 700;
+    background: rgba(56,189,248,0.12); border: 1px solid var(--tr-bd); color: var(--tr-tx);
+    padding: 5px 12px; border-radius: 8px; font-size: 0.76rem; cursor: pointer; font-weight: 700;
   }
   .btn-logout:active { opacity: 0.75; }
-
-  /* Resumen rápido en header */
-  .header-stats {
-    display: flex;
-    gap: 10px;
-    margin-top: 8px;
-    flex-wrap: wrap;
-  }
+  .header-stats { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
   .stat-pill {
-    background: rgba(255,255,255,0.18);
-    border: 1px solid rgba(255,255,255,0.25);
-    border-radius: 20px;
-    padding: 4px 12px;
-    font-size: 0.78rem;
-    font-weight: 700;
-    color: #fff;
+    background: rgba(56,189,248,0.10); border: 1px solid rgba(56,189,248,0.25);
+    border-radius: 20px; padding: 4px 11px; font-size: 0.76rem; font-weight: 700; color: #e0f2fe;
   }
 
   /* ─── TABS ─── */
   .tab-bar {
-    display: flex;
-    background: #fff;
-    border-bottom: 2px solid var(--border);
-    position: sticky;
-    top: 0;
-    z-index: 50;
+    display: flex; background: var(--surface); border-bottom: 1px solid var(--border);
+    position: sticky; top: 0; z-index: 50;
   }
   .tab-btn {
-    flex: 1;
-    padding: 12px 2px;
-    border: none;
-    background: none;
-    font-size: 0.76rem;
-    white-space: nowrap;
-    font-weight: 700;
-    color: var(--gray);
-    cursor: pointer;
-    border-bottom: 3px solid transparent;
-    transition: all 0.2s;
+    flex: 1; padding: 8px 1px 7px; border: none; background: none;
+    font-size: 0.68rem; white-space: nowrap; font-weight: 700; color: var(--gray);
+    cursor: pointer; border-bottom: 3px solid transparent; transition: all 0.2s;
   }
-  .tab-btn.active {
-    color: var(--accent);
-    border-bottom-color: var(--accent);
-  }
+  .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); background: rgba(56,189,248,0.06); }
+  .tab-ico { display: block; font-size: 1.05rem; line-height: 1.2; }
 
   /* ─── CONTENIDO ─── */
   .tab-content { display: none; padding: 14px 14px 0; }
@@ -160,85 +112,56 @@
 
   /* ─── CARDS ─── */
   .card {
-    background: var(--card);
-    border: 1.5px solid var(--border);
-    border-radius: 14px;
-    padding: 14px 15px;
-    margin-bottom: 14px;
-    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+    background: var(--card); border: 1px solid var(--border); border-radius: 14px;
+    padding: 14px 15px; margin-bottom: 14px; box-shadow: var(--shadow);
   }
   .card-title {
-    font-weight: 800;
-    font-size: 0.9rem;
-    margin-bottom: 12px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
+    font-weight: 800; font-size: 0.9rem; margin-bottom: 12px;
+    display: flex; justify-content: space-between; align-items: center; gap: 8px;
   }
 
-  /* ─── SALDO INICIAL ─── */
+  /* ─── FONDO PARA COMPRAS ─── */
   .saldo-ini-card {
-    background: #fffbeb;
-    border: 1.5px solid #fcd34d;
-    border-radius: 14px;
-    padding: 13px 15px;
-    margin-bottom: 14px;
+    background: var(--wa-bg); border: 1px solid var(--wa-bd); border-radius: 14px;
+    padding: 13px 15px; margin-bottom: 14px;
   }
   .saldo-ini-title {
-    font-size: 0.82rem; font-weight: 800; color: #92400e;
+    font-size: 0.82rem; font-weight: 800; color: var(--wa-tx);
     margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;
   }
   .saldo-ini-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px; }
-  .saldo-ini-lbl  { font-size: 0.7rem; font-weight: 700; color: #92400e; margin-bottom: 3px; }
+  .saldo-ini-lbl  { font-size: 0.7rem; font-weight: 700; color: var(--wa-tx); margin-bottom: 3px; opacity: 0.85; }
   .btn-saldo-save {
-    width: 100%; padding: 8px; background: #d97706; color: #fff;
+    width: 100%; padding: 8px; background: var(--yellow); color: #1c1305;
     border: none; border-radius: 9px; font-weight: 800; font-size: 0.84rem; cursor: pointer;
   }
   .btn-saldo-save:active { opacity: 0.85; }
 
   /* ─── RESUMEN CAJA ─── */
   .caja-total {
-    text-align: center;
-    padding: 10px;
-    background: linear-gradient(135deg, #0ea5e9, #0284c7);
-    border-radius: 12px;
-    color: #fff;
-    margin-bottom: 12px;
+    text-align: center; padding: 12px; background: var(--grad); border-radius: 14px;
+    color: #fff; margin-bottom: 12px; box-shadow: 0 6px 24px rgba(14,165,233,0.25);
   }
   .caja-total-label { font-size: 0.75rem; font-weight: 700; opacity: 0.85; }
   .caja-total-val   { font-size: 1.6rem; font-weight: 900; }
-  .caja-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+  .caja-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
   .caja-col  { border-radius: 12px; padding: 11px 12px; }
-  .caja-col-ef { background: #f0fff4; border: 1.5px solid #9ae6b4; color: #276749; }
-  .caja-col-tr { background: #ebf8ff; border: 1.5px solid #90cdf4; color: #2b6cb0; }
-  .caja-col-head { font-size: 0.7rem; font-weight: 800; opacity: 0.8; margin-bottom: 6px; }
-  .caja-col-row  { display: flex; justify-content: space-between; font-size: 0.74rem; padding: 2px 0; }
-  .caja-col-row-label { opacity: 0.75; }
+  .caja-col-ef { background: var(--ef-bg); border: 1px solid var(--ef-bd); color: var(--ef-tx); }
+  .caja-col-tr { background: var(--tr-bg); border: 1px solid var(--tr-bd); color: var(--tr-tx); }
+  .caja-col-head { font-size: 0.7rem; font-weight: 800; opacity: 0.85; margin-bottom: 6px; }
   .caja-col-total { border-top: 1px solid currentColor; margin-top: 5px; padding-top: 5px; font-size: 0.95rem; font-weight: 900; display: flex; justify-content: space-between; }
 
   /* ─── CAJA FUERTE ─── */
   .safe-box {
-    background: linear-gradient(135deg, #4c1d95, #6d28d9);
-    border-radius: 14px;
-    padding: 16px;
-    color: #fff;
-    margin-bottom: 14px;
-    text-align: center;
+    background: linear-gradient(135deg, #2e1065, #4c1d95); border: 1px solid var(--pu-bd);
+    border-radius: 14px; padding: 16px; color: #fff; margin-bottom: 14px; text-align: center;
   }
   .safe-label { font-size: 0.78rem; font-weight: 700; opacity: 0.8; margin-bottom: 4px; }
   .safe-val   { font-size: 2rem; font-weight: 900; margin-bottom: 12px; }
   .safe-btns  { display: flex; gap: 8px; justify-content: center; }
   .btn-safe-dep {
-    flex: 1;
-    padding: 9px 14px;
-    background: rgba(255,255,255,0.2);
-    border: 1.5px solid rgba(255,255,255,0.4);
-    border-radius: 10px;
-    color: #fff;
-    font-weight: 700;
-    font-size: 0.84rem;
-    cursor: pointer;
-    max-width: 140px;
+    flex: 1; padding: 9px 14px; background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.3);
+    border-radius: 10px; color: #fff; font-weight: 700; font-size: 0.84rem; cursor: pointer; max-width: 140px;
   }
   .btn-safe-dep:active { opacity: 0.75; }
 
@@ -247,142 +170,107 @@
   .fg { flex: 1; min-width: 100px; }
   label { display: block; font-size: 0.74rem; font-weight: 700; color: var(--gray); margin-bottom: 4px; }
   input[type=text], input[type=number], select, textarea {
-    width: 100%;
-    padding: 9px 11px;
-    border: 1.5px solid var(--border);
-    border-radius: 9px;
-    font-size: 0.9rem;
-    color: var(--text);
-    background: var(--light);
-    outline: none;
-    transition: border-color 0.2s;
+    width: 100%; padding: 9px 11px; border: 1.5px solid var(--border); border-radius: 9px;
+    font-size: 0.9rem; color: var(--text); background: var(--light); outline: none; transition: border-color 0.2s;
   }
-  input:focus, select:focus { border-color: var(--accent); background: #fff; }
+  input::placeholder { color: #4f6384; }
+  input:focus, select:focus { border-color: var(--accent); }
+  select option { background: var(--card); color: var(--text); }
 
   .btn         { padding: 10px 18px; border-radius: 10px; border: none; font-weight: 700; font-size: 0.88rem; cursor: pointer; }
-  .btn-primary { background: var(--accent); color: #fff; width: 100%; padding: 12px; margin-top: 8px; font-size: 0.95rem; border-radius: 10px; border: none; font-weight: 800; cursor: pointer; }
-  .btn-primary:active { opacity: 0.85; }
+  .btn-primary { background: var(--grad); color: #fff; width: 100%; padding: 12px; margin-top: 8px; font-size: 0.95rem; border-radius: 10px; border: none; font-weight: 800; cursor: pointer; }
+  .btn-primary:active   { opacity: 0.85; }
+  .btn-primary:disabled { opacity: 0.5; }
   .btn-sm      { padding: 5px 11px; border-radius: 8px; font-size: 0.78rem; font-weight: 700; cursor: pointer; border: none; }
-  .btn-danger  { background: #fff5f5; color: var(--red); border: 1px solid #fed7d7 !important; }
-  .btn-ghost   { background: var(--light); border: 1.5px solid var(--border); color: var(--text); }
+  .btn-danger  { background: var(--er-bg); color: var(--er-tx); border: 1px solid var(--er-bd) !important; }
+  .btn-ghost   { background: var(--card2); border: 1px solid var(--border); color: var(--text); }
+  .btn-accent  { background: var(--accent); color: var(--on-accent); border: none; }
+  .btn-compra  { background: linear-gradient(135deg, #b91c1c, #ef4444); }
 
   /* Tipo pago botones */
   .tipo-btns { display: flex; gap: 6px; margin-bottom: 10px; }
   .tipo-btn {
-    flex: 1;
-    padding: 9px;
-    border-radius: 10px;
-    border: 2px solid var(--border);
-    background: var(--light);
-    color: var(--gray);
-    font-weight: 700;
-    font-size: 0.84rem;
-    cursor: pointer;
-    text-align: center;
+    flex: 1; padding: 9px; border-radius: 10px; border: 1.5px solid var(--border);
+    background: var(--light); color: var(--gray); font-weight: 700; font-size: 0.84rem; cursor: pointer; text-align: center;
   }
-  .tipo-btn.active-ef { border-color: #16a34a; background: #f0fff4; color: #16a34a; }
-  .tipo-btn.active-tr { border-color: #2563eb; background: #eff6ff; color: #2563eb; }
+  .tipo-btn.active-ef { border-color: var(--ef-bd); background: var(--ef-bg); color: var(--ef-tx); }
+  .tipo-btn.active-tr { border-color: var(--tr-bd); background: var(--tr-bg); color: var(--tr-tx); }
 
   /* ─── LISTA TRANSACCIONES ─── */
   .tx-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 9px 0;
-    border-bottom: 1px solid var(--border);
-    font-size: 0.85rem;
-    gap: 8px;
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 9px 0; border-bottom: 1px solid var(--border); font-size: 0.85rem; gap: 8px;
   }
   .tx-item:last-child { border-bottom: none; }
   .tx-desc  { flex: 1; min-width: 0; }
   .tx-desc-main  { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .tx-desc-sub   { font-size: 0.7rem; color: var(--gray); margin-top: 1px; }
   .tx-monto { font-weight: 800; font-size: 0.95rem; white-space: nowrap; }
-  .badge-ef { background: #f0fff4; color: #16a34a; border: 1px solid #9ae6b4; border-radius: 6px; padding: 1px 7px; font-size: 0.7rem; font-weight: 700; }
-  .badge-tr { background: #eff6ff; color: #2563eb; border: 1px solid #93c5fd; border-radius: 6px; padding: 1px 7px; font-size: 0.7rem; font-weight: 700; }
-  .badge-compra { background: #fff7ed; color: #c2410c; border: 1px solid #fed7aa; border-radius: 6px; padding: 1px 7px; font-size: 0.7rem; font-weight: 700; }
+  .tx-ef { color: var(--ef-tx); }
+  .tx-tr { color: var(--tr-tx); }
+  .badge-ef { background: var(--ef-bg); color: var(--ef-tx); border: 1px solid var(--ef-bd); border-radius: 6px; padding: 1px 7px; font-size: 0.7rem; font-weight: 700; }
+  .badge-tr { background: var(--tr-bg); color: var(--tr-tx); border: 1px solid var(--tr-bd); border-radius: 6px; padding: 1px 7px; font-size: 0.7rem; font-weight: 700; }
+  .badge-imp { background: var(--pu-bg); color: var(--pu-tx); border: 1px solid var(--pu-bd); border-radius: 6px; padding: 1px 7px; font-size: 0.68rem; font-weight: 700; }
 
   /* ─── INVENTARIO ─── */
   .inv-item {
-    border: 1.5px solid var(--border);
-    border-radius: 12px;
-    padding: 11px 13px;
-    margin-bottom: 8px;
-    background: #fff;
+    border: 1px solid var(--border); border-radius: 12px; padding: 11px 13px;
+    margin-bottom: 8px; background: var(--card2);
   }
-  .inv-item.stock-bajo { border-color: #feb2b2; background: #fffafa; }
-  .inv-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+  .inv-item.stock-bajo { border-color: var(--er-bd); background: var(--er-bg); }
+  .inv-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; gap: 8px; }
   .inv-nombre { font-weight: 700; font-size: 0.9rem; }
-  .inv-stock  { font-size: 1.1rem; font-weight: 900; }
-  .stock-ok   { color: #16a34a; }
+  .inv-stock  { font-size: 1.1rem; font-weight: 900; white-space: nowrap; }
+  .stock-ok   { color: var(--green); }
   .stock-low  { color: var(--red); }
   .stock-badge-low {
-    font-size: 0.65rem; font-weight: 800;
-    background: #fff5f5; color: var(--red);
-    border: 1px solid #feb2b2;
-    border-radius: 8px; padding: 2px 7px;
+    font-size: 0.65rem; font-weight: 800; background: var(--er-bg); color: var(--er-tx);
+    border: 1px solid var(--er-bd); border-radius: 8px; padding: 2px 7px;
+  }
+  .alerta-stock {
+    display: none; background: var(--er-bg); border: 1px solid var(--er-bd); border-radius: 10px;
+    padding: 9px 12px; margin-bottom: 10px; font-size: 0.8rem; color: var(--er-tx); font-weight: 700;
   }
   .inv-btns { display: flex; gap: 6px; }
-  .btn-entrada { flex: 1; padding: 7px; background: #f0fff4; border: 1.5px solid #9ae6b4; color: #16a34a; border-radius: 8px; font-weight: 700; font-size: 0.78rem; cursor: pointer; }
-  .btn-salida  { flex: 1; padding: 7px; background: #fff5f5; border: 1.5px solid #fed7d7; color: var(--red);   border-radius: 8px; font-weight: 700; font-size: 0.78rem; cursor: pointer; }
-  .btn-edit-inv { padding: 7px 10px; background: var(--light); border: 1.5px solid var(--border); color: var(--text); border-radius: 8px; font-size: 0.78rem; cursor: pointer; }
+  .btn-entrada { flex: 1; padding: 7px; background: var(--ef-bg); border: 1px solid var(--ef-bd); color: var(--ef-tx); border-radius: 8px; font-weight: 700; font-size: 0.78rem; cursor: pointer; }
+  .btn-salida  { flex: 1; padding: 7px; background: var(--er-bg); border: 1px solid var(--er-bd); color: var(--er-tx); border-radius: 8px; font-weight: 700; font-size: 0.78rem; cursor: pointer; }
+  .btn-edit-inv { padding: 7px 10px; background: var(--light); border: 1px solid var(--border); color: var(--text); border-radius: 8px; font-size: 0.78rem; cursor: pointer; }
 
   /* ─── MODAL ─── */
   .modal-bg {
-    display: none;
-    position: fixed; inset: 0;
-    background: rgba(0,0,0,0.45);
-    z-index: 200;
-    align-items: flex-end;
-    justify-content: center;
+    display: none; position: fixed; inset: 0; background: rgba(2,6,16,0.72);
+    z-index: 200; align-items: flex-end; justify-content: center;
   }
   .modal-bg.open { display: flex; }
   .modal {
-    background: #fff;
-    border-radius: 20px 20px 0 0;
-    padding: 20px 18px 30px;
-    width: 100%;
-    max-width: 480px;
-    max-height: 90vh;
-    overflow-y: auto;
-    animation: slideUp 0.25s ease;
+    background: var(--surface); border: 1px solid var(--border); border-bottom: none;
+    border-radius: 20px 20px 0 0; padding: 20px 18px 30px; width: 100%; max-width: 480px;
+    max-height: 90vh; overflow-y: auto; animation: slideUp 0.25s ease;
   }
   @keyframes slideUp { from{transform:translateY(100%)} to{transform:translateY(0)} }
   .modal-title {
-    font-weight: 800;
-    font-size: 1rem;
-    margin-bottom: 16px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
+    font-weight: 800; font-size: 1rem; margin-bottom: 16px;
+    display: flex; justify-content: space-between; align-items: center;
   }
   .btn-close { background: none; border: none; font-size: 1.3rem; cursor: pointer; color: var(--gray); padding: 0 4px; }
 
   /* ─── TOAST ─── */
   #toast {
     position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
-    background: #1e293b; color: #fff;
-    padding: 10px 22px; border-radius: 30px;
-    font-size: 0.88rem; font-weight: 700;
-    opacity: 0; transition: opacity 0.3s;
-    z-index: 999; pointer-events: none; white-space: nowrap;
+    background: #e0f2fe; color: #04121f; padding: 10px 22px; border-radius: 30px;
+    font-size: 0.88rem; font-weight: 700; opacity: 0; transition: opacity 0.3s;
+    z-index: 999; pointer-events: none; white-space: nowrap; box-shadow: 0 8px 24px rgba(0,0,0,0.5);
   }
   #toast.show { opacity: 1; }
 
   .empty-msg { color: var(--gray); font-size: 0.82rem; text-align: center; padding: 14px 0; }
   .error-msg { color: var(--red); font-size: 0.8rem; margin-top: 6px; min-height: 16px; }
 
-  /* ─── HISTORIAL SEGURO ─── */
-  .safe-mov {
-    font-size: 0.78rem;
-    display: flex;
-    justify-content: space-between;
-    padding: 5px 0;
-    border-bottom: 1px solid var(--border);
-  }
+  /* ─── HISTORIAL CAJA FUERTE ─── */
+  .safe-mov { font-size: 0.78rem; display: flex; justify-content: space-between; gap: 8px; padding: 5px 0; border-bottom: 1px solid var(--border); }
   .safe-mov:last-child { border-bottom: none; }
-  .mov-deposito { color: var(--green); font-weight: 700; }
-  .mov-retiro   { color: var(--red);   font-weight: 700; }
+  .mov-deposito { color: var(--green); font-weight: 700; white-space: nowrap; }
+  .mov-retiro   { color: var(--red);   font-weight: 700; white-space: nowrap; }
 
   /* ─── BANNERS ─── */
   .banner {
@@ -390,23 +278,22 @@
     font-size: 0.8rem; font-weight: 700; display: flex; gap: 8px;
     align-items: center; justify-content: space-between;
   }
-  .banner-ok   { background: #f0fff4; border: 1.5px solid #9ae6b4; color: #276749; }
-  .banner-warn { background: #fffbeb; border: 1.5px solid #fcd34d; color: #92400e; margin: 10px 14px 0; }
+  .banner-ok   { background: var(--ef-bg); border: 1px solid var(--ef-bd); color: var(--ef-tx); }
+  .banner-warn { background: var(--wa-bg); border: 1px solid var(--wa-bd); color: var(--wa-tx); margin: 10px 14px 0; }
 
   /* ─── PRODUCTOS (botones de venta) ─── */
   .prod-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 8px; margin-bottom: 10px; }
   .prod-btn {
-    position: relative; border: 2px solid var(--border); background: #fff;
-    border-radius: 12px; padding: 10px 6px; text-align: center; cursor: pointer;
-    font-family: inherit;
+    position: relative; border: 1.5px solid var(--border); background: var(--card2);
+    border-radius: 12px; padding: 10px 6px; text-align: center; cursor: pointer; font-family: inherit;
   }
   .prod-btn:active { transform: scale(0.97); }
-  .prod-btn.sel    { border-color: var(--accent); background: #e0f2fe; }
+  .prod-btn.sel    { border-color: var(--accent); background: var(--tr-bg); box-shadow: 0 0 0 1px var(--accent) inset; }
   .prod-btn-nombre { font-weight: 800; font-size: 0.82rem; color: var(--text); }
-  .prod-btn-precio { font-size: 0.78rem; color: var(--accent2); font-weight: 700; margin-top: 2px; }
+  .prod-btn-precio { font-size: 0.78rem; color: var(--accent); font-weight: 700; margin-top: 2px; }
   .prod-btn-low    { font-size: 0.64rem; color: var(--red); font-weight: 700; margin-top: 2px; }
   .prod-btn-qty {
-    position: absolute; top: -7px; right: -7px; background: var(--accent); color: #fff;
+    position: absolute; top: -7px; right: -7px; background: var(--accent); color: var(--on-accent);
     border-radius: 12px; min-width: 22px; height: 22px; padding: 0 6px;
     font-size: 0.75rem; font-weight: 900; display: flex; align-items: center; justify-content: center;
   }
@@ -417,8 +304,8 @@
   .cart-row-name { flex: 1; font-weight: 600; min-width: 0; }
   .cart-row-sub  { font-weight: 800; white-space: nowrap; }
   .qty-btn {
-    width: 28px; height: 28px; border-radius: 8px; border: 1.5px solid var(--border);
-    background: #fff; font-weight: 900; font-size: 0.95rem; cursor: pointer; color: var(--text);
+    width: 28px; height: 28px; border-radius: 8px; border: 1px solid var(--border);
+    background: var(--card2); font-weight: 900; font-size: 0.95rem; cursor: pointer; color: var(--text);
   }
   .cart-total { display: flex; justify-content: space-between; font-weight: 900; border-top: 1px solid var(--border); padding-top: 6px; margin-top: 4px; }
 
@@ -427,7 +314,7 @@
   .fondo-table th { font-size: 0.72rem; color: var(--gray); text-align: right; padding: 4px 6px; }
   .fondo-table td { text-align: right; padding: 5px 6px; font-weight: 700; }
   .fondo-table td:first-child, .fondo-table th:first-child { text-align: left; }
-  .fondo-table tr.fondo-queda td { border-top: 1.5px solid var(--border); font-weight: 900; font-size: 0.95rem; }
+  .fondo-table tr.fondo-queda td { border-top: 1px solid var(--border); font-weight: 900; font-size: 0.95rem; color: var(--accent); }
   .neg { color: var(--red) !important; }
 
   /* ─── RECETA (modal producto) ─── */
@@ -437,26 +324,45 @@
   .receta-txt { font-size: 0.74rem; color: var(--gray); margin-bottom: 8px; line-height: 1.4; }
 
   /* ─── CIERRE / RESUMEN DEL DÍA ─── */
-  .btn-cierre { background: var(--green); }
-  .btn-hist   { background: var(--light); color: var(--text); border: 1.5px solid var(--border) !important; }
-  .res-sec { border: 1.5px solid var(--border); border-radius: 12px; padding: 10px 12px; margin-bottom: 10px; }
+  .btn-cierre { background: linear-gradient(135deg, #15803d, #22c55e); }
+  .btn-hist   { background: var(--card2); color: var(--text); border: 1px solid var(--border) !important; }
+  .res-sec { background: var(--card2); border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; margin-bottom: 10px; }
   .res-h   { font-weight: 800; font-size: 0.84rem; margin-bottom: 6px; }
   .res-row { display: flex; justify-content: space-between; gap: 8px; font-size: 0.82rem; padding: 3px 0; }
   .res-row span:first-child { color: var(--gray); }
   .res-row span:last-child  { font-weight: 700; white-space: nowrap; }
   .res-tot { border-top: 1px solid var(--border); margin-top: 4px; padding-top: 6px; }
   .res-tot span { font-weight: 900 !important; color: var(--text) !important; }
-  .res-debe { background: #0f172a; color: #fff; border-radius: 12px; padding: 12px 14px; margin-bottom: 10px; }
-  .res-debe-row { display: flex; justify-content: space-between; align-items: baseline; padding: 4px 0; font-size: 0.86rem; }
-  .res-debe-row b { font-size: 1.15rem; }
-  .res-debe-sub { font-size: 0.7rem; opacity: 0.65; margin-bottom: 4px; }
-  .hist-item {
-    display: flex; justify-content: space-between; align-items: center; gap: 8px;
-    padding: 10px 12px; border: 1.5px solid var(--border); border-radius: 12px;
-    margin-bottom: 8px; cursor: pointer; background: #fff; width: 100%; font-family: inherit; text-align: left;
+  .res-debe {
+    background: linear-gradient(135deg, #082f49, #0c4a6e); border: 1px solid var(--tr-bd);
+    color: #fff; border-radius: 12px; padding: 12px 14px; margin-bottom: 10px;
   }
-  .hist-fecha { font-weight: 800; font-size: 0.86rem; text-transform: capitalize; }
-  .hist-sub   { font-size: 0.72rem; color: var(--gray); }
+  .res-debe-row { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; padding: 4px 0; font-size: 0.86rem; }
+  .res-debe-row b { font-size: 1.15rem; color: #e0f2fe; }
+  .res-debe-sub { font-size: 0.7rem; color: var(--tr-tx); opacity: 0.8; margin-bottom: 4px; }
+  .hist-sub { font-size: 0.72rem; color: var(--gray); }
+
+  /* ─── HISTORIAL / CALENDARIO ─── */
+  .cal-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+  .cal-head .btn-sm { font-size: 1.1rem; padding: 4px 14px; }
+  .cal-mes  { font-weight: 900; font-size: 1rem; text-transform: capitalize; }
+  .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+  .cal-dow  { text-align: center; font-size: 0.66rem; font-weight: 800; color: var(--gray); padding-bottom: 2px; }
+  .cal-day {
+    min-height: 46px; border-radius: 10px; border: 1px solid transparent;
+    background: var(--light); color: var(--gray); font-family: inherit; font-size: 0.82rem;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    cursor: pointer; padding: 2px;
+  }
+  .cal-day.saved { background: var(--tr-bg); border-color: var(--tr-bd); color: var(--tr-tx); font-weight: 800; }
+  .cal-day.hoy   { border-color: var(--yellow); }
+  .cal-day.sel   { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+  .cal-day-monto { font-size: 0.56rem; font-weight: 700; margin-top: 1px; }
+  .cal-vacio     { visibility: hidden; }
+  .cal-resumen   { display: flex; gap: 8px; margin-top: 12px; }
+  .cal-stat      { flex: 1; background: var(--light); border: 1px solid var(--border); border-radius: 10px; padding: 7px 8px; text-align: center; }
+  .cal-stat-lbl  { font-size: 0.64rem; color: var(--gray); font-weight: 700; }
+  .cal-stat-val  { font-size: 0.9rem; font-weight: 900; }
 </style>
 </head>
 <body>
@@ -514,10 +420,11 @@
 
   <!-- Tabs -->
   <div class="tab-bar">
-    <button class="tab-btn active" id="tab-btn-caja"       onclick="goTab('caja')">💰 Caja</button>
-    <button class="tab-btn"        id="tab-btn-compras"    onclick="goTab('compras')">🛒 Compras</button>
-    <button class="tab-btn"        id="tab-btn-productos"  onclick="goTab('productos')">🧃 Productos</button>
-    <button class="tab-btn"        id="tab-btn-inventario" onclick="goTab('inventario')">📦 Insumos</button>
+    <button class="tab-btn active" id="tab-btn-caja"       onclick="goTab('caja')"><span class="tab-ico">💰</span>Caja</button>
+    <button class="tab-btn"        id="tab-btn-compras"    onclick="goTab('compras')"><span class="tab-ico">🛒</span>Compras</button>
+    <button class="tab-btn"        id="tab-btn-productos"  onclick="goTab('productos')"><span class="tab-ico">🧃</span>Productos</button>
+    <button class="tab-btn"        id="tab-btn-inventario" onclick="goTab('inventario')"><span class="tab-ico">📦</span>Insumos</button>
+    <button class="tab-btn"        id="tab-btn-historial"  onclick="goTab('historial')"><span class="tab-ico">📅</span>Historial</button>
   </div>
 
   <!-- ══ TAB: CAJA ══ -->
@@ -582,7 +489,7 @@
 
     <!-- Cierre del día -->
     <button class="btn-primary btn-cierre" id="btn-guardar-dia" onclick="openCierre()">📅 Guardar día</button>
-    <button class="btn-primary btn-hist" onclick="openHistorial()" style="margin-bottom:14px">📚 Días guardados</button>
+    <button class="btn-primary btn-hist" onclick="goTab('historial')" style="margin-bottom:14px">📅 Ver historial</button>
   </div>
 
   <!-- ══ TAB: COMPRAS ══ -->
@@ -597,11 +504,11 @@
       <div class="saldo-ini-grid">
         <div>
           <div class="saldo-ini-lbl">💵 Efectivo</div>
-          <input type="text" inputmode="numeric" id="ini-ef" placeholder="0" oninput="moneyFmt(this)" style="background:#fff;font-size:0.9rem"/>
+          <input type="text" inputmode="numeric" id="ini-ef" placeholder="0" oninput="moneyFmt(this)" style="font-size:0.9rem"/>
         </div>
         <div>
           <div class="saldo-ini-lbl">🏦 Transferencia</div>
-          <input type="text" inputmode="numeric" id="ini-tr" placeholder="0" oninput="moneyFmt(this)" style="background:#fff;font-size:0.9rem"/>
+          <input type="text" inputmode="numeric" id="ini-tr" placeholder="0" oninput="moneyFmt(this)" style="font-size:0.9rem"/>
         </div>
       </div>
       <button class="btn-saldo-save" onclick="saveSaldoInicial()">💾 Guardar fondo</button>
@@ -636,7 +543,7 @@
         </div>
       </div>
       <div class="error-msg" id="cmp-error"></div>
-      <button class="btn-primary" style="background:var(--red)" onclick="addCompra()">🛒 Registrar compra</button>
+      <button class="btn-primary btn-compra" onclick="addCompra()">🛒 Registrar compra</button>
     </div>
     <div class="card">
       <div class="card-title">
@@ -651,7 +558,7 @@
   <div class="tab-content" id="tab-productos">
     <div class="card">
       <div class="card-title">🧃 Productos de venta
-        <button class="btn-sm btn-ghost" style="background:var(--accent);color:#fff;border:none" onclick="openModalProd()">+ Nuevo</button>
+        <button class="btn-sm btn-accent" onclick="openModalProd()">+ Nuevo</button>
       </div>
       <div class="receta-txt">Cada producto tiene su precio y los insumos que gasta. Al venderlo se descuentan solos del inventario.</div>
       <div id="prod-list"><div class="empty-msg">Sin productos todavía</div></div>
@@ -662,11 +569,40 @@
   <div class="tab-content" id="tab-inventario">
     <div class="card">
       <div class="card-title">📦 Insumos
-        <button class="btn-sm btn-ghost" style="background:var(--accent);color:#fff;border:none" onclick="openModalInvAdd()">+ Agregar</button>
+        <button class="btn-sm btn-accent" onclick="openModalInvAdd()">+ Agregar</button>
       </div>
       <input type="text" id="inv-buscar" placeholder="🔍 Buscar insumo..." oninput="renderInv()" style="margin-bottom:10px;font-size:0.84rem"/>
-      <div id="inv-alerta" style="display:none;background:#fff5f5;border:1px solid #feb2b2;border-radius:10px;padding:9px 12px;margin-bottom:10px;font-size:0.8rem;color:#c53030;font-weight:700"></div>
+      <div id="inv-alerta" class="alerta-stock"></div>
       <div id="inv-list"><div class="empty-msg">Sin insumos. Agrega el primero</div></div>
+    </div>
+  </div>
+
+  <!-- ══ TAB: HISTORIAL ══ -->
+  <div class="tab-content" id="tab-historial">
+    <div class="card">
+      <div class="cal-head">
+        <button class="btn-sm btn-ghost" onclick="moverMes(-1)">‹</button>
+        <div class="cal-mes" id="cal-mes"></div>
+        <button class="btn-sm btn-ghost" onclick="moverMes(1)">›</button>
+      </div>
+      <div class="cal-grid" id="cal-grid"></div>
+      <div class="cal-resumen" id="cal-resumen"></div>
+    </div>
+
+    <div id="hist-detalle"></div>
+
+    <div class="card">
+      <div class="card-title">📊 Excel</div>
+      <div class="form-row">
+        <button class="btn-primary btn-hist fg" style="margin-top:0;font-size:0.84rem;white-space:nowrap" onclick="exportarMes()">⬇️ Exportar mes</button>
+        <button class="btn-primary btn-hist fg" style="margin-top:0;font-size:0.84rem;white-space:nowrap" onclick="exportarTodo()">⬇️ Exportar todo</button>
+      </div>
+      <button class="btn-primary" onclick="$('imp-file').click()">⬆️ Importar desde Excel</button>
+      <input type="file" id="imp-file" accept=".xlsx,.xls" style="display:none" onchange="importarExcel(this)"/>
+      <div class="receta-txt" style="margin-top:8px">
+        Para importar usa el mismo formato del archivo exportado: hojas <b>Resumen</b>, <b>Productos</b>, <b>Compras</b> e <b>Insumos</b>, con la fecha como AAAA-MM-DD (o DD/MM/AAAA). Solo la hoja Resumen es obligatoria.
+      </div>
+      <div class="error-msg" id="excel-msg"></div>
     </div>
   </div>
 
@@ -788,17 +724,6 @@
     <div id="cierre-body"></div>
     <div class="error-msg" id="cierre-error"></div>
     <div id="cierre-footer"></div>
-  </div>
-</div>
-
-<!-- ═══ MODAL: Días guardados ═══ -->
-<div class="modal-bg" id="modal-hist">
-  <div class="modal">
-    <div class="modal-title">
-      <span>📚 Días guardados</span>
-      <button class="btn-close" onclick="closeModal('modal-hist')">✕</button>
-    </div>
-    <div id="hist-list"><div class="empty-msg">Cargando…</div></div>
   </div>
 </div>
 
@@ -1010,10 +935,11 @@ function setupListeners(){
 //   TABS
 // ══════════════════════════════════════
 function goTab(tab){
-  ['caja','compras','productos','inventario'].forEach(t=>{
+  ['caja','compras','productos','inventario','historial'].forEach(t=>{
     $('tab-btn-'+t).classList.toggle('active', t===tab);
     $('tab-'+t).classList.toggle('active', t===tab);
   });
+  if(tab==='historial') loadHistorial();
 }
 
 // ══════════════════════════════════════
@@ -1173,7 +1099,7 @@ function renderVentas(){
         <div class="tx-desc-sub">${esc(v.hora||'')}</div>
       </div>
       <span class="badge-${esEf(v.tipo)?'ef':'tr'}">${esEf(v.tipo)?'Ef':'Tr'}</span>
-      <span class="tx-monto" style="color:${esEf(v.tipo)?'#16a34a':'#2563eb'}">${fmt(v.monto)}</span>
+      <span class="tx-monto ${esEf(v.tipo)?'tx-ef':'tx-tr'}">${fmt(v.monto)}</span>
       <button class="btn-sm btn-danger" onclick="delVenta('${v._id}')" style="margin-left:4px">✕</button>
     </div>`).join('');
 }
@@ -1450,7 +1376,7 @@ function resumenHTML(c){
 
     <div class="res-sec">
       <div class="res-h">🧃 Productos vendidos</div>
-      ${c.productos.length ? c.productos.map(p=>row(`${p.cant}× ${esc(p.nombre)}`, fmt(p.total))).join('') : '<div class="empty-msg">Sin productos vendidos</div>'}
+      ${(c.productos||[]).length ? c.productos.map(p=>row(`${p.cant}× ${esc(p.nombre)}`, fmt(p.total))).join('') : '<div class="empty-msg">Sin productos vendidos</div>'}
       ${c.otrosIngresos ? row('Otros ingresos', fmt(c.otrosIngresos)) : ''}
     </div>
 
@@ -1462,12 +1388,12 @@ function resumenHTML(c){
         <tr><td>− Gastado</td><td style="color:var(--red)">${fmt(c.gasEf)}</td><td style="color:var(--red)">${fmt(c.gasTr)}</td></tr>
         <tr class="fondo-queda"><td>= Queda</td><td>${money(c.quedaEf)}</td><td>${money(c.quedaTr)}</td></tr>
       </table>
-      ${c.compras.length ? '<div style="margin-top:8px">' + c.compras.map(x=>row(`${esc(x.hora)} ${esc(x.desc)} <span class="badge-${x.tipo==='efectivo'?'ef':'tr'}">${x.tipo==='efectivo'?'Ef':'Tr'}</span>`, fmt(x.monto))).join('') + '</div>' : ''}
+      ${(c.compras||[]).length ? '<div style="margin-top:8px">' + c.compras.map(x=>row(`${esc(x.hora)} ${esc(x.desc)} <span class="badge-${x.tipo==='efectivo'?'ef':'tr'}">${x.tipo==='efectivo'?'Ef':'Tr'}</span>`, fmt(x.monto))).join('') + '</div>' : ''}
     </div>
 
     <div class="res-sec">
       <div class="res-h">📦 Insumos usados</div>
-      ${c.insumos.length ? c.insumos.map(i=>row(esc(i.nombre), `${fmtCant(i.usado)} ${esc(i.unidad)}${i.stockFinal!==null?` <span style="color:var(--gray);font-weight:600">(quedan ${fmtCant(i.stockFinal)})</span>`:''}`)).join('') : '<div class="empty-msg">Sin consumo registrado</div>'}
+      ${(c.insumos||[]).length ? c.insumos.map(i=>row(esc(i.nombre), `${fmtCant(i.usado)} ${esc(i.unidad)}${i.stockFinal!==null?` <span style="color:var(--gray);font-weight:600">(quedan ${fmtCant(i.stockFinal)})</span>`:''}`)).join('') : '<div class="empty-msg">Sin consumo registrado</div>'}
     </div>`;
 }
 
@@ -1495,7 +1421,7 @@ function renderCerradoBanner(){
   const b = $('cerrado-banner');
   if(diaData.cerrado){
     b.style.display = 'flex';
-    b.textContent = `✅ Día guardado a las ${diaData.cerradoHora||''}. Si registras algo más, vuelve a guardarlo.`;
+    b.textContent = `✅ Día guardado a las ${diaData.cerradoHora||''} — si registras algo más, vuelve a guardarlo.`;
     $('btn-guardar-dia').textContent = '📅 Actualizar día guardado';
   } else {
     b.style.display = 'none';
@@ -1503,34 +1429,275 @@ function renderCerradoBanner(){
   }
 }
 
-let histCache = [];
-async function openHistorial(){
-  $('hist-list').innerHTML = '<div class="empty-msg">Cargando…</div>';
-  openModal('modal-hist');
+// ══════════════════════════════════════
+//   HISTORIAL (CALENDARIO)
+// ══════════════════════════════════════
+let histDocs = {};                  // { 'YYYY-MM-DD': docData } solo días guardados
+let calMes   = { y: new Date().getFullYear(), m: new Date().getMonth() };
+let histSel  = null;
+const pad2   = n => String(n).padStart(2,'0');
+const fmtK   = n => n>=1e6 ? (Math.round(n/1e5)/10)+'M' : n>=1000 ? Math.round(n/1000)+'k' : String(n||0);
+const mesKey = () => `${calMes.y}-${pad2(calMes.m+1)}`;
+
+async function loadHistorial(){
+  $('cal-resumen').innerHTML = '<div class="empty-msg" style="flex:1">Cargando…</div>';
   try{
     const snap = await DIA_COL().where('cerrado','==',true).get();
-    histCache = snap.docs.map(d=>({_id:d.id,...d.data()})).sort((a,b)=>b._id.localeCompare(a._id));
-    if(!histCache.length){ $('hist-list').innerHTML='<div class="empty-msg">Todavía no hay días guardados</div>'; return; }
-    $('hist-list').innerHTML = histCache.map(d=>`
-      <button class="hist-item" onclick="verDiaGuardado('${d._id}')">
-        <div>
-          <div class="hist-fecha">${fmtFecha(d._id)}</div>
-          <div class="hist-sub">${d.cierre?.numVentas||0} ventas · compras ${fmt(d.cierre?.gasTotal||0)}</div>
-        </div>
-        <b style="color:var(--green)">${fmt(d.cierre?.vtaTotal||0)}</b>
-      </button>`).join('');
-  } catch(e){ $('hist-list').innerHTML = `<div class="error-msg">Error: ${esc(e.message)}</div>`; }
+    histDocs = {};
+    snap.docs.forEach(d=>{ if(d.data().cierre) histDocs[d.id] = d.data(); });
+    renderCalendario();
+    if(histSel) verDia(histSel, false);
+  } catch(e){ $('cal-resumen').innerHTML = `<div class="error-msg">Error: ${esc(e.message)}</div>`; }
 }
 
-function verDiaGuardado(id){
-  const d = histCache.find(x=>x._id===id); if(!d?.cierre) return;
-  closeModal('modal-hist');
-  $('cierre-title').textContent = `📚 ${fmtFecha(id)}`;
-  $('cierre-body').innerHTML = resumenHTML(d.cierre) +
-    `<div class="hist-sub" style="text-align:center">Guardado a las ${esc(d.cerradoHora||'')} por ${esc(d.cerradoPor||'')}</div>`;
-  $('cierre-error').textContent = '';
-  $('cierre-footer').innerHTML = `<button class="btn-primary btn-hist" onclick="closeModal('modal-cierre');openHistorial()">← Volver</button>`;
-  openModal('modal-cierre');
+function moverMes(d){
+  const f = new Date(calMes.y, calMes.m + d, 1);
+  calMes = { y: f.getFullYear(), m: f.getMonth() };
+  renderCalendario();
+}
+
+function renderCalendario(){
+  const { y, m } = calMes;
+  $('cal-mes').textContent = new Date(y, m, 1).toLocaleDateString('es-CO',{month:'long',year:'numeric'});
+  const offset = (new Date(y, m, 1).getDay() + 6) % 7;   // lunes primero
+  const dias   = new Date(y, m+1, 0).getDate();
+  const hoy    = today();
+  let html = ['L','M','M','J','V','S','D'].map(d=>`<div class="cal-dow">${d}</div>`).join('');
+  html += '<div class="cal-day cal-vacio"></div>'.repeat(offset);
+  for(let d=1; d<=dias; d++){
+    const f = `${y}-${pad2(m+1)}-${pad2(d)}`;
+    const doc = histDocs[f];
+    const cls = ['cal-day', doc?'saved':'', f===hoy?'hoy':'', f===histSel?'sel':''].join(' ');
+    html += `<button class="${cls}" onclick="verDia('${f}')">
+      <span>${d}</span>${doc?`<span class="cal-day-monto">$${fmtK(doc.cierre.vtaTotal||0)}</span>`:''}
+    </button>`;
+  }
+  $('cal-grid').innerHTML = html;
+  // Totales del mes
+  const delMes = Object.entries(histDocs).filter(([f])=>f.startsWith(mesKey())).map(([,d])=>d.cierre);
+  const tot = k => delMes.reduce((s,c)=>s+(c[k]||0),0);
+  $('cal-resumen').innerHTML = `
+    <div class="cal-stat"><div class="cal-stat-lbl">Días guardados</div><div class="cal-stat-val">${delMes.length}</div></div>
+    <div class="cal-stat"><div class="cal-stat-lbl">Ventas del mes</div><div class="cal-stat-val" style="color:var(--green)">${fmt(tot('vtaTotal'))}</div></div>
+    <div class="cal-stat"><div class="cal-stat-lbl">Compras del mes</div><div class="cal-stat-val" style="color:var(--red)">${fmt(tot('gasTotal'))}</div></div>`;
+}
+
+function verDia(f, scroll=true){
+  histSel = f;
+  renderCalendario();
+  const d = histDocs[f];
+  const div = $('hist-detalle');
+  if(!d){
+    div.innerHTML = `<div class="card"><div class="card-title" style="text-transform:capitalize">${fmtFecha(f)}</div>
+      <div class="empty-msg">No hay datos guardados para este día.${f===today()?' Usa “📅 Guardar día” en la pestaña Caja.':''}</div></div>`;
+  } else {
+    div.innerHTML = `<div class="card">
+      <div class="card-title"><span style="text-transform:capitalize">${fmtFecha(f)}</span>${d.importado?'<span class="badge-imp">Importado</span>':''}</div>
+      ${resumenHTML(d.cierre)}
+      <div class="hist-sub" style="text-align:center;margin-bottom:8px">Guardado${d.cerradoHora?` a las ${esc(d.cerradoHora)}`:''}${d.cerradoPor?` por ${esc(d.cerradoPor)}`:''}</div>
+      <button class="btn-primary btn-hist" style="margin-top:0" onclick="exportarDias(['${f}'],'granizados_${f}')">⬇️ Excel de este día</button>
+    </div>`;
+  }
+  if(scroll) div.scrollIntoView({ behavior:'smooth', block:'start' });
+}
+
+// ══════════════════════════════════════
+//   EXCEL (EXPORTAR / IMPORTAR)
+// ══════════════════════════════════════
+// [encabezado, campo, '$' si es dinero]. Se usa para exportar y para leer al importar.
+const XLS_COLS = {
+  Resumen: [
+    ['Fecha','fecha'], ['Ventas efectivo','vtaEf','$'], ['Ventas transferencia','vtaTr','$'],
+    ['Total ventas','vtaTotal','$'], ['Número de ventas','numVentas'], ['Otros ingresos','otrosIngresos','$'],
+    ['Fondo efectivo','fondoEf','$'], ['Fondo transferencia','fondoTr','$'],
+    ['Gastado efectivo','gasEf','$'], ['Gastado transferencia','gasTr','$'],
+    ['Queda efectivo','quedaEf','$'], ['Queda transferencia','quedaTr','$'],
+    ['Debe tener efectivo','debeEf','$'], ['Debe tener transferencia','debeTr','$'],
+    ['Guardado a las','hora'], ['Guardado por','por']
+  ],
+  Productos: [ ['Fecha','fecha'], ['Producto','nombre'], ['Cantidad','cant'], ['Total','total','$'] ],
+  Compras:   [ ['Fecha','fecha'], ['Hora','hora'], ['Concepto','desc'], ['Método','tipo'], ['Monto','monto','$'] ],
+  Insumos:   [ ['Fecha','fecha'], ['Insumo','nombre'], ['Unidad','unidad'], ['Usado','usado'], ['Quedan','stockFinal'] ]
+};
+
+let xlsxPromise = null;
+function loadXLSX(){
+  if(window.XLSX) return Promise.resolve();
+  if(!xlsxPromise) xlsxPromise = new Promise((res, rej)=>{
+    const s = document.createElement('script');
+    s.src = 'https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js';
+    s.onload = res;
+    s.onerror = ()=>{ xlsxPromise = null; rej(new Error('No se pudo cargar la librería de Excel. Revisa la conexión.')); };
+    document.head.appendChild(s);
+  });
+  return xlsxPromise;
+}
+
+function filasExcel(fechas){
+  const out = { Resumen:[], Productos:[], Compras:[], Insumos:[] };
+  [...fechas].sort().forEach(f=>{
+    const d = histDocs[f], c = d?.cierre; if(!c) return;
+    out.Resumen.push({ ...c, fecha: f, hora: d.cerradoHora||'', por: d.cerradoPor||'' });
+    (c.productos||[]).forEach(p=>out.Productos.push({ fecha: f, ...p }));
+    (c.compras||[]).forEach(x=>out.Compras.push({ fecha: f, ...x, tipo: x.tipo==='transferencia'?'Transferencia':'Efectivo' }));
+    (c.insumos||[]).forEach(i=>out.Insumos.push({ fecha: f, ...i, stockFinal: i.stockFinal ?? '' }));
+  });
+  return out;
+}
+
+async function exportarDias(fechas, nombre){
+  $('excel-msg').textContent = '';
+  if(!fechas.length){ showToast('No hay días guardados para exportar'); return; }
+  try{
+    await loadXLSX();
+    const filas = filasExcel(fechas);
+    const wb = XLSX.utils.book_new();
+    Object.entries(XLS_COLS).forEach(([hoja, cols])=>{
+      const aoa = [cols.map(c=>c[0]), ...filas[hoja].map(r=>cols.map(c=>r[c[1]] ?? ''))];
+      const ws = XLSX.utils.aoa_to_sheet(aoa);
+      ws['!cols'] = cols.map(c=>({ wch: Math.max(12, c[0].length + 2) }));
+      cols.forEach((c, ci)=>{
+        if(c[2] !== '$') return;
+        for(let r=1; r<aoa.length; r++){
+          const cell = ws[XLSX.utils.encode_cell({ r, c: ci })];
+          if(cell && cell.t==='n') cell.z = '"$"#,##0';
+        }
+      });
+      XLSX.utils.book_append_sheet(wb, ws, hoja);
+    });
+    XLSX.writeFile(wb, nombre + '.xlsx');
+    showToast(`⬇️ ${fechas.length} día(s) exportados`);
+  } catch(e){ $('excel-msg').textContent = 'Error: ' + e.message; }
+}
+
+function exportarMes(){
+  exportarDias(Object.keys(histDocs).filter(f=>f.startsWith(mesKey())), `granizados_${mesKey()}`);
+}
+function exportarTodo(){
+  exportarDias(Object.keys(histDocs), `granizados_historial_${today()}`);
+}
+
+// ── Importar ──
+const normTxt = s => String(s??'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().trim();
+
+function parseFechaXls(v){
+  if(v===null || v===undefined || v==='') return null;
+  let f = null;
+  if(typeof v === 'number'){
+    const d = XLSX.SSF.parse_date_code(v);
+    if(d) f = `${d.y}-${pad2(d.m)}-${pad2(d.d)}`;
+  } else {
+    const s = String(v).trim();
+    let m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+    if(m) f = `${m[1]}-${pad2(m[2])}-${pad2(m[3])}`;
+    m = s.match(/^(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{4})$/);
+    if(m) f = `${m[3]}-${pad2(m[2])}-${pad2(m[1])}`;
+  }
+  // Validar que sea una fecha real (descarta 2026-02-31, etc.)
+  return f && new Date(f+'T00:00').toLocaleDateString('en-CA') === f ? f : null;
+}
+
+function numXls(v, dinero){
+  if(typeof v === 'number') return v;
+  const s = String(v??'').trim(); if(!s) return 0;
+  if(dinero) return (/^[-−]/.test(s) ? -1 : 1) * (parseInt(s.replace(/\D/g,''),10) || 0);
+  return parseFloat(s.replace(',','.')) || 0;
+}
+
+function leerHoja(wb, hoja){
+  const nombre = wb.SheetNames.find(n=>normTxt(n)===normTxt(hoja)); if(!nombre) return null;
+  return XLSX.utils.sheet_to_json(wb.Sheets[nombre], { defval:'' }).map(fila=>{
+    const keys = Object.keys(fila), o = {};
+    XLS_COLS[hoja].forEach(([h,k])=>{
+      const kk = keys.find(x=>normTxt(x)===normTxt(h));
+      o[k] = kk!==undefined ? fila[kk] : '';
+    });
+    return o;
+  });
+}
+
+async function importarExcel(input){
+  const file = input.files[0]; input.value = '';
+  if(!file) return;
+  const msg = $('excel-msg'); msg.textContent = '';
+  try{
+    await loadXLSX();
+    const wb = XLSX.read(await file.arrayBuffer());
+    const resumen = leerHoja(wb, 'Resumen');
+    if(!resumen) throw new Error('El archivo no tiene la hoja "Resumen".');
+
+    const dias = {}, errores = [];
+    resumen.forEach((r, i)=>{
+      const f = parseFechaXls(r.fecha);
+      if(!f){ if(String(r.fecha).trim()) errores.push(`Resumen fila ${i+2}: fecha inválida "${r.fecha}"`); return; }
+      const c = { fecha: f, productos: [], compras: [], insumos: [] };
+      ['vtaEf','vtaTr','otrosIngresos','fondoEf','fondoTr','gasEf','gasTr'].forEach(k=>c[k] = numXls(r[k], true));
+      c.numVentas = Math.round(numXls(r.numVentas));
+      dias[f] = { cierre: c, hora: String(r.hora||'').trim(), por: String(r.por||'').trim() };
+    });
+
+    const adjuntar = (hoja, fn)=>(leerHoja(wb, hoja)||[]).forEach((r, i)=>{
+      const f = parseFechaXls(r.fecha); if(!f) return;
+      if(!dias[f]){ errores.push(`${hoja} fila ${i+2}: la fecha ${f} no está en Resumen`); return; }
+      fn(dias[f].cierre, r);
+    });
+    adjuntar('Productos', (c, r)=>{
+      const nombre = String(r.nombre).trim(); if(!nombre) return;
+      c.productos.push({ nombre, cant: numXls(r.cant), total: numXls(r.total, true) });
+    });
+    adjuntar('Compras', (c, r)=>{
+      const desc = String(r.desc).trim(); if(!desc && !r.monto) return;
+      c.compras.push({ hora: String(r.hora||'').trim(), desc, tipo: normTxt(r.tipo).startsWith('trans') ? 'transferencia' : 'efectivo', monto: numXls(r.monto, true) });
+    });
+    adjuntar('Insumos', (c, r)=>{
+      const nombre = String(r.nombre).trim(); if(!nombre) return;
+      c.insumos.push({ nombre, unidad: String(r.unidad||'').trim() || 'und', usado: numXls(r.usado),
+        stockFinal: String(r.stockFinal).trim()==='' ? null : numXls(r.stockFinal) });
+    });
+
+    // Totales derivados (se recalculan para que siempre cuadren)
+    Object.values(dias).forEach(({ cierre: c })=>{
+      if(!c.gasEf && !c.gasTr && c.compras.length){
+        c.compras.forEach(x=>{ if(x.tipo==='transferencia') c.gasTr += x.monto; else c.gasEf += x.monto; });
+      }
+      c.vtaTotal = c.vtaEf + c.vtaTr;
+      c.gasTotal = c.gasEf + c.gasTr;
+      c.quedaEf  = c.fondoEf - c.gasEf;
+      c.quedaTr  = c.fondoTr - c.gasTr;
+      c.debeEf   = c.quedaEf + c.vtaEf;
+      c.debeTr   = c.quedaTr + c.vtaTr;
+    });
+
+    const fechas = Object.keys(dias).sort();
+    if(!fechas.length) throw new Error('No se encontró ningún día con fecha válida en la hoja "Resumen".');
+    const lista = fs => fs.length > 8 ? fs.slice(0,8).join(', ') + ` y ${fs.length-8} más` : fs.join(', ');
+    let txt = `Se van a importar ${fechas.length} día(s): ${lista(fechas)}.`;
+    if(errores.length) txt += `\n\nSe ignorarán ${errores.length} fila(s) con problemas:\n${errores.slice(0,5).join('\n')}`;
+    if(!confirm(txt + '\n\n¿Continuar?')) return;
+
+    let aGuardar = fechas;
+    const existentes = fechas.filter(f=>histDocs[f]);
+    if(existentes.length && !confirm(`${existentes.length} de esos días ya están guardados (${lista(existentes)}).\n\nAceptar = reemplazarlos\nCancelar = importar solo los días nuevos`)){
+      aGuardar = fechas.filter(f=>!histDocs[f]);
+    }
+    if(!aGuardar.length){ showToast('No hay días nuevos para importar'); return; }
+
+    for(let i=0; i<aGuardar.length; i+=400){
+      const batch = db.batch();
+      aGuardar.slice(i, i+400).forEach(f=>{
+        const d = dias[f];
+        batch.set(DIA_COL().doc(f), {
+          cerrado: true, cierre: d.cierre, cerradoHora: d.hora, cerradoPor: d.por || currentUser.email,
+          importado: true, importadoAt: TS(), importadoPor: currentUser.email
+        }, { merge: true });
+      });
+      await batch.commit();
+    }
+    showToast(`⬆️ ${aGuardar.length} día(s) importados`);
+    histSel = aGuardar[aGuardar.length-1];
+    calMes = { y: +histSel.slice(0,4), m: +histSel.slice(5,7) - 1 };
+    await loadHistorial();
+  } catch(e){ msg.textContent = 'Error: ' + e.message; }
 }
 
 // ══════════════════════════════════════
