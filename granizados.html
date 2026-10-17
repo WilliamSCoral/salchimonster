@@ -138,10 +138,11 @@
   }
   .tab-btn {
     flex: 1;
-    padding: 12px 4px;
+    padding: 12px 2px;
     border: none;
     background: none;
-    font-size: 0.82rem;
+    font-size: 0.76rem;
+    white-space: nowrap;
     font-weight: 700;
     color: var(--gray);
     cursor: pointer;
@@ -382,6 +383,80 @@
   .safe-mov:last-child { border-bottom: none; }
   .mov-deposito { color: var(--green); font-weight: 700; }
   .mov-retiro   { color: var(--red);   font-weight: 700; }
+
+  /* ─── BANNERS ─── */
+  .banner {
+    border-radius: 12px; padding: 10px 13px; margin-bottom: 12px;
+    font-size: 0.8rem; font-weight: 700; display: flex; gap: 8px;
+    align-items: center; justify-content: space-between;
+  }
+  .banner-ok   { background: #f0fff4; border: 1.5px solid #9ae6b4; color: #276749; }
+  .banner-warn { background: #fffbeb; border: 1.5px solid #fcd34d; color: #92400e; margin: 10px 14px 0; }
+
+  /* ─── PRODUCTOS (botones de venta) ─── */
+  .prod-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 8px; margin-bottom: 10px; }
+  .prod-btn {
+    position: relative; border: 2px solid var(--border); background: #fff;
+    border-radius: 12px; padding: 10px 6px; text-align: center; cursor: pointer;
+    font-family: inherit;
+  }
+  .prod-btn:active { transform: scale(0.97); }
+  .prod-btn.sel    { border-color: var(--accent); background: #e0f2fe; }
+  .prod-btn-nombre { font-weight: 800; font-size: 0.82rem; color: var(--text); }
+  .prod-btn-precio { font-size: 0.78rem; color: var(--accent2); font-weight: 700; margin-top: 2px; }
+  .prod-btn-low    { font-size: 0.64rem; color: var(--red); font-weight: 700; margin-top: 2px; }
+  .prod-btn-qty {
+    position: absolute; top: -7px; right: -7px; background: var(--accent); color: #fff;
+    border-radius: 12px; min-width: 22px; height: 22px; padding: 0 6px;
+    font-size: 0.75rem; font-weight: 900; display: flex; align-items: center; justify-content: center;
+  }
+
+  /* ─── CARRITO ─── */
+  .cart { background: var(--light); border: 1.5px dashed var(--border); border-radius: 12px; padding: 8px 10px; margin-bottom: 10px; }
+  .cart-row { display: flex; align-items: center; gap: 8px; padding: 4px 0; font-size: 0.84rem; }
+  .cart-row-name { flex: 1; font-weight: 600; min-width: 0; }
+  .cart-row-sub  { font-weight: 800; white-space: nowrap; }
+  .qty-btn {
+    width: 28px; height: 28px; border-radius: 8px; border: 1.5px solid var(--border);
+    background: #fff; font-weight: 900; font-size: 0.95rem; cursor: pointer; color: var(--text);
+  }
+  .cart-total { display: flex; justify-content: space-between; font-weight: 900; border-top: 1px solid var(--border); padding-top: 6px; margin-top: 4px; }
+
+  /* ─── FONDO DE COMPRAS ─── */
+  .fondo-table { width: 100%; border-collapse: collapse; font-size: 0.84rem; }
+  .fondo-table th { font-size: 0.72rem; color: var(--gray); text-align: right; padding: 4px 6px; }
+  .fondo-table td { text-align: right; padding: 5px 6px; font-weight: 700; }
+  .fondo-table td:first-child, .fondo-table th:first-child { text-align: left; }
+  .fondo-table tr.fondo-queda td { border-top: 1.5px solid var(--border); font-weight: 900; font-size: 0.95rem; }
+  .neg { color: var(--red) !important; }
+
+  /* ─── RECETA (modal producto) ─── */
+  .receta-row { display: flex; gap: 6px; margin-bottom: 6px; align-items: center; }
+  .receta-row select { flex: 1; min-width: 0; }
+  .receta-row input  { width: 74px; flex: none; }
+  .receta-txt { font-size: 0.74rem; color: var(--gray); margin-bottom: 8px; line-height: 1.4; }
+
+  /* ─── CIERRE / RESUMEN DEL DÍA ─── */
+  .btn-cierre { background: var(--green); }
+  .btn-hist   { background: var(--light); color: var(--text); border: 1.5px solid var(--border) !important; }
+  .res-sec { border: 1.5px solid var(--border); border-radius: 12px; padding: 10px 12px; margin-bottom: 10px; }
+  .res-h   { font-weight: 800; font-size: 0.84rem; margin-bottom: 6px; }
+  .res-row { display: flex; justify-content: space-between; gap: 8px; font-size: 0.82rem; padding: 3px 0; }
+  .res-row span:first-child { color: var(--gray); }
+  .res-row span:last-child  { font-weight: 700; white-space: nowrap; }
+  .res-tot { border-top: 1px solid var(--border); margin-top: 4px; padding-top: 6px; }
+  .res-tot span { font-weight: 900 !important; color: var(--text) !important; }
+  .res-debe { background: #0f172a; color: #fff; border-radius: 12px; padding: 12px 14px; margin-bottom: 10px; }
+  .res-debe-row { display: flex; justify-content: space-between; align-items: baseline; padding: 4px 0; font-size: 0.86rem; }
+  .res-debe-row b { font-size: 1.15rem; }
+  .res-debe-sub { font-size: 0.7rem; opacity: 0.65; margin-bottom: 4px; }
+  .hist-item {
+    display: flex; justify-content: space-between; align-items: center; gap: 8px;
+    padding: 10px 12px; border: 1.5px solid var(--border); border-radius: 12px;
+    margin-bottom: 8px; cursor: pointer; background: #fff; width: 100%; font-family: inherit; text-align: left;
+  }
+  .hist-fecha { font-weight: 800; font-size: 0.86rem; text-transform: capitalize; }
+  .hist-sub   { font-size: 0.72rem; color: var(--gray); }
 </style>
 </head>
 <body>
@@ -416,64 +491,76 @@
         <div class="header-user" id="h-user"></div>
       </div>
       <div style="display:flex;align-items:center;gap:10px">
-        <span id="reloj"></span>
+        <div style="text-align:right">
+          <div id="reloj"></div>
+          <div id="h-fecha" style="font-size:0.68rem;opacity:0.85;text-transform:capitalize"></div>
+        </div>
         <button class="btn-logout" onclick="doLogout()">Salir</button>
       </div>
     </div>
     <div class="header-stats">
       <div class="stat-pill">💵 Ef: <span id="h-ef">$0</span></div>
       <div class="stat-pill">🏦 Tr: <span id="h-tr">$0</span></div>
-      <div class="stat-pill">📊 Total: <span id="h-total">$0</span></div>
+      <div class="stat-pill">📊 Ventas: <span id="h-total">$0</span></div>
+      <div class="stat-pill">🛒 Fondo: <span id="h-fondo">$0</span></div>
     </div>
   </header>
 
+  <!-- Aviso de cambio de día -->
+  <div class="banner banner-warn" id="banner-dia" style="display:none">
+    <span id="banner-dia-txt"></span>
+    <button class="btn-sm btn-ghost" onclick="cambiarAHoy()">Ir a hoy</button>
+  </div>
+
   <!-- Tabs -->
   <div class="tab-bar">
-    <button class="tab-btn active" id="tab-btn-caja"      onclick="goTab('caja')">💰 Caja</button>
-    <button class="tab-btn"        id="tab-btn-compras"   onclick="goTab('compras')">🛒 Compras</button>
-    <button class="tab-btn"        id="tab-btn-inventario" onclick="goTab('inventario')">📦 Inventario</button>
+    <button class="tab-btn active" id="tab-btn-caja"       onclick="goTab('caja')">💰 Caja</button>
+    <button class="tab-btn"        id="tab-btn-compras"    onclick="goTab('compras')">🛒 Compras</button>
+    <button class="tab-btn"        id="tab-btn-productos"  onclick="goTab('productos')">🧃 Productos</button>
+    <button class="tab-btn"        id="tab-btn-inventario" onclick="goTab('inventario')">📦 Insumos</button>
   </div>
 
   <!-- ══ TAB: CAJA ══ -->
   <div class="tab-content active" id="tab-caja">
 
-    <!-- Saldo inicial -->
-    <div class="saldo-ini-card">
-      <div class="saldo-ini-title">
-        🪙 Saldo inicial del día
-        <span id="saldo-ini-status" style="font-size:0.7rem;font-weight:600;opacity:0.7"></span>
-      </div>
-      <div class="saldo-ini-grid">
-        <div>
-          <div class="saldo-ini-lbl">💵 Efectivo inicial</div>
-          <input type="text" inputmode="numeric" id="ini-ef" placeholder="0" oninput="moneyFmt(this)" style="background:#fff;font-size:0.9rem"/>
-        </div>
-        <div>
-          <div class="saldo-ini-lbl">🏦 Transferencia inicial</div>
-          <input type="text" inputmode="numeric" id="ini-tr" placeholder="0" oninput="moneyFmt(this)" style="background:#fff;font-size:0.9rem"/>
-        </div>
-      </div>
-      <button class="btn-saldo-save" onclick="saveSaldoInicial()">💾 Guardar saldo inicial</button>
-    </div>
+    <div class="banner banner-ok" id="cerrado-banner" style="display:none"></div>
 
-    <!-- Resumen del día -->
+    <!-- Resumen de ventas -->
     <div class="caja-total">
-      <div class="caja-total-label">💰 TOTAL EN CAJA</div>
+      <div class="caja-total-label">💰 VENTAS DEL DÍA</div>
       <div class="caja-total-val" id="caja-total-dia">$0</div>
     </div>
     <div class="caja-cols">
       <div class="caja-col caja-col-ef">
         <div class="caja-col-head">💵 EFECTIVO</div>
-        <div class="caja-col-row"><span class="caja-col-row-label">Saldo inicial</span><span id="resumen-ini-ef">$0</span></div>
-        <div class="caja-col-row"><span class="caja-col-row-label">+ Ventas</span><span id="resumen-vta-ef">$0</span></div>
-        <div class="caja-col-total"><span>Total</span><span id="caja-ef">$0</span></div>
+        <div class="caja-col-total" style="border:none;margin:0;padding:0"><span></span><span id="caja-ef">$0</span></div>
       </div>
       <div class="caja-col caja-col-tr">
         <div class="caja-col-head">🏦 TRANSFERENCIA</div>
-        <div class="caja-col-row"><span class="caja-col-row-label">Saldo inicial</span><span id="resumen-ini-tr">$0</span></div>
-        <div class="caja-col-row"><span class="caja-col-row-label">+ Ventas</span><span id="resumen-vta-tr">$0</span></div>
-        <div class="caja-col-total"><span>Total</span><span id="caja-tr">$0</span></div>
+        <div class="caja-col-total" style="border:none;margin:0;padding:0"><span></span><span id="caja-tr">$0</span></div>
       </div>
+    </div>
+
+    <!-- Nueva venta -->
+    <div class="card">
+      <div class="card-title">➕ Nueva venta</div>
+      <div class="prod-grid" id="prod-grid"></div>
+      <div class="cart" id="carrito" style="display:none"></div>
+      <div class="tipo-btns">
+        <button class="tipo-btn active-ef" id="vta-btn-ef" onclick="setVtaTipo('efectivo')">💵 Efectivo</button>
+        <button class="tipo-btn"           id="vta-btn-tr" onclick="setVtaTipo('transferencia')">🏦 Transf.</button>
+      </div>
+      <div class="error-msg" id="vta-error"></div>
+      <button class="btn-primary" id="vta-btn-save" onclick="addVenta()">✅ Registrar venta</button>
+    </div>
+
+    <!-- Lista ventas -->
+    <div class="card">
+      <div class="card-title">
+        📋 Ventas del día
+        <span id="ventas-cnt" style="font-size:0.75rem;color:var(--gray);font-weight:600"></span>
+      </div>
+      <div id="ventas-list"><div class="empty-msg">Sin ventas registradas hoy</div></div>
     </div>
 
     <!-- Caja fuerte -->
@@ -493,43 +580,50 @@
       </div>
     </div>
 
-    <!-- Agregar venta -->
-    <div class="card">
-      <div class="card-title">➕ Registrar ingreso</div>
-      <div class="tipo-btns">
-        <button class="tipo-btn active-ef" id="vta-btn-ef" onclick="setVtaTipo('efectivo')">💵 Efectivo</button>
-        <button class="tipo-btn"           id="vta-btn-tr" onclick="setVtaTipo('transferencia')">🏦 Transf.</button>
-      </div>
-      <div class="form-row" style="margin-bottom:8px">
-        <div class="fg">
-          <label>Descripción (opcional)</label>
-          <input type="text" id="vta-desc" placeholder="Ej: Granizado fresa"/>
-        </div>
-        <div class="fg" style="max-width:130px">
-          <label>Monto</label>
-          <input type="text" inputmode="numeric" id="vta-monto" placeholder="0" oninput="moneyFmt(this)"/>
-        </div>
-      </div>
-      <div class="error-msg" id="vta-error"></div>
-      <button class="btn-primary" onclick="addVenta()">✅ Registrar</button>
-    </div>
-
-    <!-- Lista ventas -->
-    <div class="card">
-      <div class="card-title">
-        📋 Ventas del día
-        <span id="ventas-cnt" style="font-size:0.75rem;color:var(--gray);font-weight:600"></span>
-      </div>
-      <div id="ventas-list"><div class="empty-msg">Sin ventas registradas hoy</div></div>
-    </div>
+    <!-- Cierre del día -->
+    <button class="btn-primary btn-cierre" id="btn-guardar-dia" onclick="openCierre()">📅 Guardar día</button>
+    <button class="btn-primary btn-hist" onclick="openHistorial()" style="margin-bottom:14px">📚 Días guardados</button>
   </div>
 
   <!-- ══ TAB: COMPRAS ══ -->
   <div class="tab-content" id="tab-compras">
+
+    <!-- Fondo para compras -->
+    <div class="saldo-ini-card">
+      <div class="saldo-ini-title">
+        🪙 Fondo para compras
+        <span id="saldo-ini-status" style="font-size:0.7rem;font-weight:600;opacity:0.7"></span>
+      </div>
+      <div class="saldo-ini-grid">
+        <div>
+          <div class="saldo-ini-lbl">💵 Efectivo</div>
+          <input type="text" inputmode="numeric" id="ini-ef" placeholder="0" oninput="moneyFmt(this)" style="background:#fff;font-size:0.9rem"/>
+        </div>
+        <div>
+          <div class="saldo-ini-lbl">🏦 Transferencia</div>
+          <input type="text" inputmode="numeric" id="ini-tr" placeholder="0" oninput="moneyFmt(this)" style="background:#fff;font-size:0.9rem"/>
+        </div>
+      </div>
+      <button class="btn-saldo-save" onclick="saveSaldoInicial()">💾 Guardar fondo</button>
+    </div>
+
+    <!-- Balance del fondo -->
     <div class="card">
-      <div class="card-title">
-        🛒 Total compras hoy
-        <span id="compras-total-label" style="font-size:1rem;color:var(--red);font-weight:900">$0</span>
+      <div class="card-title">📊 Balance del fondo</div>
+      <table class="fondo-table">
+        <tr><th></th><th>💵 Efectivo</th><th>🏦 Transf.</th></tr>
+        <tr><td>Fondo</td><td id="f-ini-ef">$0</td><td id="f-ini-tr">$0</td></tr>
+        <tr><td>− Gastado</td><td id="f-gas-ef" style="color:var(--red)">$0</td><td id="f-gas-tr" style="color:var(--red)">$0</td></tr>
+        <tr class="fondo-queda"><td>= Queda</td><td id="f-queda-ef">$0</td><td id="f-queda-tr">$0</td></tr>
+      </table>
+    </div>
+
+    <!-- Registrar compra -->
+    <div class="card">
+      <div class="card-title">➕ Registrar compra</div>
+      <div class="tipo-btns">
+        <button class="tipo-btn active-ef" id="cmp-btn-ef" onclick="setCmpTipo('efectivo')">💵 Efectivo</button>
+        <button class="tipo-btn"           id="cmp-btn-tr" onclick="setCmpTipo('transferencia')">🏦 Transf.</button>
       </div>
       <div class="form-row" style="margin-bottom:8px">
         <div class="fg">
@@ -545,20 +639,34 @@
       <button class="btn-primary" style="background:var(--red)" onclick="addCompra()">🛒 Registrar compra</button>
     </div>
     <div class="card">
-      <div class="card-title">Lista de compras</div>
+      <div class="card-title">
+        📋 Compras del día
+        <span id="compras-total-label" style="font-size:1rem;color:var(--red);font-weight:900">$0</span>
+      </div>
       <div id="compras-list"><div class="empty-msg">Sin compras registradas hoy</div></div>
     </div>
   </div>
 
-  <!-- ══ TAB: INVENTARIO ══ -->
+  <!-- ══ TAB: PRODUCTOS ══ -->
+  <div class="tab-content" id="tab-productos">
+    <div class="card">
+      <div class="card-title">🧃 Productos de venta
+        <button class="btn-sm btn-ghost" style="background:var(--accent);color:#fff;border:none" onclick="openModalProd()">+ Nuevo</button>
+      </div>
+      <div class="receta-txt">Cada producto tiene su precio y los insumos que gasta. Al venderlo se descuentan solos del inventario.</div>
+      <div id="prod-list"><div class="empty-msg">Sin productos todavía</div></div>
+    </div>
+  </div>
+
+  <!-- ══ TAB: INSUMOS ══ -->
   <div class="tab-content" id="tab-inventario">
     <div class="card">
-      <div class="card-title">📦 Inventario
+      <div class="card-title">📦 Insumos
         <button class="btn-sm btn-ghost" style="background:var(--accent);color:#fff;border:none" onclick="openModalInvAdd()">+ Agregar</button>
       </div>
-      <input type="text" id="inv-buscar" placeholder="🔍 Buscar producto..." oninput="renderInv()" style="margin-bottom:10px;font-size:0.84rem"/>
+      <input type="text" id="inv-buscar" placeholder="🔍 Buscar insumo..." oninput="renderInv()" style="margin-bottom:10px;font-size:0.84rem"/>
       <div id="inv-alerta" style="display:none;background:#fff5f5;border:1px solid #feb2b2;border-radius:10px;padding:9px 12px;margin-bottom:10px;font-size:0.8rem;color:#c53030;font-weight:700"></div>
-      <div id="inv-list"><div class="empty-msg">Sin productos. Agrega el primero →</div></div>
+      <div id="inv-list"><div class="empty-msg">Sin insumos. Agrega el primero</div></div>
     </div>
   </div>
 
@@ -588,13 +696,13 @@
 <div class="modal-bg" id="modal-inv">
   <div class="modal">
     <div class="modal-title">
-      <span id="inv-modal-title">📦 Nuevo producto</span>
+      <span id="inv-modal-title">📦 Nuevo insumo</span>
       <button class="btn-close" onclick="closeModal('modal-inv')">✕</button>
     </div>
     <input type="hidden" id="inv-docid"/>
     <div style="margin-bottom:8px">
-      <label>Nombre del producto</label>
-      <input type="text" id="inv-nombre" placeholder="Ej: Granizado de fresa"/>
+      <label>Nombre del insumo</label>
+      <input type="text" id="inv-nombre" placeholder="Ej: Vaso 9 oz, Gusano, Pitillo"/>
     </div>
     <div class="form-row" style="margin-bottom:8px">
       <div class="fg">
@@ -645,6 +753,55 @@
   </div>
 </div>
 
+<!-- ═══ MODAL: Producto de venta ═══ -->
+<div class="modal-bg" id="modal-prod">
+  <div class="modal">
+    <div class="modal-title">
+      <span id="prod-modal-title">🧃 Nuevo producto</span>
+      <button class="btn-close" onclick="closeModal('modal-prod')">✕</button>
+    </div>
+    <div class="form-row" style="margin-bottom:10px">
+      <div class="fg">
+        <label>Nombre</label>
+        <input type="text" id="prod-nombre" placeholder="Ej: Granizado 9 oz"/>
+      </div>
+      <div class="fg" style="max-width:130px">
+        <label>Precio</label>
+        <input type="text" inputmode="numeric" id="prod-precio" placeholder="0" oninput="moneyFmt(this)"/>
+      </div>
+    </div>
+    <label>Insumos que lleva (por unidad vendida)</label>
+    <div id="prod-receta"></div>
+    <button type="button" class="btn-sm btn-ghost" style="width:100%;padding:8px" onclick="addRecetaRow()">+ Agregar insumo</button>
+    <div class="error-msg" id="prod-error"></div>
+    <button class="btn-primary" onclick="saveProd()">Guardar producto</button>
+  </div>
+</div>
+
+<!-- ═══ MODAL: Cierre / resumen del día ═══ -->
+<div class="modal-bg" id="modal-cierre">
+  <div class="modal">
+    <div class="modal-title">
+      <span id="cierre-title">📅 Guardar día</span>
+      <button class="btn-close" onclick="closeModal('modal-cierre')">✕</button>
+    </div>
+    <div id="cierre-body"></div>
+    <div class="error-msg" id="cierre-error"></div>
+    <div id="cierre-footer"></div>
+  </div>
+</div>
+
+<!-- ═══ MODAL: Días guardados ═══ -->
+<div class="modal-bg" id="modal-hist">
+  <div class="modal">
+    <div class="modal-title">
+      <span>📚 Días guardados</span>
+      <button class="btn-close" onclick="closeModal('modal-hist')">✕</button>
+    </div>
+    <div id="hist-list"><div class="empty-msg">Cargando…</div></div>
+  </div>
+</div>
+
 <!-- Toast -->
 <div id="toast"></div>
 
@@ -672,18 +829,29 @@ const db   = firebase.firestore();
 // ── Helpers colecciones ──
 // Fecha local YYYY-MM-DD (toISOString usa UTC y en Colombia cambiaría de día a las 7 p. m.)
 const today = () => new Date().toLocaleDateString('en-CA');
+// Día con el que se está trabajando. No cambia solo a medianoche para poder
+// cerrar el día anterior después de las 12; el banner ofrece pasar a hoy.
+let diaActual = today();
 const TS    = () => firebase.firestore.FieldValue.serverTimestamp();
-const DIA   = () => db.collection('granizados_dia').doc(today());
+const INC   = n  => firebase.firestore.FieldValue.increment(n);
+const DIA_COL   = () => db.collection('granizados_dia');
+const DIA       = () => DIA_COL().doc(diaActual);
 const VENTAS    = () => DIA().collection('ventas');
 const COMPRAS   = () => DIA().collection('compras');
 const INV_COL   = () => db.collection('granizados_inventario');
+const PROD_COL  = () => db.collection('granizados_productos');
 const SAFE_COL  = () => db.collection('granizados_caja_fuerte');
 const SAFE_DOC  = () => SAFE_COL().doc('saldo');
 const SAFE_HIST = () => SAFE_COL().doc('saldo').collection('movimientos');
 
 // ── Formateo ──
-const fmt    = n => '$' + (n||0).toLocaleString('es-CO');
-const fmtRaw = n => (n||0).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+const fmt     = n => (n<0?'−$':'$') + Math.abs(n||0).toLocaleString('es-CO');
+const fmtRaw  = n => (n||0).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+const fmtCant = n => (Math.round((n||0)*100)/100).toLocaleString('es-CO');
+const fmtFecha = id => new Date(id+'T00:00').toLocaleDateString('es-CO',{weekday:'long',day:'numeric',month:'long'});
+const horaAhora = () => new Date().toLocaleTimeString('es-CO',{hour:'2-digit',minute:'2-digit'});
+const esc = s => String(s??'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const esEf = tipo => tipo !== 'transferencia';
 function moneyFmt(el){
   const raw = el.value.replace(/\D/g,'');
   if(!raw){ el.value=''; return; }
@@ -695,17 +863,21 @@ function moneyVal(id){
 const $ = id => document.getElementById(id);
 
 // ── Estado ──
-let currentUser    = null;
-let ventasTipo     = 'efectivo';
-let safeAccion     = 'deposito';
-let movTipo        = 'entrada';
-let invItems       = [];
-let safeHist       = [];
-let safeVisible    = false;
-let unsubs         = [];
-let saldoInicialEf = 0;
-let saldoInicialTr = 0;
-let ventasCache    = [];
+let currentUser  = null;
+let ventasTipo   = 'efectivo';
+let compraTipo   = 'efectivo';
+let safeAccion   = 'deposito';
+let movTipo      = 'entrada';
+let invItems     = [];
+let productos    = [];
+let carrito      = {};          // { prodId: cantidad }
+let safeHist     = [];
+let safeVisible  = false;
+let unsubs       = [];
+let diaData      = {};
+let ventasCache  = [];
+let comprasCache = [];
+let relojTimer   = null;
 
 // ══════════════════════════════════════
 //   AUTH
@@ -738,52 +910,63 @@ $('l-pass').addEventListener('keydown', e=>{ if(e.key==='Enter') doLogin(); });
 function doLogout(){ auth.signOut(); }
 
 // ══════════════════════════════════════
-//   RELOJ
+//   RELOJ Y CAMBIO DE DÍA
 // ══════════════════════════════════════
 function startReloj(){
   const tick = ()=>{
     const now = new Date();
     $('reloj').textContent = now.toLocaleTimeString('es-CO',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+    const otroDia = today() !== diaActual;
+    $('banner-dia').style.display = otroDia ? 'flex' : 'none';
+    if(otroDia) $('banner-dia-txt').textContent = `Estás viendo el ${fmtFecha(diaActual)}. Ya es otro día.`;
   };
-  tick(); setInterval(tick,1000);
+  clearInterval(relojTimer);
+  tick(); relojTimer = setInterval(tick,1000);
+}
+
+function cambiarAHoy(){
+  if(Object.keys(carrito).length && !confirm('Tienes una venta sin registrar. ¿Cambiar de día igual?')) return;
+  carrito = {};
+  setupListeners();
+  startReloj();
 }
 
 // ══════════════════════════════════════
 //   LISTENERS FIRESTORE
 // ══════════════════════════════════════
 function setupListeners(){
-  // Documento del día (saldo inicial)
+  unsubs.forEach(u=>u()); unsubs=[];
+  diaActual = today();
+  diaData = {}; ventasCache = []; comprasCache = [];
+  $('h-fecha').textContent = fmtFecha(diaActual);
+
+  // Documento del día (fondo de compras + cierre)
   const u0 = DIA().onSnapshot(snap=>{
-    if(snap.exists){
-      const d = snap.data();
-      saldoInicialEf = d.saldoInicialEf || 0;
-      saldoInicialTr = d.saldoInicialTr || 0;
-      // Rellenar inputs si no los está editando el usuario
-      if(document.activeElement?.id !== 'ini-ef')
-        $('ini-ef').value = saldoInicialEf ? fmtRaw(saldoInicialEf) : '';
-      if(document.activeElement?.id !== 'ini-tr')
-        $('ini-tr').value = saldoInicialTr ? fmtRaw(saldoInicialTr) : '';
-      $('saldo-ini-status').textContent = (saldoInicialEf||saldoInicialTr) ? '✅ Guardado' : '';
-    } else {
-      saldoInicialEf = 0; saldoInicialTr = 0;
-      $('saldo-ini-status').textContent = '';
-    }
-    updateHeaderStats(ventasCache);
+    diaData = snap.exists ? snap.data() : {};
+    const ef = diaData.saldoInicialEf || 0;
+    const tr = diaData.saldoInicialTr || 0;
+    // Rellenar inputs si no los está editando el usuario
+    if(document.activeElement?.id !== 'ini-ef') $('ini-ef').value = ef ? fmtRaw(ef) : '';
+    if(document.activeElement?.id !== 'ini-tr') $('ini-tr').value = tr ? fmtRaw(tr) : '';
+    $('saldo-ini-status').textContent = (ef||tr) ? '✅ Guardado' : '';
+    renderCerradoBanner();
+    recalc();
   }, e=>console.error('dia',e));
   unsubs.push(u0);
 
   // Ventas del día
   const u1 = VENTAS().orderBy('createdAt','desc').onSnapshot(snap=>{
     ventasCache = snap.docs.map(d=>({_id:d.id,...d.data()}));
-    renderVentas(ventasCache);
-    updateHeaderStats(ventasCache);
+    renderVentas();
+    recalc();
   }, e=>console.error('ventas',e));
   unsubs.push(u1);
 
   // Compras del día
   const u2 = COMPRAS().orderBy('createdAt','desc').onSnapshot(snap=>{
-    const compras = snap.docs.map(d=>({_id:d.id,...d.data()}));
-    renderCompras(compras);
+    comprasCache = snap.docs.map(d=>({_id:d.id,...d.data()}));
+    renderCompras();
+    recalc();
   }, e=>console.error('compras',e));
   unsubs.push(u2);
 
@@ -801,27 +984,81 @@ function setupListeners(){
   }, e=>console.error('safe-hist',e));
   unsubs.push(u4);
 
-  // Inventario
+  // Insumos
   const u5 = INV_COL().orderBy('nombre').onSnapshot(snap=>{
     invItems = snap.docs.map(d=>({_id:d.id,...d.data()}));
     renderInv();
     renderAlertaStock();
+    renderProductos();
+    renderProdGrid();
   }, e=>console.error('inv',e));
   unsubs.push(u5);
+
+  // Productos de venta
+  const u6 = PROD_COL().orderBy('nombre').onSnapshot(snap=>{
+    productos = snap.docs.map(d=>({_id:d.id,...d.data()}));
+    // Quitar del carrito productos que ya no existan
+    Object.keys(carrito).forEach(id=>{ if(!productos.some(p=>p._id===id)) delete carrito[id]; });
+    renderProductos();
+    renderProdGrid();
+    renderCarrito();
+  }, e=>console.error('productos',e));
+  unsubs.push(u6);
 }
 
 // ══════════════════════════════════════
 //   TABS
 // ══════════════════════════════════════
 function goTab(tab){
-  ['caja','compras','inventario'].forEach(t=>{
+  ['caja','compras','productos','inventario'].forEach(t=>{
     $('tab-btn-'+t).classList.toggle('active', t===tab);
     $('tab-'+t).classList.toggle('active', t===tab);
   });
 }
 
 // ══════════════════════════════════════
-//   CAJA — VENTAS
+//   TOTALES
+// ══════════════════════════════════════
+function calcTotales(){
+  const suma = (arr, f) => arr.filter(f).reduce((s,x)=>s+(x.monto||0),0);
+  const vtaEf   = suma(ventasCache,  v=> esEf(v.tipo));
+  const vtaTr   = suma(ventasCache,  v=>!esEf(v.tipo));
+  const gasEf   = suma(comprasCache, c=> esEf(c.tipo));
+  const gasTr   = suma(comprasCache, c=>!esEf(c.tipo));
+  const fondoEf = diaData.saldoInicialEf || 0;
+  const fondoTr = diaData.saldoInicialTr || 0;
+  const quedaEf = fondoEf - gasEf;
+  const quedaTr = fondoTr - gasTr;
+  return {
+    vtaEf, vtaTr, vtaTotal: vtaEf+vtaTr, numVentas: ventasCache.length,
+    fondoEf, fondoTr, gasEf, gasTr, gasTotal: gasEf+gasTr, quedaEf, quedaTr,
+    debeEf: quedaEf + vtaEf, debeTr: quedaTr + vtaTr
+  };
+}
+
+function setMoney(id, n){ const el=$(id); el.textContent = fmt(n); el.classList.toggle('neg', n<0); }
+
+function recalc(){
+  const t = calcTotales();
+  // Ventas
+  setMoney('caja-ef', t.vtaEf);
+  setMoney('caja-tr', t.vtaTr);
+  setMoney('caja-total-dia', t.vtaTotal);
+  // Fondo de compras
+  setMoney('f-ini-ef', t.fondoEf);   setMoney('f-ini-tr', t.fondoTr);
+  $('f-gas-ef').textContent = fmt(t.gasEf);
+  $('f-gas-tr').textContent = fmt(t.gasTr);
+  setMoney('f-queda-ef', t.quedaEf); setMoney('f-queda-tr', t.quedaTr);
+  $('compras-total-label').textContent = fmt(t.gasTotal);
+  // Header
+  $('h-ef').textContent    = fmt(t.vtaEf);
+  $('h-tr').textContent    = fmt(t.vtaTr);
+  $('h-total').textContent = fmt(t.vtaTotal);
+  $('h-fondo').textContent = fmt(t.quedaEf + t.quedaTr);
+}
+
+// ══════════════════════════════════════
+//   CAJA — VENTAS POR PRODUCTO
 // ══════════════════════════════════════
 function setVtaTipo(tipo){
   ventasTipo = tipo;
@@ -829,73 +1066,131 @@ function setVtaTipo(tipo){
   $('vta-btn-tr').className = 'tipo-btn'+(tipo==='transferencia'?' active-tr':'');
 }
 
-async function addVenta(){
-  const monto = moneyVal('vta-monto');
-  const desc  = ($('vta-desc').value||'').trim();
-  $('vta-error').textContent='';
-  if(!monto){ $('vta-error').textContent='Ingresa un monto.'; return; }
-  try{
-    await VENTAS().add({
-      monto, tipo: ventasTipo, desc,
-      hora: new Date().toLocaleTimeString('es-CO',{hour:'2-digit',minute:'2-digit'}),
-      createdAt: TS(), creadoPor: currentUser.uid
-    });
-    $('vta-monto').value='';
-    $('vta-desc').value='';
-    showToast('✅ Venta registrada');
-  } catch(e){ $('vta-error').textContent='Error: '+e.message; }
+// Cuántas unidades del producto alcanzan con el stock actual (null si no tiene receta)
+function alcanza(p){
+  const lineas = (p.receta||[]).filter(r=>r.cant>0 && invItems.some(i=>i._id===r.insumoId));
+  if(!lineas.length) return null;
+  return Math.min(...lineas.map(r=>{
+    const it = invItems.find(i=>i._id===r.insumoId);
+    return Math.floor((it.stock||0) / r.cant);
+  }));
 }
 
-function renderVentas(ventas){
+function renderProdGrid(){
+  const div = $('prod-grid'); if(!div) return;
+  if(!productos.length){
+    div.innerHTML = '<div class="empty-msg" style="grid-column:1/-1">Aún no hay productos. Créalos en la pestaña 🧃 Productos.</div>';
+    return;
+  }
+  div.innerHTML = productos.map(p=>{
+    const q = carrito[p._id]||0;
+    const alc = alcanza(p);
+    return `<button class="prod-btn${q?' sel':''}" onclick="addCarrito('${p._id}')">
+      ${q?`<span class="prod-btn-qty">${q}</span>`:''}
+      <div class="prod-btn-nombre">${esc(p.nombre)}</div>
+      <div class="prod-btn-precio">${fmt(p.precio)}</div>
+      ${alc!==null && alc<=0 ? '<div class="prod-btn-low">⚠️ Sin insumos</div>' : ''}
+    </button>`;
+  }).join('');
+}
+
+function addCarrito(id){
+  carrito[id] = (carrito[id]||0) + 1;
+  $('vta-error').textContent='';
+  renderCarrito(); renderProdGrid();
+}
+function cambiarCant(id, d){
+  carrito[id] = (carrito[id]||0) + d;
+  if(carrito[id] <= 0) delete carrito[id];
+  renderCarrito(); renderProdGrid();
+}
+function vaciarCarrito(){ carrito = {}; renderCarrito(); renderProdGrid(); }
+
+function carritoItems(){
+  return Object.entries(carrito).map(([id,cant])=>{
+    const p = productos.find(x=>x._id===id);
+    return p ? { prodId:id, nombre:p.nombre, precio:p.precio||0, cant, receta:p.receta||[] } : null;
+  }).filter(Boolean);
+}
+
+function renderCarrito(){
+  const div = $('carrito'); if(!div) return;
+  const items = carritoItems();
+  if(!items.length){ div.style.display='none'; div.innerHTML=''; return; }
+  const total = items.reduce((s,i)=>s+i.precio*i.cant,0);
+  div.style.display='block';
+  div.innerHTML = items.map(i=>`
+    <div class="cart-row">
+      <div class="cart-row-name">${esc(i.nombre)}</div>
+      <button class="qty-btn" onclick="cambiarCant('${i.prodId}',-1)">−</button>
+      <b>${i.cant}</b>
+      <button class="qty-btn" onclick="cambiarCant('${i.prodId}',1)">+</button>
+      <div class="cart-row-sub">${fmt(i.precio*i.cant)}</div>
+    </div>`).join('') + `
+    <div class="cart-total">
+      <span>Total <button class="btn-sm btn-ghost" style="margin-left:6px" onclick="vaciarCarrito()">Vaciar</button></span>
+      <span>${fmt(total)}</span>
+    </div>`;
+}
+
+async function addVenta(){
+  const items = carritoItems();
+  $('vta-error').textContent='';
+  if(!items.length){ $('vta-error').textContent='Elige al menos un producto.'; return; }
+  const monto = items.reduce((s,i)=>s+i.precio*i.cant,0);
+  // Insumos a descontar (solo los que existen en el inventario)
+  const consumo = {};
+  items.forEach(i=>(i.receta||[]).forEach(r=>{
+    if(!(r.cant>0) || !invItems.some(x=>x._id===r.insumoId)) return;
+    consumo[r.insumoId] = (consumo[r.insumoId]||0) + r.cant*i.cant;
+  }));
+  const btn = $('vta-btn-save'); btn.disabled = true;
+  try{
+    const batch = db.batch();
+    batch.set(VENTAS().doc(), {
+      items: items.map(({prodId,nombre,precio,cant})=>({prodId,nombre,precio,cant})),
+      consumo, monto, tipo: ventasTipo,
+      desc: items.map(i=>`${i.cant}× ${i.nombre}`).join(', '),
+      hora: horaAhora(), createdAt: TS(), creadoPor: currentUser.uid
+    });
+    Object.entries(consumo).forEach(([id,c])=>batch.update(INV_COL().doc(id), { stock: INC(-c), updatedAt: TS() }));
+    await batch.commit();
+    vaciarCarrito();
+    showToast(`✅ Venta de ${fmt(monto)} registrada`);
+  } catch(e){ $('vta-error').textContent='Error: '+e.message; }
+  finally{ btn.disabled = false; }
+}
+
+function renderVentas(){
+  const ventas = ventasCache;
   const div = $('ventas-list');
   $('ventas-cnt').textContent = ventas.length ? `${ventas.length} reg.` : '';
   if(!ventas.length){ div.innerHTML='<div class="empty-msg">Sin ventas registradas hoy</div>'; return; }
   div.innerHTML = ventas.map(v=>`
     <div class="tx-item">
       <div class="tx-desc">
-        <div class="tx-desc-main">${v.desc||'Venta'}</div>
-        <div class="tx-desc-sub">${v.hora||''}</div>
+        <div class="tx-desc-main">${esc(v.desc||'Venta')}</div>
+        <div class="tx-desc-sub">${esc(v.hora||'')}</div>
       </div>
-      <span class="badge-${v.tipo==='efectivo'?'ef':'tr'}">${v.tipo==='efectivo'?'Ef':'Tr'}</span>
-      <span class="tx-monto" style="color:${v.tipo==='efectivo'?'#16a34a':'#2563eb'}">${fmt(v.monto)}</span>
+      <span class="badge-${esEf(v.tipo)?'ef':'tr'}">${esEf(v.tipo)?'Ef':'Tr'}</span>
+      <span class="tx-monto" style="color:${esEf(v.tipo)?'#16a34a':'#2563eb'}">${fmt(v.monto)}</span>
       <button class="btn-sm btn-danger" onclick="delVenta('${v._id}')" style="margin-left:4px">✕</button>
     </div>`).join('');
 }
 
 async function delVenta(id){
-  if(!confirm('¿Eliminar esta venta?')) return;
-  try{ await VENTAS().doc(id).delete(); showToast('Venta eliminada'); }
-  catch(e){ alert(e.message); }
-}
-
-function updateHeaderStats(ventas){
-  const vtaEf = ventas.filter(v=>v.tipo==='efectivo').reduce((s,v)=>s+(v.monto||0),0);
-  const vtaTr = ventas.filter(v=>v.tipo==='transferencia').reduce((s,v)=>s+(v.monto||0),0);
-  const totEf = saldoInicialEf + vtaEf;
-  const totTr = saldoInicialTr + vtaTr;
-  // Desglose efectivo
-  $('resumen-ini-ef').textContent = fmt(saldoInicialEf);
-  $('resumen-vta-ef').textContent = fmt(vtaEf);
-  $('caja-ef').textContent        = fmt(totEf);
-  // Desglose transferencia
-  $('resumen-ini-tr').textContent = fmt(saldoInicialTr);
-  $('resumen-vta-tr').textContent = fmt(vtaTr);
-  $('caja-tr').textContent        = fmt(totTr);
-  // Total general
-  $('caja-total-dia').textContent = fmt(totEf + totTr);
-  // Header pills
-  $('h-ef').textContent    = fmt(totEf);
-  $('h-tr').textContent    = fmt(totTr);
-  $('h-total').textContent = fmt(totEf + totTr);
-}
-
-async function saveSaldoInicial(){
-  const ef = moneyVal('ini-ef');
-  const tr = moneyVal('ini-tr');
+  const v = ventasCache.find(x=>x._id===id);
+  const devuelve = Object.keys(v?.consumo||{}).length;
+  if(!confirm('¿Eliminar esta venta?' + (devuelve ? ' Los insumos vuelven al inventario.' : ''))) return;
   try{
-    await DIA().set({ saldoInicialEf: ef, saldoInicialTr: tr, updatedAt: TS() }, { merge: true });
-    showToast('🪙 Saldo inicial guardado');
-  } catch(e){ showToast('Error: '+e.message); }
+    const batch = db.batch();
+    batch.delete(VENTAS().doc(id));
+    Object.entries(v?.consumo||{}).forEach(([iid,c])=>{
+      if(invItems.some(x=>x._id===iid)) batch.update(INV_COL().doc(iid), { stock: INC(c), updatedAt: TS() });
+    });
+    await batch.commit();
+    showToast('Venta eliminada');
+  } catch(e){ alert(e.message); }
 }
 
 // ══════════════════════════════════════
@@ -927,8 +1222,7 @@ async function saveSafeMovimiento(){
     // Registrar movimiento en historial
     await SAFE_HIST().add({
       tipo: safeAccion, monto, motivo,
-      hora: new Date().toLocaleTimeString('es-CO',{hour:'2-digit',minute:'2-digit'}),
-      fecha: today(), createdAt: TS(), creadoPor: currentUser.uid
+      hora: horaAhora(), fecha: today(), createdAt: TS(), creadoPor: currentUser.uid
     });
     closeModal('modal-safe');
     showToast(safeAccion==='deposito'?'⬆️ Depositado en caja fuerte':'⬇️ Retirado de caja fuerte');
@@ -946,14 +1240,29 @@ function renderSafeHist(){
   if(!safeHist.length){ div.innerHTML='<div class="empty-msg">Sin movimientos</div>'; return; }
   div.innerHTML = safeHist.map(m=>`
     <div class="safe-mov">
-      <span>${m.fecha||''} ${m.hora||''} — ${m.motivo||'Sin motivo'}</span>
+      <span>${esc(m.fecha||'')} ${esc(m.hora||'')} — ${esc(m.motivo||'Sin motivo')}</span>
       <span class="${m.tipo==='deposito'?'mov-deposito':'mov-retiro'}">${m.tipo==='deposito'?'▲':'▼'} ${fmt(m.monto)}</span>
     </div>`).join('');
 }
 
 // ══════════════════════════════════════
-//   COMPRAS
+//   COMPRAS — FONDO
 // ══════════════════════════════════════
+async function saveSaldoInicial(){
+  const ef = moneyVal('ini-ef');
+  const tr = moneyVal('ini-tr');
+  try{
+    await DIA().set({ saldoInicialEf: ef, saldoInicialTr: tr, updatedAt: TS() }, { merge: true });
+    showToast('🪙 Fondo para compras guardado');
+  } catch(e){ showToast('Error: '+e.message); }
+}
+
+function setCmpTipo(tipo){
+  compraTipo = tipo;
+  $('cmp-btn-ef').className = 'tipo-btn'+(tipo==='efectivo'?' active-ef':'');
+  $('cmp-btn-tr').className = 'tipo-btn'+(tipo==='transferencia'?' active-tr':'');
+}
+
 async function addCompra(){
   const monto = moneyVal('cmp-monto');
   const desc  = ($('cmp-desc').value||'').trim();
@@ -962,9 +1271,8 @@ async function addCompra(){
   if(!monto){ $('cmp-error').textContent='Ingresa un monto.'; return; }
   try{
     await COMPRAS().add({
-      desc, monto,
-      hora: new Date().toLocaleTimeString('es-CO',{hour:'2-digit',minute:'2-digit'}),
-      createdAt: TS(), creadoPor: currentUser.uid
+      desc, monto, tipo: compraTipo,
+      hora: horaAhora(), createdAt: TS(), creadoPor: currentUser.uid
     });
     $('cmp-desc').value='';
     $('cmp-monto').value='';
@@ -972,18 +1280,17 @@ async function addCompra(){
   } catch(e){ $('cmp-error').textContent='Error: '+e.message; }
 }
 
-function renderCompras(compras){
-  const div   = $('compras-list');
-  const total = compras.reduce((s,c)=>s+(c.monto||0),0);
-  $('compras-total-label').textContent = fmt(total);
+function renderCompras(){
+  const compras = comprasCache;
+  const div = $('compras-list');
   if(!compras.length){ div.innerHTML='<div class="empty-msg">Sin compras registradas hoy</div>'; return; }
   div.innerHTML = compras.map(c=>`
     <div class="tx-item">
       <div class="tx-desc">
-        <div class="tx-desc-main">${c.desc}</div>
-        <div class="tx-desc-sub">${c.hora||''}</div>
+        <div class="tx-desc-main">${esc(c.desc)}</div>
+        <div class="tx-desc-sub">${esc(c.hora||'')}</div>
       </div>
-      <span class="badge-compra">Compra</span>
+      <span class="badge-${esEf(c.tipo)?'ef':'tr'}">${esEf(c.tipo)?'Ef':'Tr'}</span>
       <span class="tx-monto" style="color:var(--red)">−${fmt(c.monto)}</span>
       <button class="btn-sm btn-danger" onclick="delCompra('${c._id}')" style="margin-left:4px">✕</button>
     </div>`).join('');
@@ -996,11 +1303,242 @@ async function delCompra(id){
 }
 
 // ══════════════════════════════════════
-//   INVENTARIO
+//   PRODUCTOS DE VENTA
+// ══════════════════════════════════════
+let prodEditId = '';
+
+function recetaTexto(p){
+  const partes = (p.receta||[]).map(r=>{
+    const it = invItems.find(i=>i._id===r.insumoId);
+    return it ? `${fmtCant(r.cant)} ${esc(it.unidad||'und')} ${esc(it.nombre)}` : `${fmtCant(r.cant)} (insumo eliminado)`;
+  });
+  return partes.length ? partes.join(' · ') : 'Sin insumos asignados';
+}
+
+function renderProductos(){
+  const div = $('prod-list'); if(!div) return;
+  if(!productos.length){ div.innerHTML='<div class="empty-msg">Sin productos todavía. Crea el primero con “+ Nuevo”.</div>'; return; }
+  div.innerHTML = productos.map(p=>{
+    const alc = alcanza(p);
+    const bajo = alc!==null && alc<=0;
+    return `<div class="inv-item${bajo?' stock-bajo':''}">
+      <div class="inv-header" style="margin-bottom:4px">
+        <div class="inv-nombre">${esc(p.nombre)}</div>
+        <div class="inv-stock" style="color:var(--accent2)">${fmt(p.precio)}</div>
+      </div>
+      <div class="receta-txt">${recetaTexto(p)}${alc!==null?`<br><b style="color:${bajo?'var(--red)':'var(--green)'}">Alcanza para ${alc}</b>`:''}</div>
+      <div class="inv-btns">
+        <button class="btn-edit-inv" style="flex:1" onclick="openModalProd('${p._id}')">✏️ Editar</button>
+        <button class="btn-sm btn-danger" onclick="delProd('${p._id}')">🗑</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function openModalProd(id){
+  prodEditId = id||'';
+  const p = productos.find(x=>x._id===id);
+  $('prod-modal-title').textContent = p ? '✏️ Editar producto' : '🧃 Nuevo producto';
+  $('prod-nombre').value = p?.nombre || '';
+  $('prod-precio').value = p?.precio ? fmtRaw(p.precio) : '';
+  $('prod-error').textContent = '';
+  $('prod-receta').innerHTML = '';
+  if(p) (p.receta||[]).forEach(r=>addRecetaRow(r.insumoId, r.cant));
+  else if(invItems.length) addRecetaRow();
+  if(!invItems.length) $('prod-error').textContent = 'Primero crea los insumos en la pestaña 📦 Insumos.';
+  openModal('modal-prod');
+}
+
+function addRecetaRow(insumoId='', cant=1){
+  if(!invItems.length){ $('prod-error').textContent='Primero crea los insumos en la pestaña 📦 Insumos.'; return; }
+  const existe = !insumoId || invItems.some(i=>i._id===insumoId);
+  const row = document.createElement('div');
+  row.className = 'receta-row';
+  row.innerHTML = `
+    <select class="rec-ins">
+      ${existe ? '' : '<option value="" selected>(insumo eliminado)</option>'}
+      ${invItems.map(i=>`<option value="${i._id}"${i._id===insumoId?' selected':''}>${esc(i.nombre)} (${esc(i.unidad||'und')})</option>`).join('')}
+    </select>
+    <input type="number" class="rec-cant" min="0" step="any" value="${cant}"/>
+    <button type="button" class="btn-sm btn-danger" onclick="this.parentElement.remove()">✕</button>`;
+  $('prod-receta').appendChild(row);
+}
+
+async function saveProd(){
+  const nombre = $('prod-nombre').value.trim();
+  const precio = moneyVal('prod-precio');
+  $('prod-error').textContent='';
+  if(!nombre){ $('prod-error').textContent='Ingresa el nombre.'; return; }
+  if(!precio){ $('prod-error').textContent='Ingresa el precio.'; return; }
+  // Leer receta (sumando insumos repetidos)
+  const map = {};
+  document.querySelectorAll('#prod-receta .receta-row').forEach(row=>{
+    const id   = row.querySelector('.rec-ins').value;
+    const cant = parseFloat(row.querySelector('.rec-cant').value)||0;
+    if(id && cant>0) map[id] = (map[id]||0) + cant;
+  });
+  const receta = Object.entries(map).map(([insumoId,cant])=>({insumoId,cant}));
+  try{
+    if(prodEditId){
+      await PROD_COL().doc(prodEditId).update({ nombre, precio, receta, updatedAt: TS() });
+    } else {
+      await PROD_COL().add({ nombre, precio, receta, createdAt: TS(), creadoPor: currentUser.uid });
+    }
+    closeModal('modal-prod');
+    showToast(prodEditId ? 'Producto actualizado' : 'Producto creado');
+  } catch(e){ $('prod-error').textContent='Error: '+e.message; }
+}
+
+async function delProd(id){
+  const p = productos.find(x=>x._id===id); if(!p) return;
+  if(!confirm(`¿Eliminar el producto "${p.nombre}"? Las ventas ya hechas no se modifican.`)) return;
+  try{ await PROD_COL().doc(id).delete(); showToast('Producto eliminado'); }
+  catch(e){ alert(e.message); }
+}
+
+// ══════════════════════════════════════
+//   GUARDAR DÍA (CIERRE)
+// ══════════════════════════════════════
+function buildCierre(){
+  const t = calcTotales();
+  // Productos vendidos
+  const prodMap = {};
+  let otrosIngresos = 0;
+  ventasCache.forEach(v=>{
+    if(!(v.items||[]).length){ otrosIngresos += v.monto||0; return; }
+    v.items.forEach(i=>{
+      const k = i.prodId || i.nombre;
+      prodMap[k] = prodMap[k] || { nombre: i.nombre, cant: 0, total: 0 };
+      prodMap[k].cant  += i.cant;
+      prodMap[k].total += i.precio * i.cant;
+    });
+  });
+  // Insumos usados
+  const consumo = {};
+  ventasCache.forEach(v=>Object.entries(v.consumo||{}).forEach(([id,c])=>consumo[id]=(consumo[id]||0)+c));
+  const insumos = Object.entries(consumo).map(([id,usado])=>{
+    const it = invItems.find(x=>x._id===id);
+    return { nombre: it?.nombre || '(insumo eliminado)', unidad: it?.unidad || 'und', usado, stockFinal: it ? (it.stock||0) : null };
+  }).sort((a,b)=>a.nombre.localeCompare(b.nombre));
+  const compras = [...comprasCache].reverse().map(c=>({
+    desc: c.desc||'', monto: c.monto||0, tipo: esEf(c.tipo)?'efectivo':'transferencia', hora: c.hora||''
+  }));
+  return {
+    fecha: diaActual, ...t,
+    productos: Object.values(prodMap).sort((a,b)=>b.cant-a.cant),
+    otrosIngresos, insumos, compras
+  };
+}
+
+function resumenHTML(c){
+  const row = (l,v,cls='') => `<div class="res-row ${cls}"><span>${l}</span><span>${v}</span></div>`;
+  const money = n => `<span class="${n<0?'neg':''}">${fmt(n)}</span>`;
+  return `
+    <div class="res-debe">
+      <div class="res-debe-row"><span>💵 Debes tener en efectivo</span><b class="${c.debeEf<0?'neg':''}">${fmt(c.debeEf)}</b></div>
+      <div class="res-debe-sub">Queda del fondo ${fmt(c.quedaEf)} + ventas ${fmt(c.vtaEf)}</div>
+      <div class="res-debe-row"><span>🏦 Debes tener en transferencias</span><b class="${c.debeTr<0?'neg':''}">${fmt(c.debeTr)}</b></div>
+      <div class="res-debe-sub">Queda del fondo ${fmt(c.quedaTr)} + ventas ${fmt(c.vtaTr)}</div>
+    </div>
+
+    <div class="res-sec">
+      <div class="res-h">💰 Ventas (${c.numVentas})</div>
+      ${row('💵 Efectivo', fmt(c.vtaEf))}
+      ${row('🏦 Transferencia', fmt(c.vtaTr))}
+      ${row('Total ventas', fmt(c.vtaTotal), 'res-tot')}
+    </div>
+
+    <div class="res-sec">
+      <div class="res-h">🧃 Productos vendidos</div>
+      ${c.productos.length ? c.productos.map(p=>row(`${p.cant}× ${esc(p.nombre)}`, fmt(p.total))).join('') : '<div class="empty-msg">Sin productos vendidos</div>'}
+      ${c.otrosIngresos ? row('Otros ingresos', fmt(c.otrosIngresos)) : ''}
+    </div>
+
+    <div class="res-sec">
+      <div class="res-h">🛒 Fondo de compras</div>
+      <table class="fondo-table">
+        <tr><th></th><th>💵 Efectivo</th><th>🏦 Transf.</th></tr>
+        <tr><td>Fondo</td><td>${fmt(c.fondoEf)}</td><td>${fmt(c.fondoTr)}</td></tr>
+        <tr><td>− Gastado</td><td style="color:var(--red)">${fmt(c.gasEf)}</td><td style="color:var(--red)">${fmt(c.gasTr)}</td></tr>
+        <tr class="fondo-queda"><td>= Queda</td><td>${money(c.quedaEf)}</td><td>${money(c.quedaTr)}</td></tr>
+      </table>
+      ${c.compras.length ? '<div style="margin-top:8px">' + c.compras.map(x=>row(`${esc(x.hora)} ${esc(x.desc)} <span class="badge-${x.tipo==='efectivo'?'ef':'tr'}">${x.tipo==='efectivo'?'Ef':'Tr'}</span>`, fmt(x.monto))).join('') + '</div>' : ''}
+    </div>
+
+    <div class="res-sec">
+      <div class="res-h">📦 Insumos usados</div>
+      ${c.insumos.length ? c.insumos.map(i=>row(esc(i.nombre), `${fmtCant(i.usado)} ${esc(i.unidad)}${i.stockFinal!==null?` <span style="color:var(--gray);font-weight:600">(quedan ${fmtCant(i.stockFinal)})</span>`:''}`)).join('') : '<div class="empty-msg">Sin consumo registrado</div>'}
+    </div>`;
+}
+
+function openCierre(){
+  $('cierre-title').textContent = `📅 ${fmtFecha(diaActual)}`;
+  $('cierre-body').innerHTML = resumenHTML(buildCierre());
+  $('cierre-error').textContent = '';
+  $('cierre-footer').innerHTML = `<button class="btn-primary btn-cierre" id="btn-confirmar-cierre" onclick="guardarDia()">💾 ${diaData.cerrado?'Actualizar día guardado':'Guardar día'}</button>`;
+  openModal('modal-cierre');
+}
+
+async function guardarDia(){
+  const btn = $('btn-confirmar-cierre'); btn.disabled = true;
+  try{
+    await DIA().set({
+      cerrado: true, cierre: buildCierre(),
+      cerradoHora: horaAhora(), cerradoAt: TS(), cerradoPor: currentUser.email
+    }, { merge: true });
+    closeModal('modal-cierre');
+    showToast('📅 Día guardado');
+  } catch(e){ $('cierre-error').textContent='Error: '+e.message; btn.disabled = false; }
+}
+
+function renderCerradoBanner(){
+  const b = $('cerrado-banner');
+  if(diaData.cerrado){
+    b.style.display = 'flex';
+    b.textContent = `✅ Día guardado a las ${diaData.cerradoHora||''}. Si registras algo más, vuelve a guardarlo.`;
+    $('btn-guardar-dia').textContent = '📅 Actualizar día guardado';
+  } else {
+    b.style.display = 'none';
+    $('btn-guardar-dia').textContent = '📅 Guardar día';
+  }
+}
+
+let histCache = [];
+async function openHistorial(){
+  $('hist-list').innerHTML = '<div class="empty-msg">Cargando…</div>';
+  openModal('modal-hist');
+  try{
+    const snap = await DIA_COL().where('cerrado','==',true).get();
+    histCache = snap.docs.map(d=>({_id:d.id,...d.data()})).sort((a,b)=>b._id.localeCompare(a._id));
+    if(!histCache.length){ $('hist-list').innerHTML='<div class="empty-msg">Todavía no hay días guardados</div>'; return; }
+    $('hist-list').innerHTML = histCache.map(d=>`
+      <button class="hist-item" onclick="verDiaGuardado('${d._id}')">
+        <div>
+          <div class="hist-fecha">${fmtFecha(d._id)}</div>
+          <div class="hist-sub">${d.cierre?.numVentas||0} ventas · compras ${fmt(d.cierre?.gasTotal||0)}</div>
+        </div>
+        <b style="color:var(--green)">${fmt(d.cierre?.vtaTotal||0)}</b>
+      </button>`).join('');
+  } catch(e){ $('hist-list').innerHTML = `<div class="error-msg">Error: ${esc(e.message)}</div>`; }
+}
+
+function verDiaGuardado(id){
+  const d = histCache.find(x=>x._id===id); if(!d?.cierre) return;
+  closeModal('modal-hist');
+  $('cierre-title').textContent = `📚 ${fmtFecha(id)}`;
+  $('cierre-body').innerHTML = resumenHTML(d.cierre) +
+    `<div class="hist-sub" style="text-align:center">Guardado a las ${esc(d.cerradoHora||'')} por ${esc(d.cerradoPor||'')}</div>`;
+  $('cierre-error').textContent = '';
+  $('cierre-footer').innerHTML = `<button class="btn-primary btn-hist" onclick="closeModal('modal-cierre');openHistorial()">← Volver</button>`;
+  openModal('modal-cierre');
+}
+
+// ══════════════════════════════════════
+//   INSUMOS (INVENTARIO)
 // ══════════════════════════════════════
 function openModalInvAdd(docId){
   $('inv-docid').value = docId||'';
-  $('inv-modal-title').textContent = docId ? '✏️ Editar producto' : '📦 Nuevo producto';
+  $('inv-modal-title').textContent = docId ? '✏️ Editar insumo' : '📦 Nuevo insumo';
   $('inv-error').textContent = '';
   if(docId){
     const it = invItems.find(x=>x._id===docId);
@@ -1031,7 +1569,7 @@ async function saveInvProduct(){
       await INV_COL().add({nombre, stock, stockMin, unidad, createdAt:TS(), creadoPor:currentUser.uid});
     }
     closeModal('modal-inv');
-    showToast(docId?'Producto actualizado':'Producto agregado');
+    showToast(docId?'Insumo actualizado':'Insumo agregado');
   } catch(e){ $('inv-error').textContent='Error: '+e.message; }
 }
 
@@ -1039,22 +1577,22 @@ function renderInv(){
   const div  = $('inv-list'); if(!div) return;
   const busq = ($('inv-buscar')?.value||'').toLowerCase().trim();
   const items = busq ? invItems.filter(i=>(i.nombre||'').toLowerCase().includes(busq)) : invItems;
-  if(!items.length){ div.innerHTML='<div class="empty-msg">Sin productos'+(busq?' que coincidan':'.')+' Agrega el primero</div>'; return; }
+  if(!items.length){ div.innerHTML='<div class="empty-msg">Sin insumos'+(busq?' que coincidan':'. Agrega el primero')+'</div>'; return; }
   div.innerHTML = items.map(it=>{
     const bajo = (it.stock||0) <= (it.stockMin||0);
     return `<div class="inv-item${bajo?' stock-bajo':''}">
       <div class="inv-header">
         <div>
-          <div class="inv-nombre">${it.nombre}</div>
+          <div class="inv-nombre">${esc(it.nombre)}</div>
           ${bajo?'<span class="stock-badge-low">⚠️ STOCK BAJO</span>':''}
         </div>
-        <div class="inv-stock ${bajo?'stock-low':'stock-ok'}">${it.stock||0} <span style="font-size:0.7rem;font-weight:600">${it.unidad||'und'}</span></div>
+        <div class="inv-stock ${bajo?'stock-low':'stock-ok'}">${fmtCant(it.stock)} <span style="font-size:0.7rem;font-weight:600">${esc(it.unidad||'und')}</span></div>
       </div>
       <div class="inv-btns">
         <button class="btn-entrada" onclick="openModalMov('${it._id}','entrada')">📥 Entrada</button>
         <button class="btn-salida"  onclick="openModalMov('${it._id}','salida')">📤 Salida</button>
         <button class="btn-edit-inv" onclick="openModalInvAdd('${it._id}')">✏️</button>
-        <button class="btn-sm btn-danger" onclick="delInvItem('${it._id}','${it.nombre}')">🗑</button>
+        <button class="btn-sm btn-danger" onclick="delInvItem('${it._id}')">🗑</button>
       </div>
     </div>`;
   }).join('');
@@ -1071,9 +1609,12 @@ function renderAlertaStock(){
   }
 }
 
-async function delInvItem(id, nombre){
-  if(!confirm(`¿Eliminar "${nombre}" del inventario?`)) return;
-  try{ await INV_COL().doc(id).delete(); showToast('Producto eliminado'); }
+async function delInvItem(id){
+  const it = invItems.find(x=>x._id===id); if(!it) return;
+  const usadoEn = productos.filter(p=>(p.receta||[]).some(r=>r.insumoId===id)).map(p=>p.nombre);
+  const aviso = usadoEn.length ? `\n\nSe usa en: ${usadoEn.join(', ')}. Esos productos dejarán de descontarlo.` : '';
+  if(!confirm(`¿Eliminar "${it.nombre}" de los insumos?${aviso}`)) return;
+  try{ await INV_COL().doc(id).delete(); showToast('Insumo eliminado'); }
   catch(e){ alert(e.message); }
 }
 
@@ -1083,7 +1624,7 @@ function openModalMov(docId, tipo){
   movTipo = tipo;
   $('mov-docid').value = docId;
   $('mov-modal-title').textContent = tipo==='entrada' ? `📥 Entrada — ${it.nombre}` : `📤 Salida — ${it.nombre}`;
-  $('mov-producto-label').textContent = `Stock actual: ${it.stock||0} ${it.unidad||'und'}`;
+  $('mov-producto-label').textContent = `Stock actual: ${fmtCant(it.stock)} ${it.unidad||'und'}`;
   $('mov-cantidad').value='';
   $('mov-nota').value='';
   $('mov-error').textContent='';
@@ -1097,13 +1638,12 @@ async function saveMov(){
   $('mov-error').textContent='';
   if(!cantidad||cantidad<=0){ $('mov-error').textContent='Ingresa una cantidad válida.'; return; }
   const it = invItems.find(x=>x._id===docId); if(!it) return;
-  const delta    = movTipo==='entrada' ? cantidad : -cantidad;
-  const nuevoStock = Math.max(0, (it.stock||0) + delta);
+  const delta = movTipo==='entrada' ? cantidad : -cantidad;
   try{
-    await INV_COL().doc(docId).update({ stock: nuevoStock, updatedAt: TS() });
-    // Guardar movimiento en subcolección historial
+    // increment() para no pisar descuentos de ventas hechas al mismo tiempo
+    await INV_COL().doc(docId).update({ stock: INC(delta), updatedAt: TS() });
     await INV_COL().doc(docId).collection('movimientos').add({
-      tipo: movTipo, cantidad, nota, stockAntes: it.stock||0, stockDespues: nuevoStock,
+      tipo: movTipo, cantidad, nota, stockAntes: it.stock||0, stockDespues: (it.stock||0) + delta,
       fecha: today(), createdAt: TS(), creadoPor: currentUser.uid
     });
     closeModal('modal-mov');
