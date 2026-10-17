@@ -348,6 +348,7 @@
   .fondo-table tr.fondo-queda td { border-top: 1px solid var(--border); font-weight: 900; font-size: 0.95rem; color: var(--accent); }
   .neg { color: var(--red) !important; }
   body:not(.es-admin) .solo-admin { display: none !important; }
+  body:not(.es-admin) .tab-bar    { display: none; }   /* el mesero solo ve Caja */
   .role-badge { display: inline-block; margin-left: 4px; padding: 1px 7px; border-radius: 8px; font-size: 0.64rem; font-weight: 800; background: var(--tr-bg); color: var(--tr-tx); border: 1px solid var(--tr-bd); }
   .role-badge.admin { background: var(--wa-bg); color: var(--wa-tx); border-color: var(--wa-bd); }
 
@@ -443,7 +444,7 @@
       <div class="stat-pill">💵 Ef: <span id="h-ef">$0</span></div>
       <div class="stat-pill">🏦 Tr: <span id="h-tr">$0</span></div>
       <div class="stat-pill">📊 Ventas: <span id="h-total">$0</span></div>
-      <div class="stat-pill">🛒 Fondo: <span id="h-fondo">$0</span></div>
+      <div class="stat-pill solo-admin">🛒 Fondo: <span id="h-fondo">$0</span></div>
     </div>
   </header>
 
@@ -456,10 +457,10 @@
   <!-- Tabs -->
   <div class="tab-bar">
     <button class="tab-btn active" id="tab-btn-caja"       onclick="goTab('caja')"><span class="tab-ico">💰</span>Caja</button>
-    <button class="tab-btn"        id="tab-btn-compras"    onclick="goTab('compras')"><span class="tab-ico">🛒</span>Compras</button>
-    <button class="tab-btn"        id="tab-btn-productos"  onclick="goTab('productos')"><span class="tab-ico">🧃</span>Productos</button>
-    <button class="tab-btn"        id="tab-btn-inventario" onclick="goTab('inventario')"><span class="tab-ico">📦</span>Insumos</button>
-    <button class="tab-btn"        id="tab-btn-historial"  onclick="goTab('historial')"><span class="tab-ico">📅</span>Historial</button>
+    <button class="tab-btn solo-admin" id="tab-btn-compras"    onclick="goTab('compras')"><span class="tab-ico">🛒</span>Compras</button>
+    <button class="tab-btn solo-admin" id="tab-btn-productos"  onclick="goTab('productos')"><span class="tab-ico">🧃</span>Productos</button>
+    <button class="tab-btn solo-admin" id="tab-btn-inventario" onclick="goTab('inventario')"><span class="tab-ico">📦</span>Insumos</button>
+    <button class="tab-btn solo-admin" id="tab-btn-historial"  onclick="goTab('historial')"><span class="tab-ico">📅</span>Historial</button>
   </div>
 
   <!-- ══ TAB: CAJA ══ -->
@@ -506,8 +507,8 @@
     </div>
 
     <!-- Cierre del día -->
-    <button class="btn-primary btn-cierre" id="btn-guardar-dia" onclick="openCierre()">📅 Guardar día</button>
-    <button class="btn-primary btn-hist" onclick="goTab('historial')" style="margin-bottom:14px">📅 Ver historial</button>
+    <button class="btn-primary btn-cierre solo-admin" id="btn-guardar-dia" onclick="openCierre()">📅 Guardar día</button>
+    <button class="btn-primary btn-hist solo-admin" onclick="goTab('historial')" style="margin-bottom:14px">📅 Ver historial</button>
   </div>
 
   <!-- ══ TAB: COMPRAS ══ -->
@@ -822,6 +823,7 @@ auth.onAuthStateChanged(async user => {
     }
     currentUser = user;
     document.body.classList.toggle('es-admin', esAdmin());
+    goTab('caja');
     $('login-screen').style.display = 'none';
     $('main-screen').style.display  = 'block';
     $('h-user').innerHTML = `${esc(userNombre)}<span class="role-badge${esAdmin()?' admin':''}">${esAdmin()?'👑 Admin':esc(userRole)}</span>`;
@@ -952,6 +954,7 @@ function setupListeners(){
 //   TABS
 // ══════════════════════════════════════
 function goTab(tab){
+  if(!esAdmin()) tab = 'caja';   // el mesero solo usa el módulo de ventas
   ['caja','compras','productos','inventario','historial'].forEach(t=>{
     $('tab-btn-'+t).classList.toggle('active', t===tab);
     $('tab-'+t).classList.toggle('active', t===tab);
