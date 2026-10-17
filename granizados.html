@@ -239,6 +239,10 @@
   .tx-desc-main  { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .tx-desc-sub   { font-size: 0.7rem; color: var(--gray); margin-top: 1px; }
   .tx-monto { font-weight: 800; font-size: 0.95rem; white-space: nowrap; }
+  .ventas-total { border-top: 2px solid var(--border); margin-top: 4px; padding-top: 8px; }
+  .ventas-total-row { display: flex; justify-content: space-between; font-size: 0.82rem; padding: 2px 0; }
+  .ventas-total-main { font-size: 1rem; font-weight: 900; margin-top: 4px; padding-top: 6px; border-top: 1px solid var(--border); }
+  .ventas-total-main b { color: var(--accent); }
   .tx-ef { color: var(--ef-tx); }
   .tx-tr { color: var(--tr-tx); }
   .badge-ef { background: var(--ef-bg); color: var(--ef-tx); border: 1px solid var(--ef-bd); border-radius: 6px; padding: 1px 7px; font-size: 0.7rem; font-weight: 700; }
@@ -1114,7 +1118,17 @@ function renderVentas(){
       <span class="badge-${esEf(v.tipo)?'ef':'tr'}">${esEf(v.tipo)?'Ef':'Tr'}</span>
       <span class="tx-monto ${esEf(v.tipo)?'tx-ef':'tx-tr'}">${fmt(v.monto)}</span>
       ${esAdmin()?`<button class="btn-sm btn-danger" onclick="delVenta('${v._id}')" style="margin-left:4px">✕</button>`:''}
-    </div>`).join('');
+    </div>`).join('') + ventasTotalHTML();
+}
+
+// Pie de la lista de ventas: total del día con su desglose
+function ventasTotalHTML(){
+  const t = calcTotales();
+  return `<div class="ventas-total">
+    <div class="ventas-total-row"><span class="tx-ef">💵 Efectivo</span><b class="tx-ef">${fmt(t.vtaEf)}</b></div>
+    <div class="ventas-total-row"><span class="tx-tr">🏦 Transferencia</span><b class="tx-tr">${fmt(t.vtaTr)}</b></div>
+    <div class="ventas-total-row ventas-total-main"><span>Total ventas</span><b>${fmt(t.vtaTotal)}</b></div>
+  </div>`;
 }
 
 async function delVenta(id){
