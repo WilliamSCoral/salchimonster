@@ -175,22 +175,27 @@
     align-items: center;
   }
 
+  /* ─── SALDO INICIAL ─── */
+  .saldo-ini-card {
+    background: #fffbeb;
+    border: 1.5px solid #fcd34d;
+    border-radius: 14px;
+    padding: 13px 15px;
+    margin-bottom: 14px;
+  }
+  .saldo-ini-title {
+    font-size: 0.82rem; font-weight: 800; color: #92400e;
+    margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;
+  }
+  .saldo-ini-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px; }
+  .saldo-ini-lbl  { font-size: 0.7rem; font-weight: 700; color: #92400e; margin-bottom: 3px; }
+  .btn-saldo-save {
+    width: 100%; padding: 8px; background: #d97706; color: #fff;
+    border: none; border-radius: 9px; font-weight: 800; font-size: 0.84rem; cursor: pointer;
+  }
+  .btn-saldo-save:active { opacity: 0.85; }
+
   /* ─── RESUMEN CAJA ─── */
-  .caja-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 10px;
-    margin-bottom: 12px;
-  }
-  .caja-box {
-    border-radius: 12px;
-    padding: 12px 14px;
-    text-align: center;
-  }
-  .caja-box-label { font-size: 0.72rem; font-weight: 700; opacity: 0.8; margin-bottom: 4px; }
-  .caja-box-val   { font-size: 1.25rem; font-weight: 900; }
-  .caja-box-ef    { background: #f0fff4; border: 1.5px solid #9ae6b4; color: #276749; }
-  .caja-box-tr    { background: #ebf8ff; border: 1.5px solid #90cdf4; color: #2b6cb0; }
   .caja-total {
     text-align: center;
     padding: 10px;
@@ -201,6 +206,14 @@
   }
   .caja-total-label { font-size: 0.75rem; font-weight: 700; opacity: 0.85; }
   .caja-total-val   { font-size: 1.6rem; font-weight: 900; }
+  .caja-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+  .caja-col  { border-radius: 12px; padding: 11px 12px; }
+  .caja-col-ef { background: #f0fff4; border: 1.5px solid #9ae6b4; color: #276749; }
+  .caja-col-tr { background: #ebf8ff; border: 1.5px solid #90cdf4; color: #2b6cb0; }
+  .caja-col-head { font-size: 0.7rem; font-weight: 800; opacity: 0.8; margin-bottom: 6px; }
+  .caja-col-row  { display: flex; justify-content: space-between; font-size: 0.74rem; padding: 2px 0; }
+  .caja-col-row-label { opacity: 0.75; }
+  .caja-col-total { border-top: 1px solid currentColor; margin-top: 5px; padding-top: 5px; font-size: 0.95rem; font-weight: 900; display: flex; justify-content: space-between; }
 
   /* ─── CAJA FUERTE ─── */
   .safe-box {
@@ -424,19 +437,42 @@
   <!-- ══ TAB: CAJA ══ -->
   <div class="tab-content active" id="tab-caja">
 
+    <!-- Saldo inicial -->
+    <div class="saldo-ini-card">
+      <div class="saldo-ini-title">
+        🪙 Saldo inicial del día
+        <span id="saldo-ini-status" style="font-size:0.7rem;font-weight:600;opacity:0.7"></span>
+      </div>
+      <div class="saldo-ini-grid">
+        <div>
+          <div class="saldo-ini-lbl">💵 Efectivo inicial</div>
+          <input type="text" inputmode="numeric" id="ini-ef" placeholder="0" oninput="moneyFmt(this)" style="background:#fff;font-size:0.9rem"/>
+        </div>
+        <div>
+          <div class="saldo-ini-lbl">🏦 Transferencia inicial</div>
+          <input type="text" inputmode="numeric" id="ini-tr" placeholder="0" oninput="moneyFmt(this)" style="background:#fff;font-size:0.9rem"/>
+        </div>
+      </div>
+      <button class="btn-saldo-save" onclick="saveSaldoInicial()">💾 Guardar saldo inicial</button>
+    </div>
+
     <!-- Resumen del día -->
     <div class="caja-total">
-      <div class="caja-total-label">💰 TOTAL DEL DÍA</div>
+      <div class="caja-total-label">💰 TOTAL EN CAJA</div>
       <div class="caja-total-val" id="caja-total-dia">$0</div>
     </div>
-    <div class="caja-grid">
-      <div class="caja-box caja-box-ef">
-        <div class="caja-box-label">💵 EFECTIVO</div>
-        <div class="caja-box-val" id="caja-ef">$0</div>
+    <div class="caja-cols">
+      <div class="caja-col caja-col-ef">
+        <div class="caja-col-head">💵 EFECTIVO</div>
+        <div class="caja-col-row"><span class="caja-col-row-label">Saldo inicial</span><span id="resumen-ini-ef">$0</span></div>
+        <div class="caja-col-row"><span class="caja-col-row-label">+ Ventas</span><span id="resumen-vta-ef">$0</span></div>
+        <div class="caja-col-total"><span>Total</span><span id="caja-ef">$0</span></div>
       </div>
-      <div class="caja-box caja-box-tr">
-        <div class="caja-box-label">🏦 TRANSFERENCIA</div>
-        <div class="caja-box-val" id="caja-tr">$0</div>
+      <div class="caja-col caja-col-tr">
+        <div class="caja-col-head">🏦 TRANSFERENCIA</div>
+        <div class="caja-col-row"><span class="caja-col-row-label">Saldo inicial</span><span id="resumen-ini-tr">$0</span></div>
+        <div class="caja-col-row"><span class="caja-col-row-label">+ Ventas</span><span id="resumen-vta-tr">$0</span></div>
+        <div class="caja-col-total"><span>Total</span><span id="caja-tr">$0</span></div>
       </div>
     </div>
 
@@ -658,14 +694,17 @@ function moneyVal(id){
 const $ = id => document.getElementById(id);
 
 // ── Estado ──
-let currentUser = null;
-let ventasTipo  = 'efectivo';
-let safeAccion  = 'deposito';
-let movTipo     = 'entrada';
-let invItems    = [];
-let safeHist    = [];
-let safeVisible = false;
-let unsubs      = [];
+let currentUser    = null;
+let ventasTipo     = 'efectivo';
+let safeAccion     = 'deposito';
+let movTipo        = 'entrada';
+let invItems       = [];
+let safeHist       = [];
+let safeVisible    = false;
+let unsubs         = [];
+let saldoInicialEf = 0;
+let saldoInicialTr = 0;
+let ventasCache    = [];
 
 // ══════════════════════════════════════
 //   AUTH
@@ -712,11 +751,31 @@ function startReloj(){
 //   LISTENERS FIRESTORE
 // ══════════════════════════════════════
 function setupListeners(){
+  // Documento del día (saldo inicial)
+  const u0 = DIA().onSnapshot(snap=>{
+    if(snap.exists){
+      const d = snap.data();
+      saldoInicialEf = d.saldoInicialEf || 0;
+      saldoInicialTr = d.saldoInicialTr || 0;
+      // Rellenar inputs si no los está editando el usuario
+      if(document.activeElement?.id !== 'ini-ef')
+        $('ini-ef').value = saldoInicialEf ? fmtRaw(saldoInicialEf) : '';
+      if(document.activeElement?.id !== 'ini-tr')
+        $('ini-tr').value = saldoInicialTr ? fmtRaw(saldoInicialTr) : '';
+      $('saldo-ini-status').textContent = (saldoInicialEf||saldoInicialTr) ? '✅ Guardado' : '';
+    } else {
+      saldoInicialEf = 0; saldoInicialTr = 0;
+      $('saldo-ini-status').textContent = '';
+    }
+    updateHeaderStats(ventasCache);
+  }, e=>console.error('dia',e));
+  unsubs.push(u0);
+
   // Ventas del día
   const u1 = VENTAS().orderBy('createdAt','desc').onSnapshot(snap=>{
-    const ventas = snap.docs.map(d=>({_id:d.id,...d.data()}));
-    renderVentas(ventas);
-    updateHeaderStats(ventas);
+    ventasCache = snap.docs.map(d=>({_id:d.id,...d.data()}));
+    renderVentas(ventasCache);
+    updateHeaderStats(ventasCache);
   }, e=>console.error('ventas',e));
   unsubs.push(u1);
 
@@ -809,14 +868,33 @@ async function delVenta(id){
 }
 
 function updateHeaderStats(ventas){
-  const ef = ventas.filter(v=>v.tipo==='efectivo').reduce((s,v)=>s+(v.monto||0),0);
-  const tr = ventas.filter(v=>v.tipo==='transferencia').reduce((s,v)=>s+(v.monto||0),0);
-  $('caja-ef').textContent         = fmt(ef);
-  $('caja-tr').textContent         = fmt(tr);
-  $('caja-total-dia').textContent  = fmt(ef+tr);
-  $('h-ef').textContent    = fmt(ef);
-  $('h-tr').textContent    = fmt(tr);
-  $('h-total').textContent = fmt(ef+tr);
+  const vtaEf = ventas.filter(v=>v.tipo==='efectivo').reduce((s,v)=>s+(v.monto||0),0);
+  const vtaTr = ventas.filter(v=>v.tipo==='transferencia').reduce((s,v)=>s+(v.monto||0),0);
+  const totEf = saldoInicialEf + vtaEf;
+  const totTr = saldoInicialTr + vtaTr;
+  // Desglose efectivo
+  $('resumen-ini-ef').textContent = fmt(saldoInicialEf);
+  $('resumen-vta-ef').textContent = fmt(vtaEf);
+  $('caja-ef').textContent        = fmt(totEf);
+  // Desglose transferencia
+  $('resumen-ini-tr').textContent = fmt(saldoInicialTr);
+  $('resumen-vta-tr').textContent = fmt(vtaTr);
+  $('caja-tr').textContent        = fmt(totTr);
+  // Total general
+  $('caja-total-dia').textContent = fmt(totEf + totTr);
+  // Header pills
+  $('h-ef').textContent    = fmt(totEf);
+  $('h-tr').textContent    = fmt(totTr);
+  $('h-total').textContent = fmt(totEf + totTr);
+}
+
+async function saveSaldoInicial(){
+  const ef = moneyVal('ini-ef');
+  const tr = moneyVal('ini-tr');
+  try{
+    await DIA().set({ saldoInicialEf: ef, saldoInicialTr: tr, updatedAt: TS() }, { merge: true });
+    showToast('🪙 Saldo inicial guardado');
+  } catch(e){ showToast('Error: '+e.message); }
 }
 
 // ══════════════════════════════════════
