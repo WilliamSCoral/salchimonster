@@ -228,6 +228,27 @@
   }
   .tipo-btn.active-ef { border-color: var(--ef-bd); background: var(--ef-bg); color: var(--ef-tx); }
   .tipo-btn.active-tr { border-color: var(--tr-bd); background: var(--tr-bg); color: var(--tr-tx); }
+  .tipo-btn.active-mx { border-color: var(--pu-bd); background: var(--pu-bg); color: var(--pu-tx); }
+  .tipo-btn.active-fi { border-color: var(--wa-bd); background: var(--wa-bg); color: var(--wa-tx); }
+  .tipo-btns.cuatro .tipo-btn { padding: 9px 2px; font-size: 0.76rem; }
+  .pago-extra { background: var(--light); border: 1px solid var(--border); border-radius: 10px; padding: 9px 10px; margin-bottom: 10px; }
+  .badge-mx { background: var(--pu-bg); color: var(--pu-tx); border: 1px solid var(--pu-bd); border-radius: 6px; padding: 1px 7px; font-size: 0.7rem; font-weight: 700; }
+  .badge-fi { background: var(--wa-bg); color: var(--wa-tx); border: 1px solid var(--wa-bd); border-radius: 6px; padding: 1px 7px; font-size: 0.7rem; font-weight: 700; }
+  .tx-mx { color: var(--pu-tx); }
+  .tx-fi { color: var(--wa-tx); }
+  .caja-extra { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; font-size: 0.76rem; font-weight: 700; margin: -4px 0 14px; color: var(--gray); }
+
+  /* ─── FIADOS ─── */
+  .fio-item { border: 1px solid var(--border); border-radius: 12px; padding: 11px 13px; margin-bottom: 8px; background: var(--card2); }
+  .fio-item.debe { border-color: var(--wa-bd); }
+  .fio-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  .fio-nombre { font-weight: 800; font-size: 0.92rem; }
+  .fio-saldo  { font-size: 1.15rem; font-weight: 900; white-space: nowrap; }
+  .fio-sub    { font-size: 0.72rem; color: var(--gray); margin: 3px 0 8px; }
+  .fio-movs   { border-top: 1px solid var(--border); margin-top: 8px; padding-top: 6px; }
+  .fio-mov    { display: flex; justify-content: space-between; align-items: center; gap: 6px; font-size: 0.78rem; padding: 4px 0; }
+  .fio-mov-desc { flex: 1; min-width: 0; color: var(--gray); }
+  .fio-mov-desc b { color: var(--text); font-weight: 700; }
 
   /* ─── LISTA TRANSACCIONES ─── */
   .tx-item {
@@ -460,6 +481,7 @@
     <button class="tab-btn solo-admin" id="tab-btn-compras"    onclick="goTab('compras')"><span class="tab-ico">🛒</span>Compras</button>
     <button class="tab-btn solo-admin" id="tab-btn-productos"  onclick="goTab('productos')"><span class="tab-ico">🧃</span>Productos</button>
     <button class="tab-btn solo-admin" id="tab-btn-inventario" onclick="goTab('inventario')"><span class="tab-ico">📦</span>Insumos</button>
+    <button class="tab-btn solo-admin" id="tab-btn-fiados"     onclick="goTab('fiados')"><span class="tab-ico">🧾</span>Fiados</button>
     <button class="tab-btn solo-admin" id="tab-btn-historial"  onclick="goTab('historial')"><span class="tab-ico">📅</span>Historial</button>
   </div>
 
@@ -483,15 +505,29 @@
         <div class="caja-col-total" style="border:none;margin:0;padding:0"><span></span><span id="caja-tr">$0</span></div>
       </div>
     </div>
+    <div class="caja-extra" id="caja-extra"></div>
 
     <!-- Nueva venta -->
     <div class="card">
       <div class="card-title">➕ Nueva venta</div>
       <div class="prod-grid" id="prod-grid"></div>
       <div class="cart" id="carrito" style="display:none"></div>
-      <div class="tipo-btns">
-        <button class="tipo-btn active-ef" id="vta-btn-ef" onclick="setVtaTipo('efectivo')">💵 Efectivo</button>
-        <button class="tipo-btn"           id="vta-btn-tr" onclick="setVtaTipo('transferencia')">🏦 Transf.</button>
+      <div class="tipo-btns cuatro">
+        <button class="tipo-btn active-ef" id="vta-btn-efectivo"      onclick="setVtaTipo('efectivo')">💵 Efectivo</button>
+        <button class="tipo-btn"           id="vta-btn-transferencia" onclick="setVtaTipo('transferencia')">🏦 Transf.</button>
+        <button class="tipo-btn"           id="vta-btn-mixto"         onclick="setVtaTipo('mixto')">🔀 Mixto</button>
+        <button class="tipo-btn"           id="vta-btn-fiado"         onclick="setVtaTipo('fiado')">🧾 Fiado</button>
+      </div>
+      <div class="pago-extra" id="vta-mixto" style="display:none">
+        <div class="form-row">
+          <div class="fg"><label>💵 Efectivo</label><input type="text" inputmode="numeric" id="vta-mix-ef" placeholder="0" oninput="moneyFmt(this);syncMixto('ef')"/></div>
+          <div class="fg"><label>🏦 Transferencia</label><input type="text" inputmode="numeric" id="vta-mix-tr" placeholder="0" oninput="moneyFmt(this);syncMixto('tr')"/></div>
+        </div>
+      </div>
+      <div class="pago-extra" id="vta-fiado" style="display:none">
+        <label>Nombre de la persona a la que se le fía</label>
+        <input type="text" id="vta-cliente" list="fio-clientes" placeholder="Ej: Juan Pérez" autocomplete="off"/>
+        <datalist id="fio-clientes"></datalist>
       </div>
       <div class="error-msg" id="vta-error"></div>
       <button class="btn-primary" id="vta-btn-save" onclick="addVenta()">✅ Registrar venta</button>
@@ -596,6 +632,26 @@
     </div>
   </div>
 
+  <!-- ══ TAB: FIADOS ══ -->
+  <div class="tab-content" id="tab-fiados">
+    <div class="card">
+      <div class="card-title">🧾 Fiados</div>
+      <div class="cal-resumen" style="margin:0 0 12px">
+        <div class="cal-stat"><div class="cal-stat-lbl">Por cobrar</div><div class="cal-stat-val" id="fio-total" style="color:var(--wa-tx)">$0</div></div>
+        <div class="cal-stat"><div class="cal-stat-lbl">Personas que deben</div><div class="cal-stat-val" id="fio-cnt">0</div></div>
+      </div>
+      <div class="form-row" style="margin-bottom:10px">
+        <input type="text" id="fio-buscar" class="fg" placeholder="🔍 Buscar persona..." oninput="renderFios()" style="font-size:0.84rem"/>
+        <select id="fio-filtro" onchange="renderFios()" style="max-width:130px;font-size:0.84rem">
+          <option value="pend">Pendientes</option>
+          <option value="pag">Pagados</option>
+          <option value="todos">Todos</option>
+        </select>
+      </div>
+      <div id="fio-list"><div class="empty-msg">Sin fiados</div></div>
+    </div>
+  </div>
+
   <!-- ══ TAB: HISTORIAL ══ -->
   <div class="tab-content" id="tab-historial">
     <div class="card">
@@ -619,7 +675,7 @@
       <button class="btn-primary solo-admin" onclick="importarClick()">⬆️ Importar desde Excel</button>
       <input type="file" id="imp-file" accept=".xlsx,.xls" style="display:none" onchange="importarExcel(this)"/>
       <div class="receta-txt" style="margin-top:8px">
-        Para importar usa el mismo formato del archivo exportado: hojas <b>Resumen</b>, <b>Productos</b>, <b>Compras</b> e <b>Insumos</b>, con la fecha como AAAA-MM-DD (o DD/MM/AAAA). Solo la hoja Resumen es obligatoria.
+        Para importar usa el mismo formato del archivo exportado: hojas <b>Resumen</b>, <b>Productos</b>, <b>Compras</b>, <b>Insumos</b> y <b>Fiados</b>, con la fecha como AAAA-MM-DD (o DD/MM/AAAA). Solo la hoja Resumen es obligatoria.
       </div>
       <div class="error-msg" id="excel-msg"></div>
     </div>
@@ -713,6 +769,33 @@
   </div>
 </div>
 
+<!-- ═══ MODAL: Abono a fiado ═══ -->
+<div class="modal-bg" id="modal-abono">
+  <div class="modal">
+    <div class="modal-title">
+      <span id="abo-title">💰 Abono</span>
+      <button class="btn-close" onclick="closeModal('modal-abono')">✕</button>
+    </div>
+    <div id="abo-saldo" style="font-weight:700;color:var(--wa-tx);margin-bottom:12px;font-size:0.92rem"></div>
+    <div class="tipo-btns">
+      <button class="tipo-btn active-ef" id="abo-btn-efectivo"      onclick="setAboTipo('efectivo')">💵 Efectivo</button>
+      <button class="tipo-btn"           id="abo-btn-transferencia" onclick="setAboTipo('transferencia')">🏦 Transf.</button>
+      <button class="tipo-btn"           id="abo-btn-mixto"         onclick="setAboTipo('mixto')">🔀 Mixto</button>
+    </div>
+    <div id="abo-simple" style="margin-bottom:8px">
+      <label>Valor del abono</label>
+      <input type="text" inputmode="numeric" id="abo-monto" placeholder="0" oninput="moneyFmt(this)"/>
+    </div>
+    <div class="form-row" id="abo-mixto" style="display:none;margin-bottom:8px">
+      <div class="fg"><label>💵 Efectivo</label><input type="text" inputmode="numeric" id="abo-mix-ef" placeholder="0" oninput="moneyFmt(this)"/></div>
+      <div class="fg"><label>🏦 Transferencia</label><input type="text" inputmode="numeric" id="abo-mix-tr" placeholder="0" oninput="moneyFmt(this)"/></div>
+    </div>
+    <button type="button" class="btn-sm btn-ghost" style="width:100%;padding:8px" onclick="abonoTotal()">Pagar todo el saldo</button>
+    <div class="error-msg" id="abo-error"></div>
+    <button class="btn-primary btn-cierre" id="abo-btn-save" onclick="saveAbono()">💾 Guardar abono</button>
+  </div>
+</div>
+
 <!-- ═══ MODAL: Cierre / resumen del día ═══ -->
 <div class="modal-bg" id="modal-cierre">
   <div class="modal">
@@ -764,6 +847,8 @@ const VENTAS    = () => DIA().collection('ventas');
 const COMPRAS   = () => DIA().collection('compras');
 const INV_COL   = () => db.collection('granizados_inventario');
 const PROD_COL  = () => db.collection('granizados_productos');
+const FIOS_COL  = () => db.collection('granizados_fios');          // una cuenta por persona
+const ABONOS    = () => DIA().collection('abonos');               // abonos recibidos ese día
 
 // ── Formateo ──
 const fmt     = n => (n<0?'−$':'$') + Math.abs(n||0).toLocaleString('es-CO');
@@ -795,6 +880,11 @@ let unsubs       = [];
 let diaData      = {};
 let ventasCache  = [];
 let comprasCache = [];
+let abonosCache  = [];
+let fios         = [];
+let fioAbierto   = null;          // cuenta con movimientos desplegados
+let abonoFioId   = null;
+let abonoTipo    = 'efectivo';
 let relojTimer   = null;
 let userRole     = 'mesero';     // usuarios/{uid}.role — igual que index.html
 let userNombre   = '';
@@ -892,7 +982,7 @@ function cambiarAHoy(){
 function setupListeners(){
   unsubs.forEach(u=>u()); unsubs=[];
   diaActual = today();
-  diaData = {}; ventasCache = []; comprasCache = [];
+  diaData = {}; ventasCache = []; comprasCache = []; abonosCache = [];
   $('h-fecha').textContent = fmtFecha(diaActual);
 
   // Documento del día (fondo de compras + cierre)
@@ -928,6 +1018,22 @@ function setupListeners(){
   }, e=>console.error('compras',e));
   unsubs.push(u2);
 
+  // Abonos a fiados recibidos hoy
+  const u3 = ABONOS().orderBy('createdAt','desc').onSnapshot(snap=>{
+    abonosCache = snap.docs.map(d=>({_id:d.id,...d.data()}));
+    renderVentas();
+    recalc();
+  }, e=>console.error('abonos',e));
+  unsubs.push(u3);
+
+  // Cuentas de fiados
+  const u4 = FIOS_COL().orderBy('cliente').onSnapshot(snap=>{
+    fios = snap.docs.map(d=>({_id:d.id,...d.data()}));
+    renderFios();
+    $('fio-clientes').innerHTML = fios.map(f=>`<option value="${esc(f.cliente)}">`).join('');
+  }, e=>console.error('fios',e));
+  unsubs.push(u4);
+
   // Insumos
   const u5 = INV_COL().orderBy('nombre').onSnapshot(snap=>{
     invItems = snap.docs.map(d=>({_id:d.id,...d.data()}));
@@ -955,7 +1061,7 @@ function setupListeners(){
 // ══════════════════════════════════════
 function goTab(tab){
   if(!esAdmin()) tab = 'caja';   // el mesero solo usa el módulo de ventas
-  ['caja','compras','productos','inventario','historial'].forEach(t=>{
+  ['caja','compras','productos','inventario','fiados','historial'].forEach(t=>{
     $('tab-btn-'+t).classList.toggle('active', t===tab);
     $('tab-'+t).classList.toggle('active', t===tab);
   });
@@ -965,10 +1071,23 @@ function goTab(tab){
 // ══════════════════════════════════════
 //   TOTALES
 // ══════════════════════════════════════
+// Cuánto entró en efectivo, en transferencia y cuánto quedó fiado en una venta o abono
+function splitPago(x){
+  const m = x.monto || 0;
+  if(x.tipo === 'mixto')         return { ef: x.montoEf||0, tr: x.montoTr||0, fi: 0 };
+  if(x.tipo === 'fiado')         return { ef: 0, tr: 0, fi: m };
+  if(x.tipo === 'transferencia') return { ef: 0, tr: m, fi: 0 };
+  return { ef: m, tr: 0, fi: 0 };
+}
+
 function calcTotales(){
   const suma = (arr, f) => arr.filter(f).reduce((s,x)=>s+(x.monto||0),0);
-  const vtaEf   = suma(ventasCache,  v=> esEf(v.tipo));
-  const vtaTr   = suma(ventasCache,  v=>!esEf(v.tipo));
+  const sumaSplit = (arr, k) => arr.reduce((s,x)=>s+splitPago(x)[k],0);
+  const vtaEf    = sumaSplit(ventasCache, 'ef');
+  const vtaTr    = sumaSplit(ventasCache, 'tr');
+  const vtaFiado = sumaSplit(ventasCache, 'fi');
+  const abonoEf  = sumaSplit(abonosCache, 'ef');
+  const abonoTr  = sumaSplit(abonosCache, 'tr');
   const gasEf   = suma(comprasCache, c=> esEf(c.tipo));
   const gasTr   = suma(comprasCache, c=>!esEf(c.tipo));
   const fondoEf = diaData.saldoInicialEf || 0;
@@ -976,9 +1095,10 @@ function calcTotales(){
   const quedaEf = fondoEf - gasEf;
   const quedaTr = fondoTr - gasTr;
   return {
-    vtaEf, vtaTr, vtaTotal: vtaEf+vtaTr, numVentas: ventasCache.length,
+    vtaEf, vtaTr, vtaFiado, vtaTotal: vtaEf+vtaTr+vtaFiado, numVentas: ventasCache.length,
+    abonoEf, abonoTr, abonoTotal: abonoEf+abonoTr,
     fondoEf, fondoTr, gasEf, gasTr, gasTotal: gasEf+gasTr, quedaEf, quedaTr,
-    debeEf: quedaEf + vtaEf, debeTr: quedaTr + vtaTr
+    debeEf: quedaEf + vtaEf + abonoEf, debeTr: quedaTr + vtaTr + abonoTr
   };
 }
 
@@ -990,6 +1110,11 @@ function recalc(){
   setMoney('caja-ef', t.vtaEf);
   setMoney('caja-tr', t.vtaTr);
   setMoney('caja-total-dia', t.vtaTotal);
+  const extra = [];
+  if(t.vtaFiado)   extra.push(`<span class="tx-fi">🧾 Fiado hoy: ${fmt(t.vtaFiado)}</span>`);
+  if(t.abonoTotal) extra.push(`<span>💰 Abonos recibidos: <span class="tx-ef">${fmt(t.abonoEf)}</span> + <span class="tx-tr">${fmt(t.abonoTr)}</span></span>`);
+  $('caja-extra').innerHTML = extra.join('');
+  $('caja-extra').style.display = extra.length ? 'flex' : 'none';
   // Fondo de compras
   setMoney('f-ini-ef', t.fondoEf);   setMoney('f-ini-tr', t.fondoTr);
   $('f-gas-ef').textContent = fmt(t.gasEf);
@@ -997,8 +1122,8 @@ function recalc(){
   setMoney('f-queda-ef', t.quedaEf); setMoney('f-queda-tr', t.quedaTr);
   $('compras-total-label').textContent = fmt(t.gasTotal);
   // Header
-  $('h-ef').textContent    = fmt(t.vtaEf);
-  $('h-tr').textContent    = fmt(t.vtaTr);
+  $('h-ef').textContent    = fmt(t.vtaEf + t.abonoEf);
+  $('h-tr').textContent    = fmt(t.vtaTr + t.abonoTr);
   $('h-total').textContent = fmt(t.vtaTotal);
   $('h-fondo').textContent = fmt(t.quedaEf + t.quedaTr);
 }
@@ -1006,10 +1131,26 @@ function recalc(){
 // ══════════════════════════════════════
 //   CAJA — VENTAS POR PRODUCTO
 // ══════════════════════════════════════
+const PAGO_CLS = { efectivo:'active-ef', transferencia:'active-tr', mixto:'active-mx', fiado:'active-fi' };
+
 function setVtaTipo(tipo){
   ventasTipo = tipo;
-  $('vta-btn-ef').className = 'tipo-btn'+(tipo==='efectivo'?' active-ef':'');
-  $('vta-btn-tr').className = 'tipo-btn'+(tipo==='transferencia'?' active-tr':'');
+  Object.keys(PAGO_CLS).forEach(t=>$('vta-btn-'+t).className = 'tipo-btn' + (t===tipo ? ' '+PAGO_CLS[t] : ''));
+  $('vta-mixto').style.display = tipo==='mixto' ? 'block' : 'none';
+  $('vta-fiado').style.display = tipo==='fiado' ? 'block' : 'none';
+  $('vta-error').textContent = '';
+  if(tipo==='mixto') syncMixto('ef');
+}
+
+const totalCarrito = () => carritoItems().reduce((s,i)=>s+i.precio*i.cant,0);
+
+// Pago mixto: al escribir una parte, la otra se completa con lo que falta del total
+function syncMixto(origen){
+  const total = totalCarrito();
+  const [desde, hacia] = origen==='ef' ? ['vta-mix-ef','vta-mix-tr'] : ['vta-mix-tr','vta-mix-ef'];
+  const v = Math.min(moneyVal(desde), total);
+  if(moneyVal(desde) > total) $(desde).value = fmtRaw(total);
+  $(hacia).value = fmtRaw(total - v);
 }
 
 // Cuántas unidades del producto alcanzan con el stock actual (null si no tiene receta)
@@ -1061,6 +1202,7 @@ function carritoItems(){
 
 function renderCarrito(){
   const div = $('carrito'); if(!div) return;
+  if(ventasTipo==='mixto') syncMixto('ef');
   const items = carritoItems();
   if(!items.length){ div.style.display='none'; div.innerHTML=''; return; }
   const total = items.reduce((s,i)=>s+i.precio*i.cant,0);
@@ -1090,19 +1232,43 @@ async function addVenta(){
     if(!(r.cant>0) || !invItems.some(x=>x._id===r.insumoId)) return;
     consumo[r.insumoId] = (consumo[r.insumoId]||0) + r.cant*i.cant;
   }));
+  const desc = items.map(i=>`${i.cant}× ${i.nombre}`).join(', ');
+  const hora = horaAhora();
+  const extra = {};
+  if(ventasTipo==='mixto'){
+    const ef = moneyVal('vta-mix-ef'), tr = moneyVal('vta-mix-tr');
+    if(!ef || !tr){ $('vta-error').textContent='En pago mixto escribe cuánto es en efectivo y cuánto en transferencia.'; return; }
+    if(ef + tr !== monto){ $('vta-error').textContent=`Efectivo + transferencia deben sumar ${fmt(monto)}.`; return; }
+    extra.montoEf = ef; extra.montoTr = tr;
+  }
   const btn = $('vta-btn-save'); btn.disabled = true;
   try{
     const batch = db.batch();
-    batch.set(VENTAS().doc(), {
+    const ventaRef = VENTAS().doc();
+    if(ventasTipo==='fiado'){
+      const cliente = $('vta-cliente').value.trim().replace(/\s+/g,' ');
+      if(!cliente){ $('vta-error').textContent='Escribe el nombre de la persona a la que se le fía.'; return; }
+      // Si la persona ya tiene cuenta se le suma; si no, se crea
+      const cuenta = fios.find(f=>normTxt(f.cliente)===normTxt(cliente));
+      const fioRef = cuenta ? FIOS_COL().doc(cuenta._id) : FIOS_COL().doc();
+      const mov = { id: ventaRef.id, tipo:'cargo', monto, desc, fecha: diaActual, hora, ventaPath: ventaRef.path };
+      batch.set(fioRef, cuenta
+        ? { saldo: INC(monto), totalFiado: INC(monto), movimientos: firebase.firestore.FieldValue.arrayUnion(mov), updatedAt: TS() }
+        : { cliente, saldo: monto, totalFiado: monto, totalAbonado: 0, movimientos: [mov], createdAt: TS(), creadoPor: currentUser.uid },
+        { merge: true });
+      Object.assign(extra, { cliente: cuenta ? cuenta.cliente : cliente, fioId: fioRef.id, fioMov: mov });
+    }
+    batch.set(ventaRef, {
       items: items.map(({prodId,nombre,precio,cant})=>({prodId,nombre,precio,cant})),
-      consumo, monto, tipo: ventasTipo,
-      desc: items.map(i=>`${i.cant}× ${i.nombre}`).join(', '),
-      hora: horaAhora(), createdAt: TS(), creadoPor: currentUser.uid
+      consumo, monto, tipo: ventasTipo, ...extra, desc,
+      hora, createdAt: TS(), creadoPor: currentUser.uid
     });
     Object.entries(consumo).forEach(([id,c])=>batch.update(INV_COL().doc(id), { stock: INC(-c), updatedAt: TS() }));
     await batch.commit();
     vaciarCarrito();
-    showToast(`✅ Venta de ${fmt(monto)} registrada`);
+    $('vta-mix-ef').value = ''; $('vta-mix-tr').value = ''; $('vta-cliente').value = '';
+    showToast(ventasTipo==='fiado' ? `🧾 Fiado de ${fmt(monto)} a ${extra.cliente}` : `✅ Venta de ${fmt(monto)} registrada`);
+    setVtaTipo('efectivo');
   } catch(e){ $('vta-error').textContent='Error: '+e.message; }
   finally{ btn.disabled = false; }
 }
@@ -1116,12 +1282,20 @@ function renderVentas(){
     <div class="tx-item">
       <div class="tx-desc">
         <div class="tx-desc-main">${esc(v.desc||'Venta')}</div>
-        <div class="tx-desc-sub">${esc(v.hora||'')}</div>
+        <div class="tx-desc-sub">${esc(v.hora||'')}${v.tipo==='mixto'?` · Ef ${fmt(v.montoEf)} + Tr ${fmt(v.montoTr)}`:''}${v.tipo==='fiado'?` · Fiado a <b>${esc(v.cliente||'')}</b>`:''}</div>
       </div>
-      <span class="badge-${esEf(v.tipo)?'ef':'tr'}">${esEf(v.tipo)?'Ef':'Tr'}</span>
-      <span class="tx-monto ${esEf(v.tipo)?'tx-ef':'tx-tr'}">${fmt(v.monto)}</span>
+      ${badgePago(v.tipo)}
+      <span class="tx-monto ${PAGO_TX[v.tipo]||'tx-ef'}">${fmt(v.monto)}</span>
       ${esAdmin()?`<button class="btn-sm btn-danger" onclick="delVenta('${v._id}')" style="margin-left:4px">✕</button>`:''}
     </div>`).join('') + ventasTotalHTML();
+}
+
+const PAGO_TX = { efectivo:'tx-ef', transferencia:'tx-tr', mixto:'tx-mx', fiado:'tx-fi' };
+function badgePago(tipo){
+  if(tipo==='mixto')         return '<span class="badge-mx">Mixto</span>';
+  if(tipo==='fiado')         return '<span class="badge-fi">Fiado</span>';
+  if(tipo==='transferencia') return '<span class="badge-tr">Tr</span>';
+  return '<span class="badge-ef">Ef</span>';
 }
 
 // Pie de la lista de ventas: total del día con su desglose
@@ -1130,6 +1304,7 @@ function ventasTotalHTML(){
   return `<div class="ventas-total">
     <div class="ventas-total-row"><span class="tx-ef">💵 Efectivo</span><b class="tx-ef">${fmt(t.vtaEf)}</b></div>
     <div class="ventas-total-row"><span class="tx-tr">🏦 Transferencia</span><b class="tx-tr">${fmt(t.vtaTr)}</b></div>
+    ${t.vtaFiado ? `<div class="ventas-total-row"><span class="tx-fi">🧾 Fiado</span><b class="tx-fi">${fmt(t.vtaFiado)}</b></div>` : ''}
     <div class="ventas-total-row ventas-total-main"><span>Total ventas</span><b>${fmt(t.vtaTotal)}</b></div>
   </div>`;
 }
@@ -1138,16 +1313,149 @@ async function delVenta(id){
   if(!soloAdmin('eliminar ventas')) return;
   const v = ventasCache.find(x=>x._id===id);
   const devuelve = Object.keys(v?.consumo||{}).length;
-  if(!confirm('¿Eliminar esta venta?' + (devuelve ? ' Los insumos vuelven al inventario.' : ''))) return;
+  const esFiado = v?.tipo==='fiado' && v.fioId && fios.some(f=>f._id===v.fioId);
+  if(!confirm('¿Eliminar esta venta?' + (devuelve ? ' Los insumos vuelven al inventario.' : '') + (esFiado ? ` También se descuenta del fiado de ${v.cliente}.` : ''))) return;
   try{
     const batch = db.batch();
     batch.delete(VENTAS().doc(id));
+    if(esFiado){
+      batch.update(FIOS_COL().doc(v.fioId), {
+        saldo: INC(-v.monto), totalFiado: INC(-v.monto),
+        movimientos: firebase.firestore.FieldValue.arrayRemove(v.fioMov), updatedAt: TS()
+      });
+    }
     Object.entries(v?.consumo||{}).forEach(([iid,c])=>{
       if(invItems.some(x=>x._id===iid)) batch.update(INV_COL().doc(iid), { stock: INC(c), updatedAt: TS() });
     });
     await batch.commit();
     showToast('Venta eliminada');
   } catch(e){ alert(e.message); }
+}
+
+// ══════════════════════════════════════
+//   FIADOS Y ABONOS
+// ══════════════════════════════════════
+function renderFios(){
+  const div = $('fio-list'); if(!div) return;
+  const pend = fios.filter(f=>(f.saldo||0) > 0);
+  $('fio-total').textContent = fmt(pend.reduce((s,f)=>s+(f.saldo||0),0));
+  $('fio-cnt').textContent   = pend.length;
+  const busq   = normTxt($('fio-buscar').value);
+  const filtro = $('fio-filtro').value;
+  const lista = fios.filter(f=>{
+    const debe = (f.saldo||0) > 0;
+    if(filtro==='pend' && !debe) return false;
+    if(filtro==='pag'  &&  debe) return false;
+    return !busq || normTxt(f.cliente).includes(busq);
+  }).sort((a,b)=>(b.saldo||0)-(a.saldo||0));
+  if(!lista.length){ div.innerHTML = `<div class="empty-msg">${filtro==='pend'?'Nadie debe por ahora 🎉':'Sin resultados'}</div>`; return; }
+  div.innerHTML = lista.map(f=>{
+    const debe = (f.saldo||0) > 0;
+    const abierto = fioAbierto === f._id;
+    const movs = [...(f.movimientos||[])].sort((a,b)=>(b.fecha+b.hora).localeCompare(a.fecha+a.hora));
+    return `<div class="fio-item${debe?' debe':''}">
+      <div class="fio-head">
+        <div class="fio-nombre">${esc(f.cliente)}</div>
+        <div class="fio-saldo ${debe?'tx-fi':'tx-ef'}">${debe ? fmt(f.saldo) : '✅ Pagado'}</div>
+      </div>
+      <div class="fio-sub">Fiado total ${fmt(f.totalFiado)} · Abonado ${fmt(f.totalAbonado)}</div>
+      <div class="inv-btns">
+        ${debe ? `<button class="btn-entrada" onclick="openAbono('${f._id}')">💰 Abonar</button>` : ''}
+        <button class="btn-edit-inv" style="flex:1" onclick="toggleFio('${f._id}')">${abierto?'▲ Ocultar':'📋 Movimientos'} (${movs.length})</button>
+        ${!debe && esAdmin() ? `<button class="btn-sm btn-danger" onclick="delFio('${f._id}')">🗑</button>` : ''}
+      </div>
+      ${abierto ? `<div class="fio-movs">${movs.map(m=>`
+        <div class="fio-mov">
+          <div class="fio-mov-desc">${esc(m.fecha)} ${esc(m.hora)} · ${m.tipo==='cargo'
+            ? `<b>Fiado</b> ${esc(m.desc||'')}`
+            : `<b>Abono</b> ${badgePago(m.pago)}${m.pago==='mixto'?` Ef ${fmt(m.montoEf)} + Tr ${fmt(m.montoTr)}`:''}`}</div>
+          <b class="${m.tipo==='cargo'?'tx-fi':'tx-ef'}">${m.tipo==='cargo'?'+':'−'}${fmt(m.monto)}</b>
+          ${m.tipo==='abono' && esAdmin() ? `<button class="btn-sm btn-danger" onclick="delAbono('${f._id}','${m.id}')">✕</button>` : ''}
+        </div>`).join('') || '<div class="empty-msg">Sin movimientos</div>'}</div>` : ''}
+    </div>`;
+  }).join('');
+}
+
+function toggleFio(id){ fioAbierto = fioAbierto===id ? null : id; renderFios(); }
+
+function setAboTipo(tipo){
+  abonoTipo = tipo;
+  ['efectivo','transferencia','mixto'].forEach(t=>$('abo-btn-'+t).className = 'tipo-btn' + (t===tipo ? ' '+PAGO_CLS[t] : ''));
+  $('abo-simple').style.display = tipo==='mixto' ? 'none' : 'block';
+  $('abo-mixto').style.display  = tipo==='mixto' ? 'flex' : 'none';
+  $('abo-error').textContent = '';
+}
+
+function openAbono(id){
+  const f = fios.find(x=>x._id===id); if(!f) return;
+  abonoFioId = id;
+  $('abo-title').textContent = `💰 Abono de ${f.cliente}`;
+  $('abo-saldo').textContent = `Debe: ${fmt(f.saldo)}`;
+  ['abo-monto','abo-mix-ef','abo-mix-tr'].forEach(i=>$(i).value='');
+  setAboTipo('efectivo');
+  openModal('modal-abono');
+}
+
+function abonoTotal(){
+  const f = fios.find(x=>x._id===abonoFioId); if(!f) return;
+  if(abonoTipo==='mixto'){ $('abo-mix-ef').value = fmtRaw(f.saldo); $('abo-mix-tr').value = ''; }
+  else $('abo-monto').value = fmtRaw(f.saldo);
+}
+
+async function saveAbono(){
+  const f = fios.find(x=>x._id===abonoFioId); if(!f) return;
+  $('abo-error').textContent = '';
+  let montoEf = 0, montoTr = 0;
+  if(abonoTipo==='mixto'){ montoEf = moneyVal('abo-mix-ef'); montoTr = moneyVal('abo-mix-tr'); }
+  else if(abonoTipo==='transferencia') montoTr = moneyVal('abo-monto');
+  else montoEf = moneyVal('abo-monto');
+  const monto = montoEf + montoTr;
+  if(!monto){ $('abo-error').textContent='Escribe el valor del abono.'; return; }
+  if(abonoTipo==='mixto' && (!montoEf || !montoTr)){ $('abo-error').textContent='En abono mixto escribe el efectivo y la transferencia.'; return; }
+  if(monto > (f.saldo||0)){ $('abo-error').textContent=`El abono no puede ser mayor a lo que debe (${fmt(f.saldo)}).`; return; }
+  const btn = $('abo-btn-save'); btn.disabled = true;
+  try{
+    const abonoRef = ABONOS().doc();
+    const mov = { id: abonoRef.id, tipo:'abono', monto, montoEf, montoTr, pago: abonoTipo,
+                  fecha: diaActual, hora: horaAhora(), abonoPath: abonoRef.path };
+    const batch = db.batch();
+    batch.set(abonoRef, { fioId: f._id, cliente: f.cliente, monto, montoEf, montoTr, tipo: abonoTipo,
+                          hora: mov.hora, mov, createdAt: TS(), creadoPor: currentUser.uid });
+    batch.update(FIOS_COL().doc(f._id), {
+      saldo: INC(-monto), totalAbonado: INC(monto),
+      movimientos: firebase.firestore.FieldValue.arrayUnion(mov), updatedAt: TS()
+    });
+    await batch.commit();
+    closeModal('modal-abono');
+    showToast(monto === f.saldo ? `✅ ${f.cliente} quedó a paz y salvo` : `💰 Abono de ${fmt(monto)} registrado`);
+  } catch(e){ $('abo-error').textContent='Error: '+e.message; }
+  finally{ btn.disabled = false; }
+}
+
+async function delAbono(fioId, movId){
+  if(!soloAdmin('eliminar abonos')) return;
+  const f = fios.find(x=>x._id===fioId); if(!f) return;
+  const mov = (f.movimientos||[]).find(m=>m.id===movId); if(!mov) return;
+  if(!confirm(`¿Eliminar el abono de ${fmt(mov.monto)} del ${mov.fecha}? Vuelve a quedar como deuda.`)) return;
+  try{
+    const batch = db.batch();
+    if(mov.abonoPath) batch.delete(db.doc(mov.abonoPath));
+    batch.update(FIOS_COL().doc(fioId), {
+      saldo: INC(mov.monto), totalAbonado: INC(-mov.monto),
+      movimientos: firebase.firestore.FieldValue.arrayRemove(mov), updatedAt: TS()
+    });
+    await batch.commit();
+    showToast('Abono eliminado');
+  } catch(e){ alert(e.message); }
+}
+
+async function delFio(id){
+  if(!soloAdmin('eliminar fiados')) return;
+  const f = fios.find(x=>x._id===id); if(!f) return;
+  if((f.saldo||0) > 0){ alert('Solo se puede eliminar una cuenta que ya está pagada.'); return; }
+  if(!confirm(`¿Eliminar la cuenta de ${f.cliente} con todo su historial de fiados y abonos?`)) return;
+  try{ await FIOS_COL().doc(id).delete(); showToast('Cuenta eliminada'); }
+  catch(e){ alert(e.message); }
 }
 
 // ══════════════════════════════════════
@@ -1333,10 +1641,15 @@ function buildCierre(){
   const compras = [...comprasCache].reverse().map(c=>({
     desc: c.desc||'', monto: c.monto||0, tipo: esEf(c.tipo)?'efectivo':'transferencia', hora: c.hora||''
   }));
+  // Fiados del día y abonos recibidos
+  const fiadosDia = [...ventasCache].reverse().filter(v=>v.tipo==='fiado')
+    .map(v=>({ tipo:'fiado', cliente: v.cliente||'', hora: v.hora||'', monto: v.monto||0, montoEf: 0, montoTr: 0, metodo: '' }));
+  const abonosDia = [...abonosCache].reverse().map(a=>{ const sp = splitPago(a);
+    return { tipo:'abono', cliente: a.cliente||'', hora: a.hora||'', monto: a.monto||0, montoEf: sp.ef, montoTr: sp.tr, metodo: a.tipo||'efectivo' }; });
   return {
     fecha: diaActual, ...t,
     productos: Object.values(prodMap).sort((a,b)=>b.cant-a.cant),
-    otrosIngresos, insumos, compras
+    otrosIngresos, insumos, compras, fiados: [...fiadosDia, ...abonosDia]
   };
 }
 
@@ -1346,17 +1659,26 @@ function resumenHTML(c){
   return `
     <div class="res-debe">
       <div class="res-debe-row"><span>💵 Debes tener en efectivo</span><b class="${c.debeEf<0?'neg':''}">${fmt(c.debeEf)}</b></div>
-      <div class="res-debe-sub">Queda del fondo ${fmt(c.quedaEf)} + ventas ${fmt(c.vtaEf)}</div>
+      <div class="res-debe-sub">Queda del fondo ${fmt(c.quedaEf)} + ventas ${fmt(c.vtaEf)}${c.abonoEf?` + abonos ${fmt(c.abonoEf)}`:''}</div>
       <div class="res-debe-row"><span>🏦 Debes tener en transferencias</span><b class="${c.debeTr<0?'neg':''}">${fmt(c.debeTr)}</b></div>
-      <div class="res-debe-sub">Queda del fondo ${fmt(c.quedaTr)} + ventas ${fmt(c.vtaTr)}</div>
+      <div class="res-debe-sub">Queda del fondo ${fmt(c.quedaTr)} + ventas ${fmt(c.vtaTr)}${c.abonoTr?` + abonos ${fmt(c.abonoTr)}`:''}</div>
     </div>
 
     <div class="res-sec">
       <div class="res-h">💰 Ventas (${c.numVentas})</div>
       ${row('💵 Efectivo', fmt(c.vtaEf))}
       ${row('🏦 Transferencia', fmt(c.vtaTr))}
+      ${c.vtaFiado ? row('🧾 Fiado', fmt(c.vtaFiado)) : ''}
       ${row('Total ventas', fmt(c.vtaTotal), 'res-tot')}
     </div>
+
+    ${(c.fiados||[]).length ? `<div class="res-sec">
+      <div class="res-h">🧾 Fiados y abonos</div>
+      ${c.fiados.map(x=> x.tipo==='fiado'
+        ? row(`${esc(x.hora)} Fiado a <b>${esc(x.cliente)}</b>`, `<span class="tx-fi">${fmt(x.monto)}</span>`)
+        : row(`${esc(x.hora)} Abono de <b>${esc(x.cliente)}</b> ${badgePago(x.metodo)}`, `<span class="tx-ef">${fmt(x.monto)}</span>`)).join('')}
+      ${c.abonoTotal ? row('Total abonos recibidos', fmt(c.abonoTotal), 'res-tot') : ''}
+    </div>` : ''}
 
     <div class="res-sec">
       <div class="res-h">🧃 Productos vendidos</div>
@@ -1496,7 +1818,8 @@ function verDia(f, scroll=true){
 const XLS_COLS = {
   Resumen: [
     ['Fecha','fecha'], ['Ventas efectivo','vtaEf','$'], ['Ventas transferencia','vtaTr','$'],
-    ['Total ventas','vtaTotal','$'], ['Número de ventas','numVentas'], ['Otros ingresos','otrosIngresos','$'],
+    ['Ventas fiado','vtaFiado','$'], ['Total ventas','vtaTotal','$'], ['Número de ventas','numVentas'], ['Otros ingresos','otrosIngresos','$'],
+    ['Abonos efectivo','abonoEf','$'], ['Abonos transferencia','abonoTr','$'],
     ['Fondo efectivo','fondoEf','$'], ['Fondo transferencia','fondoTr','$'],
     ['Gastado efectivo','gasEf','$'], ['Gastado transferencia','gasTr','$'],
     ['Queda efectivo','quedaEf','$'], ['Queda transferencia','quedaTr','$'],
@@ -1505,8 +1828,11 @@ const XLS_COLS = {
   ],
   Productos: [ ['Fecha','fecha'], ['Producto','nombre'], ['Cantidad','cant'], ['Total','total','$'] ],
   Compras:   [ ['Fecha','fecha'], ['Hora','hora'], ['Concepto','desc'], ['Método','tipo'], ['Monto','monto','$'] ],
-  Insumos:   [ ['Fecha','fecha'], ['Insumo','nombre'], ['Unidad','unidad'], ['Usado','usado'], ['Quedan','stockFinal'] ]
+  Insumos:   [ ['Fecha','fecha'], ['Insumo','nombre'], ['Unidad','unidad'], ['Usado','usado'], ['Quedan','stockFinal'] ],
+  Fiados:    [ ['Fecha','fecha'], ['Hora','hora'], ['Tipo','tipo'], ['Persona','cliente'], ['Método','metodo'],
+               ['Efectivo','montoEf','$'], ['Transferencia','montoTr','$'], ['Monto','monto','$'] ]
 };
+const METODO_TXT = { efectivo:'Efectivo', transferencia:'Transferencia', mixto:'Mixto' };
 
 let xlsxPromise = null;
 function loadXLSX(){
@@ -1522,13 +1848,14 @@ function loadXLSX(){
 }
 
 function filasExcel(fechas){
-  const out = { Resumen:[], Productos:[], Compras:[], Insumos:[] };
+  const out = { Resumen:[], Productos:[], Compras:[], Insumos:[], Fiados:[] };
   [...fechas].sort().forEach(f=>{
     const d = histDocs[f], c = d?.cierre; if(!c) return;
     out.Resumen.push({ ...c, fecha: f, hora: d.cerradoHora||'', por: d.cerradoPor||'' });
     (c.productos||[]).forEach(p=>out.Productos.push({ fecha: f, ...p }));
     (c.compras||[]).forEach(x=>out.Compras.push({ fecha: f, ...x, tipo: x.tipo==='transferencia'?'Transferencia':'Efectivo' }));
     (c.insumos||[]).forEach(i=>out.Insumos.push({ fecha: f, ...i, stockFinal: i.stockFinal ?? '' }));
+    (c.fiados||[]).forEach(x=>out.Fiados.push({ fecha: f, ...x, tipo: x.tipo==='fiado'?'Fiado':'Abono', metodo: METODO_TXT[x.metodo]||'' }));
   });
   return out;
 }
@@ -1623,8 +1950,8 @@ async function importarExcel(input){
     resumen.forEach((r, i)=>{
       const f = parseFechaXls(r.fecha);
       if(!f){ if(String(r.fecha).trim()) errores.push(`Resumen fila ${i+2}: fecha inválida "${r.fecha}"`); return; }
-      const c = { fecha: f, productos: [], compras: [], insumos: [] };
-      ['vtaEf','vtaTr','otrosIngresos','fondoEf','fondoTr','gasEf','gasTr'].forEach(k=>c[k] = numXls(r[k], true));
+      const c = { fecha: f, productos: [], compras: [], insumos: [], fiados: [] };
+      ['vtaEf','vtaTr','vtaFiado','abonoEf','abonoTr','otrosIngresos','fondoEf','fondoTr','gasEf','gasTr'].forEach(k=>c[k] = numXls(r[k], true));
       c.numVentas = Math.round(numXls(r.numVentas));
       dias[f] = { cierre: c, hora: String(r.hora||'').trim(), por: String(r.por||'').trim() };
     });
@@ -1648,17 +1975,32 @@ async function importarExcel(input){
         stockFinal: String(r.stockFinal).trim()==='' ? null : numXls(r.stockFinal) });
     });
 
+    adjuntar('Fiados', (c, r)=>{
+      const cliente = String(r.cliente).trim(); if(!cliente) return;
+      const esAbono = normTxt(r.tipo).startsWith('abono');
+      const m = normTxt(r.metodo);
+      const metodo = !esAbono ? '' : m.startsWith('mix') ? 'mixto' : m.startsWith('trans') ? 'transferencia' : 'efectivo';
+      const monto = numXls(r.monto, true);
+      let montoEf = numXls(r.montoEf, true), montoTr = numXls(r.montoTr, true);
+      if(esAbono && metodo!=='mixto'){ montoEf = metodo==='efectivo' ? monto : 0; montoTr = metodo==='transferencia' ? monto : 0; }
+      c.fiados.push({ tipo: esAbono?'abono':'fiado', cliente, hora: String(r.hora||'').trim(), metodo,
+        monto: esAbono && metodo==='mixto' ? montoEf + montoTr : monto, montoEf, montoTr });
+    });
+
     // Totales derivados (se recalculan para que siempre cuadren)
     Object.values(dias).forEach(({ cierre: c })=>{
+      if(!c.vtaFiado) c.vtaFiado = c.fiados.filter(x=>x.tipo==='fiado').reduce((s,x)=>s+x.monto,0);
+      if(!c.abonoEf && !c.abonoTr) c.fiados.filter(x=>x.tipo==='abono').forEach(x=>{ c.abonoEf += x.montoEf; c.abonoTr += x.montoTr; });
+      c.abonoTotal = c.abonoEf + c.abonoTr;
       if(!c.gasEf && !c.gasTr && c.compras.length){
         c.compras.forEach(x=>{ if(x.tipo==='transferencia') c.gasTr += x.monto; else c.gasEf += x.monto; });
       }
-      c.vtaTotal = c.vtaEf + c.vtaTr;
+      c.vtaTotal = c.vtaEf + c.vtaTr + c.vtaFiado;
       c.gasTotal = c.gasEf + c.gasTr;
       c.quedaEf  = c.fondoEf - c.gasEf;
       c.quedaTr  = c.fondoTr - c.gasTr;
-      c.debeEf   = c.quedaEf + c.vtaEf;
-      c.debeTr   = c.quedaTr + c.vtaTr;
+      c.debeEf   = c.quedaEf + c.vtaEf + c.abonoEf;
+      c.debeTr   = c.quedaTr + c.vtaTr + c.abonoTr;
     });
 
     const fechas = Object.keys(dias).sort();
