@@ -316,6 +316,9 @@
   .fondo-table td:first-child, .fondo-table th:first-child { text-align: left; }
   .fondo-table tr.fondo-queda td { border-top: 1px solid var(--border); font-weight: 900; font-size: 0.95rem; color: var(--accent); }
   .neg { color: var(--red) !important; }
+  body:not(.es-admin) .solo-admin { display: none !important; }
+  .role-badge { display: inline-block; margin-left: 4px; padding: 1px 7px; border-radius: 8px; font-size: 0.64rem; font-weight: 800; background: var(--tr-bg); color: var(--tr-tx); border: 1px solid var(--tr-bd); }
+  .role-badge.admin { background: var(--wa-bg); color: var(--wa-tx); border-color: var(--wa-bd); }
 
   /* ─── RECETA (modal producto) ─── */
   .receta-row { display: flex; gap: 6px; margin-bottom: 6px; align-items: center; }
@@ -374,8 +377,8 @@
   <div class="login-sub">Salchimonster</div>
   <div class="login-box">
     <div>
-      <div class="login-label">Correo</div>
-      <input class="login-input" type="email" id="l-email" placeholder="correo@ejemplo.com" autocomplete="email"/>
+      <div class="login-label">Usuario</div>
+      <input class="login-input" type="text" id="l-email" placeholder="Tu usuario" autocomplete="username" autocapitalize="none"/>
     </div>
     <div>
       <div class="login-label">Contraseña</div>
@@ -476,7 +479,7 @@
       <div class="safe-val" id="safe-val">$0</div>
       <div class="safe-btns">
         <button class="btn-safe-dep" onclick="openModalSafe('deposito')">⬆️ Depositar</button>
-        <button class="btn-safe-dep" onclick="openModalSafe('retiro')">⬇️ Retirar</button>
+        <button class="btn-safe-dep solo-admin" onclick="openModalSafe('retiro')">⬇️ Retirar</button>
         <button class="btn-safe-dep" onclick="toggleSafeHist()">📋 Ver</button>
       </div>
     </div>
@@ -511,7 +514,7 @@
           <input type="text" inputmode="numeric" id="ini-tr" placeholder="0" oninput="moneyFmt(this)" style="font-size:0.9rem"/>
         </div>
       </div>
-      <button class="btn-saldo-save" onclick="saveSaldoInicial()">💾 Guardar fondo</button>
+      <button class="btn-saldo-save" id="btn-fondo" onclick="saveSaldoInicial()">💾 Guardar fondo</button>
     </div>
 
     <!-- Balance del fondo -->
@@ -597,7 +600,7 @@
         <button class="btn-primary btn-hist fg" style="margin-top:0;font-size:0.84rem;white-space:nowrap" onclick="exportarMes()">⬇️ Exportar mes</button>
         <button class="btn-primary btn-hist fg" style="margin-top:0;font-size:0.84rem;white-space:nowrap" onclick="exportarTodo()">⬇️ Exportar todo</button>
       </div>
-      <button class="btn-primary" onclick="$('imp-file').click()">⬆️ Importar desde Excel</button>
+      <button class="btn-primary solo-admin" onclick="importarClick()">⬆️ Importar desde Excel</button>
       <input type="file" id="imp-file" accept=".xlsx,.xls" style="display:none" onchange="importarExcel(this)"/>
       <div class="receta-txt" style="margin-top:8px">
         Para importar usa el mismo formato del archivo exportado: hojas <b>Resumen</b>, <b>Productos</b>, <b>Compras</b> e <b>Insumos</b>, con la fecha como AAAA-MM-DD (o DD/MM/AAAA). Solo la hoja Resumen es obligatoria.
@@ -803,16 +806,36 @@ let diaData      = {};
 let ventasCache  = [];
 let comprasCache = [];
 let relojTimer   = null;
+let userRole     = 'mesero';     // usuarios/{uid}.role — igual que index.html
+let userNombre   = '';
+const esAdmin = () => userRole === 'admin';
+// Los usuarios no admin solo pueden ingresar datos; editar y eliminar es de admin
+function soloAdmin(accion){
+  if(esAdmin()) return true;
+  alert(`⛔ Solo los administradores pueden ${accion}.`);
+  return false;
+}
 
 // ══════════════════════════════════════
 //   AUTH
 // ══════════════════════════════════════
-auth.onAuthStateChanged(user => {
+auth.onAuthStateChanged(async user => {
   if(user){
+    try{
+      const doc = await db.collection('usuarios').doc(user.uid).get();
+      if(!doc.exists){ await auth.signOut(); $('l-error').textContent = 'Tu usuario no tiene perfil en el sistema.'; return; }
+      userRole   = doc.data().role || 'mesero';
+      userNombre = doc.data().nombre || user.email.split('@')[0];
+    } catch(e){
+      // Si no se puede leer el perfil, se entra con permisos mínimos
+      console.error('perfil', e);
+      userRole = 'mesero'; userNombre = user.email.split('@')[0];
+    }
     currentUser = user;
+    document.body.classList.toggle('es-admin', esAdmin());
     $('login-screen').style.display = 'none';
     $('main-screen').style.display  = 'block';
-    $('h-user').textContent = user.email;
+    $('h-user').innerHTML = `${esc(userNombre)}<span class="role-badge${esAdmin()?' admin':''}">${esAdmin()?'👑 Admin':esc(userRole)}</span>`;
     setupListeners();
     startReloj();
   } else {
@@ -823,12 +846,13 @@ auth.onAuthStateChanged(user => {
 });
 
 async function doLogin(){
-  const email = $('l-email').value.trim();
+  let email = $('l-email').value.trim();
+  if(email && !email.includes('@')) email += '@salchimonster.app';   // mismo login que index.html
   const pass  = $('l-pass').value;
   $('l-error').textContent='';
   try{
     await auth.signInWithEmailAndPassword(email, pass);
-  } catch(e){ $('l-error').textContent = 'Correo o contraseña incorrectos.'; }
+  } catch(e){ $('l-error').textContent = 'Usuario o contraseña incorrectos.'; }
 }
 $('l-pass').addEventListener('keydown', e=>{ if(e.key==='Enter') doLogin(); });
 
@@ -873,7 +897,10 @@ function setupListeners(){
     // Rellenar inputs si no los está editando el usuario
     if(document.activeElement?.id !== 'ini-ef') $('ini-ef').value = ef ? fmtRaw(ef) : '';
     if(document.activeElement?.id !== 'ini-tr') $('ini-tr').value = tr ? fmtRaw(tr) : '';
-    $('saldo-ini-status').textContent = (ef||tr) ? '✅ Guardado' : '';
+    const bloqueado = !esAdmin() && (ef||tr);
+    $('ini-ef').disabled = $('ini-tr').disabled = !!bloqueado;
+    $('btn-fondo').style.display = bloqueado ? 'none' : '';
+    $('saldo-ini-status').textContent = bloqueado ? '🔒 Solo admin puede cambiarlo' : (ef||tr) ? '✅ Guardado' : '';
     renderCerradoBanner();
     recalc();
   }, e=>console.error('dia',e));
@@ -1100,11 +1127,12 @@ function renderVentas(){
       </div>
       <span class="badge-${esEf(v.tipo)?'ef':'tr'}">${esEf(v.tipo)?'Ef':'Tr'}</span>
       <span class="tx-monto ${esEf(v.tipo)?'tx-ef':'tx-tr'}">${fmt(v.monto)}</span>
-      <button class="btn-sm btn-danger" onclick="delVenta('${v._id}')" style="margin-left:4px">✕</button>
+      ${esAdmin()?`<button class="btn-sm btn-danger" onclick="delVenta('${v._id}')" style="margin-left:4px">✕</button>`:''}
     </div>`).join('');
 }
 
 async function delVenta(id){
+  if(!soloAdmin('eliminar ventas')) return;
   const v = ventasCache.find(x=>x._id===id);
   const devuelve = Object.keys(v?.consumo||{}).length;
   if(!confirm('¿Eliminar esta venta?' + (devuelve ? ' Los insumos vuelven al inventario.' : ''))) return;
@@ -1123,6 +1151,7 @@ async function delVenta(id){
 //   CAJA FUERTE
 // ══════════════════════════════════════
 function openModalSafe(accion){
+  if(accion==='retiro' && !soloAdmin('retirar de la caja fuerte')) return;
   safeAccion = accion;
   $('safe-modal-title').textContent = accion==='deposito' ? '🔐 Depositar en caja fuerte' : '🔐 Retirar de caja fuerte';
   $('safe-monto').value='';
@@ -1175,6 +1204,7 @@ function renderSafeHist(){
 //   COMPRAS — FONDO
 // ══════════════════════════════════════
 async function saveSaldoInicial(){
+  if((diaData.saldoInicialEf || diaData.saldoInicialTr) && !soloAdmin('cambiar el fondo ya guardado')) return;
   const ef = moneyVal('ini-ef');
   const tr = moneyVal('ini-tr');
   try{
@@ -1218,11 +1248,12 @@ function renderCompras(){
       </div>
       <span class="badge-${esEf(c.tipo)?'ef':'tr'}">${esEf(c.tipo)?'Ef':'Tr'}</span>
       <span class="tx-monto" style="color:var(--red)">−${fmt(c.monto)}</span>
-      <button class="btn-sm btn-danger" onclick="delCompra('${c._id}')" style="margin-left:4px">✕</button>
+      ${esAdmin()?`<button class="btn-sm btn-danger" onclick="delCompra('${c._id}')" style="margin-left:4px">✕</button>`:''}
     </div>`).join('');
 }
 
 async function delCompra(id){
+  if(!soloAdmin('eliminar compras')) return;
   if(!confirm('¿Eliminar esta compra?')) return;
   try{ await COMPRAS().doc(id).delete(); showToast('Compra eliminada'); }
   catch(e){ alert(e.message); }
@@ -1253,15 +1284,16 @@ function renderProductos(){
         <div class="inv-stock" style="color:var(--accent2)">${fmt(p.precio)}</div>
       </div>
       <div class="receta-txt">${recetaTexto(p)}${alc!==null?`<br><b style="color:${bajo?'var(--red)':'var(--green)'}">Alcanza para ${alc}</b>`:''}</div>
-      <div class="inv-btns">
+      ${esAdmin()?`<div class="inv-btns">
         <button class="btn-edit-inv" style="flex:1" onclick="openModalProd('${p._id}')">✏️ Editar</button>
         <button class="btn-sm btn-danger" onclick="delProd('${p._id}')">🗑</button>
-      </div>
+      </div>`:''}
     </div>`;
   }).join('');
 }
 
 function openModalProd(id){
+  if(id && !soloAdmin('editar productos')) return;
   prodEditId = id||'';
   const p = productos.find(x=>x._id===id);
   $('prod-modal-title').textContent = p ? '✏️ Editar producto' : '🧃 Nuevo producto';
@@ -1304,6 +1336,7 @@ async function saveProd(){
     if(id && cant>0) map[id] = (map[id]||0) + cant;
   });
   const receta = Object.entries(map).map(([insumoId,cant])=>({insumoId,cant}));
+  if(prodEditId && !soloAdmin('editar productos')) return;
   try{
     if(prodEditId){
       await PROD_COL().doc(prodEditId).update({ nombre, precio, receta, updatedAt: TS() });
@@ -1316,6 +1349,7 @@ async function saveProd(){
 }
 
 async function delProd(id){
+  if(!soloAdmin('eliminar productos')) return;
   const p = productos.find(x=>x._id===id); if(!p) return;
   if(!confirm(`¿Eliminar el producto "${p.nombre}"? Las ventas ya hechas no se modifican.`)) return;
   try{ await PROD_COL().doc(id).delete(); showToast('Producto eliminado'); }
@@ -1398,6 +1432,7 @@ function resumenHTML(c){
 }
 
 function openCierre(){
+  if(diaData.cerrado && !soloAdmin('actualizar un día ya guardado')) return;
   $('cierre-title').textContent = `📅 ${fmtFecha(diaActual)}`;
   $('cierre-body').innerHTML = resumenHTML(buildCierre());
   $('cierre-error').textContent = '';
@@ -1406,6 +1441,7 @@ function openCierre(){
 }
 
 async function guardarDia(){
+  if(diaData.cerrado && !soloAdmin('actualizar un día ya guardado')) return;
   const btn = $('btn-confirmar-cierre'); btn.disabled = true;
   try{
     await DIA().set({
@@ -1421,11 +1457,13 @@ function renderCerradoBanner(){
   const b = $('cerrado-banner');
   if(diaData.cerrado){
     b.style.display = 'flex';
-    b.textContent = `✅ Día guardado a las ${diaData.cerradoHora||''} — si registras algo más, vuelve a guardarlo.`;
+    b.textContent = `✅ Día guardado a las ${diaData.cerradoHora||''}` + (esAdmin() ? ' — si registras algo más, vuelve a guardarlo.' : '.');
     $('btn-guardar-dia').textContent = '📅 Actualizar día guardado';
+    $('btn-guardar-dia').style.display = esAdmin() ? '' : 'none';
   } else {
     b.style.display = 'none';
     $('btn-guardar-dia').textContent = '📅 Guardar día';
+    $('btn-guardar-dia').style.display = '';
   }
 }
 
@@ -1616,7 +1654,12 @@ function leerHoja(wb, hoja){
   });
 }
 
+function importarClick(){
+  if(soloAdmin('importar datos')) $('imp-file').click();
+}
+
 async function importarExcel(input){
+  if(!esAdmin()){ input.value = ''; return; }
   const file = input.files[0]; input.value = '';
   if(!file) return;
   const msg = $('excel-msg'); msg.textContent = '';
@@ -1704,6 +1747,7 @@ async function importarExcel(input){
 //   INSUMOS (INVENTARIO)
 // ══════════════════════════════════════
 function openModalInvAdd(docId){
+  if(docId && !soloAdmin('editar insumos')) return;
   $('inv-docid').value = docId||'';
   $('inv-modal-title').textContent = docId ? '✏️ Editar insumo' : '📦 Nuevo insumo';
   $('inv-error').textContent = '';
@@ -1729,6 +1773,7 @@ async function saveInvProduct(){
   const unidad  = $('inv-unidad').value||'und';
   $('inv-error').textContent='';
   if(!nombre){ $('inv-error').textContent='Ingresa el nombre.'; return; }
+  if(docId && !soloAdmin('editar insumos')) return;
   try{
     if(docId){
       await INV_COL().doc(docId).update({nombre, stock, stockMin, unidad, updatedAt:TS()});
@@ -1757,9 +1802,9 @@ function renderInv(){
       </div>
       <div class="inv-btns">
         <button class="btn-entrada" onclick="openModalMov('${it._id}','entrada')">📥 Entrada</button>
-        <button class="btn-salida"  onclick="openModalMov('${it._id}','salida')">📤 Salida</button>
+        ${esAdmin()?`<button class="btn-salida"  onclick="openModalMov('${it._id}','salida')">📤 Salida</button>
         <button class="btn-edit-inv" onclick="openModalInvAdd('${it._id}')">✏️</button>
-        <button class="btn-sm btn-danger" onclick="delInvItem('${it._id}')">🗑</button>
+        <button class="btn-sm btn-danger" onclick="delInvItem('${it._id}')">🗑</button>`:''}
       </div>
     </div>`;
   }).join('');
@@ -1777,6 +1822,7 @@ function renderAlertaStock(){
 }
 
 async function delInvItem(id){
+  if(!soloAdmin('eliminar insumos')) return;
   const it = invItems.find(x=>x._id===id); if(!it) return;
   const usadoEn = productos.filter(p=>(p.receta||[]).some(r=>r.insumoId===id)).map(p=>p.nombre);
   const aviso = usadoEn.length ? `\n\nSe usa en: ${usadoEn.join(', ')}. Esos productos dejarán de descontarlo.` : '';
@@ -1787,6 +1833,7 @@ async function delInvItem(id){
 
 // ── Movimientos stock ──
 function openModalMov(docId, tipo){
+  if(tipo==='salida' && !soloAdmin('sacar stock')) return;
   const it = invItems.find(x=>x._id===docId); if(!it) return;
   movTipo = tipo;
   $('mov-docid').value = docId;
@@ -1805,6 +1852,7 @@ async function saveMov(){
   $('mov-error').textContent='';
   if(!cantidad||cantidad<=0){ $('mov-error').textContent='Ingresa una cantidad válida.'; return; }
   const it = invItems.find(x=>x._id===docId); if(!it) return;
+  if(movTipo==='salida' && !soloAdmin('sacar stock')) return;
   const delta = movTipo==='entrada' ? cantidad : -cantidad;
   try{
     // increment() para no pisar descuentos de ventas hechas al mismo tiempo
