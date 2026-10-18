@@ -441,6 +441,10 @@
   }
   .cal-day.saved { background: var(--tr-bg); border-color: var(--tr-bd); color: var(--tr-tx); font-weight: 800; }
   .cal-day.hoy   { border-color: var(--yellow); }
+  .cal-day.pend  { background: var(--wa-bg); border: 1px dashed var(--wa-bd); color: var(--wa-tx); font-weight: 800; }
+  .banner-info   { background: var(--tr-bg); border: 1px solid var(--tr-bd); color: var(--tr-tx); font-weight: 600; }
+  .pend-card     { border: 1.5px dashed var(--wa-bd) !important; }
+  .pend-aviso    { background: var(--wa-bg); color: var(--wa-tx); border-radius: 10px; padding: 9px 11px; font-size: 0.8rem; font-weight: 700; margin-bottom: 10px; }
   .cal-day.sel   { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
   .cal-day-monto { font-size: 0.56rem; font-weight: 700; margin-top: 1px; }
   .cal-vacio     { visibility: hidden; }
@@ -498,10 +502,10 @@
     </div>
   </header>
 
-  <!-- Aviso de cambio de día -->
-  <div class="banner banner-warn" id="banner-dia" style="display:none">
+  <!-- Aviso (admin): días con ventas que nunca se guardaron -->
+  <div class="banner banner-warn solo-admin" id="banner-dia" style="display:none">
     <span id="banner-dia-txt"></span>
-    <button class="btn-sm btn-ghost" onclick="cambiarAHoy()">Ir a hoy</button>
+    <button class="btn-sm btn-ghost" onclick="verPendiente()">Ver</button>
   </div>
 
   <!-- Tabs -->
@@ -518,7 +522,7 @@
   <!-- ══ TAB: CAJA ══ -->
   <div class="tab-content active" id="tab-caja">
 
-    <div class="banner banner-ok" id="cerrado-banner" style="display:none"></div>
+    <div class="banner banner-info" id="jornada-banner" style="display:none"></div>
 
     <!-- Resumen de ventas -->
     <div class="caja-total">
@@ -910,13 +914,14 @@ const db   = firebase.firestore();
 // ── Helpers colecciones ──
 // Fecha local YYYY-MM-DD (toISOString usa UTC y en Colombia cambiaría de día a las 7 p. m.)
 const today = () => new Date().toLocaleDateString('en-CA');
-// Día con el que se está trabajando. No cambia solo a medianoche para poder
-// cerrar el día anterior después de las 12; el banner ofrece pasar a hoy.
-let diaActual = today();
 const TS    = () => firebase.firestore.FieldValue.serverTimestamp();
 const INC   = n  => firebase.firestore.FieldValue.increment(n);
 const DIA_COL   = () => db.collection('granizados_dia');
-const DIA       = () => DIA_COL().doc(diaActual);
+// Caja abierta (jornada): todo lo que se registra va aquí, sin importar la hora,
+// hasta que el admin presiona "Guardar día". No se reinicia a medianoche.
+const CONFIG_JORNADA = () => db.collection('granizados_config').doc('jornada');
+let jornada = null;               // { id, desde, desdeHora }
+const DIA       = () => DIA_COL().doc(jornada.id);
 const VENTAS    = () => DIA().collection('ventas');
 const COMPRAS   = () => DIA().collection('compras');
 const INV_COL   = () => db.collection('granizados_inventario');
@@ -967,6 +972,8 @@ let diaData      = {};
 let ventasCache  = [];
 let comprasCache = [];
 let abonosCache  = [];
+let jornadaUnsubs = [];           // listeners de la caja abierta (se cambian al guardar el día)
+let diasPendientes = [];          // fechas con ventas que nunca se guardaron
 let fios         = [];
 let fioAbierto   = null;          // cuenta con movimientos desplegados
 let abonoFioId   = null;
@@ -1011,6 +1018,7 @@ auth.onAuthStateChanged(async user => {
     $('login-screen').style.display = 'flex';
     $('main-screen').style.display  = 'none';
     unsubs.forEach(u=>u()); unsubs=[];
+    jornadaUnsubs.forEach(u=>u()); jornadaUnsubs=[];
   }
 });
 
@@ -1047,38 +1055,50 @@ function toggleTheme(){
 aplicarTema(document.documentElement.getAttribute('data-theme') || 'dark');
 
 // ══════════════════════════════════════
-//   RELOJ Y CAMBIO DE DÍA
+//   RELOJ
 // ══════════════════════════════════════
 function startReloj(){
   const tick = ()=>{
-    const now = new Date();
-    $('reloj').textContent = now.toLocaleTimeString('es-CO',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
-    const otroDia = today() !== diaActual;
-    $('banner-dia').style.display = otroDia ? 'flex' : 'none';
-    if(otroDia) $('banner-dia-txt').textContent = `Estás viendo el ${fmtFecha(diaActual)}. Ya es otro día.`;
+    $('reloj').textContent = new Date().toLocaleTimeString('es-CO',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
   };
   clearInterval(relojTimer);
   tick(); relojTimer = setInterval(tick,1000);
 }
 
-function cambiarAHoy(){
-  if(Object.keys(carrito).length && !confirm('Tienes una venta sin registrar. ¿Cambiar de día igual?')) return;
-  carrito = {};
-  setupListeners();
-  startReloj();
+// ══════════════════════════════════════
+//   CAJA ABIERTA (JORNADA)
+// ══════════════════════════════════════
+const fmtFechaCorta = f => new Date(f+'T00:00').toLocaleDateString('es-CO',{weekday:'short',day:'numeric',month:'short'});
+
+function nuevaJornada(){
+  return { id: `jornada_${today()}_${Date.now().toString(36)}`, desde: today(), desdeHora: horaAhora(), abiertaAt: TS() };
 }
 
-// ══════════════════════════════════════
-//   LISTENERS FIRESTORE
-// ══════════════════════════════════════
-function setupListeners(){
-  unsubs.forEach(u=>u()); unsubs=[];
-  diaActual = today();
-  diaData = {}; ventasCache = []; comprasCache = []; abonosCache = [];
-  $('h-fecha').textContent = fmtFecha(diaActual);
+// Crea la caja abierta si no existe (en transacción para que dos equipos no creen dos)
+async function abrirJornada(){
+  await db.runTransaction(async tx=>{
+    const snap = await tx.get(CONFIG_JORNADA());
+    if(snap.exists && snap.data().id) return;
+    tx.set(CONFIG_JORNADA(), nuevaJornada());
+  });
+}
 
-  // Documento del día (fondo de compras + cierre)
-  const u0 = DIA().onSnapshot(snap=>{
+function renderJornadaInfo(){
+  const b = $('jornada-banner');
+  if(!jornada){ b.style.display = 'none'; $('h-fecha').textContent = ''; return; }
+  $('h-fecha').textContent = `Desde ${fmtFechaCorta(jornada.desde)}`;
+  b.style.display = 'flex';
+  b.textContent = `🕒 Caja abierta desde el ${fmtFecha(jornada.desde)}, ${jornada.desdeHora||''}. Todo se acumula aquí hasta que el administrador guarde el día.`;
+}
+
+// Escucha la caja abierta; si el admin guarda el día (aquí o en otro equipo) pasa sola a la nueva
+function attachJornada(){
+  jornadaUnsubs.forEach(u=>u()); jornadaUnsubs=[];
+  diaData = {}; ventasCache = []; comprasCache = []; abonosCache = [];
+  renderVentas(); renderCompras(); recalc(); renderJornadaInfo();
+
+  // Documento de la caja (fondo de compras)
+  jornadaUnsubs.push(DIA().onSnapshot(snap=>{
     diaData = snap.exists ? snap.data() : {};
     const ef = diaData.saldoInicialEf || 0;
     const tr = diaData.saldoInicialTr || 0;
@@ -1089,34 +1109,95 @@ function setupListeners(){
     $('ini-ef').disabled = $('ini-tr').disabled = !!bloqueado;
     $('btn-fondo').style.display = bloqueado ? 'none' : '';
     $('saldo-ini-status').textContent = bloqueado ? '🔒 Solo admin puede cambiarlo' : (ef||tr) ? '✅ Guardado' : '';
-    renderCerradoBanner();
     recalc();
-  }, e=>console.error('dia',e));
-  unsubs.push(u0);
+  }, e=>console.error('dia',e)));
 
-  // Ventas del día
-  const u1 = VENTAS().orderBy('createdAt','desc').onSnapshot(snap=>{
+  jornadaUnsubs.push(VENTAS().orderBy('createdAt','desc').onSnapshot(snap=>{
     ventasCache = snap.docs.map(d=>({_id:d.id,...d.data()}));
     renderVentas();
     recalc();
-  }, e=>console.error('ventas',e));
-  unsubs.push(u1);
+  }, e=>console.error('ventas',e)));
 
-  // Compras del día
-  const u2 = COMPRAS().orderBy('createdAt','desc').onSnapshot(snap=>{
+  jornadaUnsubs.push(COMPRAS().orderBy('createdAt','desc').onSnapshot(snap=>{
     comprasCache = snap.docs.map(d=>({_id:d.id,...d.data()}));
     renderCompras();
     recalc();
-  }, e=>console.error('compras',e));
-  unsubs.push(u2);
+  }, e=>console.error('compras',e)));
 
-  // Abonos a fiados recibidos hoy
-  const u3 = ABONOS().orderBy('createdAt','desc').onSnapshot(snap=>{
+  jornadaUnsubs.push(ABONOS().orderBy('createdAt','desc').onSnapshot(snap=>{
     abonosCache = snap.docs.map(d=>({_id:d.id,...d.data()}));
     renderVentas();
     recalc();
-  }, e=>console.error('abonos',e));
-  unsubs.push(u3);
+  }, e=>console.error('abonos',e)));
+}
+
+// Evita escribir antes de que cargue la caja abierta
+function cajaLista(errId){
+  if(jornada) return true;
+  const msg = 'La caja todavía está cargando, intenta de nuevo en un momento.';
+  if(errId && $(errId)) $(errId).textContent = msg; else showToast(msg);
+  return false;
+}
+
+// ── Días con ventas que nunca se guardaron (modelo anterior, por fecha) ──
+async function buscarDiasSinGuardar(){
+  if(!esAdmin()) return;
+  const fechas = [];
+  for(let i=0; i<21; i++){ const d = new Date(); d.setDate(d.getDate()-i); fechas.push(d.toLocaleDateString('en-CA')); }
+  const res = await Promise.all(fechas.map(async f=>{
+    try{
+      const ref = DIA_COL().doc(f);
+      const [doc, v, c, a] = await Promise.all([ref.get(), ref.collection('ventas').limit(1).get(),
+        ref.collection('compras').limit(1).get(), ref.collection('abonos').limit(1).get()]);
+      if(doc.exists && doc.data().cerrado) return null;
+      return (!v.empty || !c.empty || !a.empty) ? f : null;
+    } catch(e){ return null; }
+  }));
+  diasPendientes = res.filter(Boolean).sort();
+  renderPendientes();
+}
+
+function renderPendientes(){
+  const b = $('banner-dia');
+  if(!esAdmin() || !diasPendientes.length){ b.style.display = 'none'; return; }
+  b.style.display = 'flex';
+  $('banner-dia-txt').textContent = `⚠️ Hay ${diasPendientes.length===1?'un día':diasPendientes.length+' días'} con ventas sin guardar: ${diasPendientes.map(fmtFechaCorta).join(', ')}`;
+  if($('tab-historial').classList.contains('active')) renderCalendario();
+}
+
+function verPendiente(){
+  const f = diasPendientes[0]; if(!f) return;
+  calMes = { y: +f.slice(0,4), m: +f.slice(5,7) - 1 };
+  histSel = f;
+  goTab('historial');
+}
+
+// ══════════════════════════════════════
+//   LISTENERS FIRESTORE
+// ══════════════════════════════════════
+function setupListeners(){
+  unsubs.forEach(u=>u()); unsubs=[];
+  jornadaUnsubs.forEach(u=>u()); jornadaUnsubs=[];
+  jornada = null;
+  diaData = {}; ventasCache = []; comprasCache = []; abonosCache = [];
+  renderJornadaInfo();
+
+  // Caja abierta: cuando cambia (al guardar el día) se escuchan los datos de la nueva
+  unsubs.push(CONFIG_JORNADA().onSnapshot(snap=>{
+    const j = snap.exists ? snap.data() : null;
+    if(!j || !j.id){ abrirJornada().catch(e=>console.error('abrir jornada',e)); return; }
+    const cambio = !jornada || jornada.id !== j.id;
+    jornada = j;
+    if(cambio) attachJornada(); else renderJornadaInfo();
+  }, e=>{
+    // Sin acceso a granizados_config (reglas de Firestore): se sigue vendiendo por fecha para no bloquear la caja
+    console.error('jornada', e);
+    jornada = { id: today(), desde: today(), desdeHora: '', sinConfig: true };
+    attachJornada();
+    $('jornada-banner').textContent = '⚠️ No se pudo abrir la caja continua (permisos de Firestore en granizados_config). Se está registrando por fecha.';
+  }));
+
+  buscarDiasSinGuardar();
 
   // Cuentas de fiados
   const u4 = FIOS_COL().orderBy('cliente').onSnapshot(snap=>{
@@ -1173,22 +1254,25 @@ function splitPago(x){
   return { ef: m, tr: 0, fi: 0 };
 }
 
-function calcTotales(){
+// Datos de la caja abierta. Los días sin guardar se calculan pasando su propio objeto.
+const datosCaja = () => ({ dia: diaData, ventas: ventasCache, compras: comprasCache, abonos: abonosCache });
+
+function calcTotales(d = datosCaja()){
   const suma = (arr, f) => arr.filter(f).reduce((s,x)=>s+(x.monto||0),0);
   const sumaSplit = (arr, k) => arr.reduce((s,x)=>s+splitPago(x)[k],0);
-  const vtaEf    = sumaSplit(ventasCache, 'ef');
-  const vtaTr    = sumaSplit(ventasCache, 'tr');
-  const vtaFiado = sumaSplit(ventasCache, 'fi');
-  const abonoEf  = sumaSplit(abonosCache, 'ef');
-  const abonoTr  = sumaSplit(abonosCache, 'tr');
-  const gasEf   = suma(comprasCache, c=> esEf(c.tipo));
-  const gasTr   = suma(comprasCache, c=>!esEf(c.tipo));
-  const fondoEf = diaData.saldoInicialEf || 0;
-  const fondoTr = diaData.saldoInicialTr || 0;
+  const vtaEf    = sumaSplit(d.ventas, 'ef');
+  const vtaTr    = sumaSplit(d.ventas, 'tr');
+  const vtaFiado = sumaSplit(d.ventas, 'fi');
+  const abonoEf  = sumaSplit(d.abonos, 'ef');
+  const abonoTr  = sumaSplit(d.abonos, 'tr');
+  const gasEf   = suma(d.compras, c=> esEf(c.tipo));
+  const gasTr   = suma(d.compras, c=>!esEf(c.tipo));
+  const fondoEf = d.dia.saldoInicialEf || 0;
+  const fondoTr = d.dia.saldoInicialTr || 0;
   const quedaEf = fondoEf - gasEf;
   const quedaTr = fondoTr - gasTr;
   return {
-    vtaEf, vtaTr, vtaFiado, vtaTotal: vtaEf+vtaTr+vtaFiado, numVentas: ventasCache.length,
+    vtaEf, vtaTr, vtaFiado, vtaTotal: vtaEf+vtaTr+vtaFiado, numVentas: d.ventas.length,
     abonoEf, abonoTr, abonoTotal: abonoEf+abonoTr,
     fondoEf, fondoTr, gasEf, gasTr, gasTotal: gasEf+gasTr, quedaEf, quedaTr,
     debeEf: quedaEf + vtaEf + abonoEf, debeTr: quedaTr + vtaTr + abonoTr
@@ -1318,6 +1402,7 @@ async function addVenta(){
   const items = carritoItems();
   $('vta-error').textContent='';
   if(!items.length){ $('vta-error').textContent='Elige al menos un producto.'; return; }
+  if(!cajaLista('vta-error')) return;
   const monto = items.reduce((s,i)=>s+i.precio*i.cant,0);
   // Insumos a descontar (solo los que existen en el inventario)
   const consumo = {};
@@ -1344,7 +1429,7 @@ async function addVenta(){
       // Si la persona ya tiene cuenta se le suma; si no, se crea
       const cuenta = fios.find(f=>normTxt(f.cliente)===normTxt(cliente));
       const fioRef = cuenta ? FIOS_COL().doc(cuenta._id) : FIOS_COL().doc();
-      const mov = { id: ventaRef.id, tipo:'cargo', monto, desc, fecha: diaActual, hora, ventaPath: ventaRef.path };
+      const mov = { id: ventaRef.id, tipo:'cargo', monto, desc, fecha: today(), hora, ventaPath: ventaRef.path };
       batch.set(fioRef, cuenta
         ? { saldo: INC(monto), totalFiado: INC(monto), movimientos: firebase.firestore.FieldValue.arrayUnion(mov), updatedAt: TS() }
         : { cliente, saldo: monto, totalFiado: monto, totalAbonado: 0, movimientos: [mov], createdAt: TS(), creadoPor: currentUser.uid },
@@ -1508,13 +1593,14 @@ async function saveAbono(){
   else montoEf = moneyVal('abo-monto');
   const monto = montoEf + montoTr;
   if(!monto){ $('abo-error').textContent='Escribe el valor del abono.'; return; }
+  if(!cajaLista('abo-error')) return;
   if(abonoTipo==='mixto' && (!montoEf || !montoTr)){ $('abo-error').textContent='En abono mixto escribe el efectivo y la transferencia.'; return; }
   if(monto > (f.saldo||0)){ $('abo-error').textContent=`El abono no puede ser mayor a lo que debe (${fmt(f.saldo)}).`; return; }
   const btn = $('abo-btn-save'); btn.disabled = true;
   try{
     const abonoRef = ABONOS().doc();
     const mov = { id: abonoRef.id, tipo:'abono', monto, montoEf, montoTr, pago: abonoTipo,
-                  fecha: diaActual, hora: horaAhora(), abonoPath: abonoRef.path };
+                  fecha: today(), hora: horaAhora(), abonoPath: abonoRef.path };
     const batch = db.batch();
     batch.set(abonoRef, { fioId: f._id, cliente: f.cliente, monto, montoEf, montoTr, tipo: abonoTipo,
                           hora: mov.hora, mov, createdAt: TS(), creadoPor: currentUser.uid });
@@ -1613,6 +1699,7 @@ async function cargarAuditoria(){
 //   COMPRAS — FONDO
 // ══════════════════════════════════════
 async function saveSaldoInicial(){
+  if(!cajaLista()) return;
   if((diaData.saldoInicialEf || diaData.saldoInicialTr) && !soloAdmin('cambiar el fondo ya guardado')) return;
   const ef = moneyVal('ini-ef');
   const tr = moneyVal('ini-tr');
@@ -1637,6 +1724,7 @@ async function addCompra(){
   const desc  = ($('cmp-desc').value||'').trim();
   $('cmp-error').textContent='';
   if(!desc){ $('cmp-error').textContent='Ingresa el concepto.'; return; }
+  if(!cajaLista('cmp-error')) return;
   if(!monto){ $('cmp-error').textContent='Ingresa un monto.'; return; }
   try{
     await COMPRAS().add({
@@ -1784,12 +1872,12 @@ async function delProd(id){
 // ══════════════════════════════════════
 //   GUARDAR DÍA (CIERRE)
 // ══════════════════════════════════════
-function buildCierre(){
-  const t = calcTotales();
+function buildCierre(d = datosCaja(), fecha = ''){
+  const t = calcTotales(d);
   // Productos vendidos
   const prodMap = {};
   let otrosIngresos = 0;
-  ventasCache.forEach(v=>{
+  d.ventas.forEach(v=>{
     if(!(v.items||[]).length){ otrosIngresos += v.monto||0; return; }
     v.items.forEach(i=>{
       const k = i.prodId || i.nombre;
@@ -1800,21 +1888,21 @@ function buildCierre(){
   });
   // Insumos usados
   const consumo = {};
-  ventasCache.forEach(v=>Object.entries(v.consumo||{}).forEach(([id,c])=>consumo[id]=(consumo[id]||0)+c));
+  d.ventas.forEach(v=>Object.entries(v.consumo||{}).forEach(([id,c])=>consumo[id]=(consumo[id]||0)+c));
   const insumos = Object.entries(consumo).map(([id,usado])=>{
     const it = invItems.find(x=>x._id===id);
     return { nombre: it?.nombre || '(insumo eliminado)', unidad: it?.unidad || 'und', usado, stockFinal: it ? (it.stock||0) : null };
   }).sort((a,b)=>a.nombre.localeCompare(b.nombre));
-  const compras = [...comprasCache].reverse().map(c=>({
+  const compras = [...d.compras].reverse().map(c=>({
     desc: c.desc||'', monto: c.monto||0, tipo: esEf(c.tipo)?'efectivo':'transferencia', hora: c.hora||''
   }));
   // Fiados del día y abonos recibidos
-  const fiadosDia = [...ventasCache].reverse().filter(v=>v.tipo==='fiado')
+  const fiadosDia = [...d.ventas].reverse().filter(v=>v.tipo==='fiado')
     .map(v=>({ tipo:'fiado', cliente: v.cliente||'', hora: v.hora||'', monto: v.monto||0, montoEf: 0, montoTr: 0, metodo: '' }));
-  const abonosDia = [...abonosCache].reverse().map(a=>{ const sp = splitPago(a);
+  const abonosDia = [...d.abonos].reverse().map(a=>{ const sp = splitPago(a);
     return { tipo:'abono', cliente: a.cliente||'', hora: a.hora||'', monto: a.monto||0, montoEf: sp.ef, montoTr: sp.tr, metodo: a.tipo||'efectivo' }; });
   return {
-    fecha: diaActual, ...t,
+    fecha, ...t,
     productos: Object.values(prodMap).sort((a,b)=>b.cant-a.cant),
     otrosIngresos, insumos, compras, fiados: [...fiadosDia, ...abonosDia]
   };
@@ -1889,43 +1977,136 @@ function resumenHTML(c){
     </div>`;
 }
 
+// Fecha que se propone al guardar: si es de madrugada (antes de las 6 a. m.) se sugiere el día anterior
+const fechaSugerida = () => new Date(Date.now() - 6*3600*1000).toLocaleDateString('en-CA');
+
+// Verifica que un día se pueda usar para guardar: que no esté guardado ni tenga ventas viejas sin guardar
+async function validarFechaGuardado(fecha){
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(fecha)) return 'Escoge la fecha del día que vas a guardar.';
+  if(fecha > today()) return 'No se puede guardar en una fecha futura.';
+  const ref = DIA_COL().doc(fecha);
+  const [doc, v, c] = await Promise.all([ref.get(), ref.collection('ventas').limit(1).get(), ref.collection('compras').limit(1).get()]);
+  if(doc.exists && doc.data().cerrado) return `El ${fmtFecha(fecha)} ya está guardado y no se puede sobrescribir. Escoge otra fecha.`;
+  if(!v.empty || !c.empty) return `El ${fmtFecha(fecha)} tiene ventas viejas sin guardar. Recupéralas primero desde Historial.`;
+  return '';
+}
+
 function openCierre(){
-  if(diaData.cerrado && !soloAdmin('actualizar un día ya guardado')) return;
-  $('cierre-title').textContent = `📅 ${fmtFecha(diaActual)}`;
-  $('cierre-body').innerHTML = resumenHTML(buildCierre());
+  if(!soloAdmin('guardar el día')) return;
+  if(!cajaLista()) return;
+  const sug = fechaSugerida();
+  $('cierre-title').textContent = '📅 Guardar día';
+  $('cierre-body').innerHTML =
+    `<div class="hist-sub" style="margin-bottom:10px">Caja abierta desde el ${fmtFecha(jornada.desde)}, ${esc(jornada.desdeHora||'')}</div>` +
+    resumenHTML(buildCierre(datosCaja(), sug));
   $('cierre-error').textContent = '';
-  $('cierre-footer').innerHTML = `<button class="btn-primary btn-cierre" id="btn-confirmar-cierre" onclick="guardarDia()">💾 ${diaData.cerrado?'Actualizar día guardado':'Guardar día'}</button>`;
+  $('cierre-footer').innerHTML = `
+    <label for="cierre-fecha">¿A qué día corresponde?</label>
+    <input type="date" id="cierre-fecha" value="${sug}" max="${today()}"/>
+    <div class="hist-sub" style="margin-top:4px">Al guardar, la caja queda en ceros para la siguiente jornada. Un día ya guardado no se puede sobrescribir.</div>
+    <button class="btn-primary btn-cierre" id="btn-confirmar-cierre" onclick="guardarDia()">💾 Guardar día</button>`;
   openModal('modal-cierre');
 }
 
 async function guardarDia(){
-  if(diaData.cerrado && !soloAdmin('actualizar un día ya guardado')) return;
-  const actualizar = !!diaData.cerrado;
+  if(!soloAdmin('guardar el día')) return;
+  if(!cajaLista('cierre-error')) return;
+  const fecha = $('cierre-fecha').value;
   const btn = $('btn-confirmar-cierre'); btn.disabled = true;
+  $('cierre-error').textContent = '';
   try{
-    await DIA().set({
-      cerrado: true, cierre: buildCierre(),
-      cerradoHora: horaAhora(), cerradoAt: TS(), cerradoPor: currentUser.email
-    }, { merge: true });
-    closeModal('modal-cierre');
-    showToast('📅 Día guardado');
+    const error = await validarFechaGuardado(fecha);
+    if(error){ $('cierre-error').textContent = error; btn.disabled = false; return; }
+    const jornadaId = jornada.id;
+    const cierre = buildCierre(datosCaja(), fecha);
     const t = calcTotales();
-    logAudit('guardar','historial',`${actualizar?'Actualizó':'Guardó'} el día ${diaActual} — ventas ${fmt(t.vtaTotal)}, total dinero ${fmt(t.debeEf + t.debeTr)}`,{ fecha: diaActual });
+    await db.runTransaction(async tx=>{
+      const destino = DIA_COL().doc(fecha);
+      const [dSnap, cSnap] = await Promise.all([tx.get(destino), tx.get(CONFIG_JORNADA())]);
+      if(dSnap.exists && dSnap.data().cerrado) throw new Error(`El ${fecha} ya está guardado.`);
+      if(!cSnap.exists || cSnap.data().id !== jornadaId) throw new Error('Esta caja ya fue guardada desde otro equipo.');
+      tx.set(destino, { cerrado: true, cierre, cerradoHora: horaAhora(), cerradoAt: TS(), cerradoPor: currentUser.email, jornadaId }, { merge: true });
+      tx.set(DIA_COL().doc(jornadaId), { guardadoComo: fecha, guardadoAt: TS() }, { merge: true });
+      tx.set(CONFIG_JORNADA(), nuevaJornada());
+    });
+    closeModal('modal-cierre');
+    showToast(`📅 Día ${fmtFechaCorta(fecha)} guardado — la caja quedó en ceros`);
+    logAudit('guardar','historial',`Guardó el día ${fecha} — ventas ${fmt(t.vtaTotal)}, total dinero ${fmt(t.debeEf + t.debeTr)}, fiado ${fmt(t.vtaFiado)}`,{ fecha, jornadaId });
   } catch(e){ $('cierre-error').textContent='Error: '+e.message; btn.disabled = false; }
 }
 
-function renderCerradoBanner(){
-  const b = $('cerrado-banner');
-  if(diaData.cerrado){
-    b.style.display = 'flex';
-    b.textContent = `✅ Día guardado a las ${diaData.cerradoHora||''}` + (esAdmin() ? ' — si registras algo más, vuelve a guardarlo.' : '.');
-    $('btn-guardar-dia').textContent = '📅 Actualizar día guardado';
-    $('btn-guardar-dia').style.display = esAdmin() ? '' : 'none';
-  } else {
-    b.style.display = 'none';
-    $('btn-guardar-dia').textContent = '📅 Guardar día';
-    $('btn-guardar-dia').style.display = '';
-  }
+// ── Días sin guardar: recuperar ──
+async function cargarDiaCrudo(f){
+  const ref = DIA_COL().doc(f);
+  const lista = snap => snap.docs.map(d=>({_id:d.id,...d.data()}));
+  const [doc, v, c, a] = await Promise.all([ref.get(),
+    ref.collection('ventas').orderBy('createdAt','desc').get(),
+    ref.collection('compras').orderBy('createdAt','desc').get(),
+    ref.collection('abonos').orderBy('createdAt','desc').get()]);
+  return { dia: doc.exists ? doc.data() : {}, existe: doc.exists, ventas: lista(v), compras: lista(c), abonos: lista(a) };
+}
+
+async function guardarDiaCrudo(f){
+  if(!soloAdmin('guardar días')) return;
+  if(!confirm(`¿Guardar el ${fmtFecha(f)} con sus ventas tal como están?`)) return;
+  try{
+    const crudo = await cargarDiaCrudo(f);
+    const cierre = buildCierre(crudo, f);
+    await db.runTransaction(async tx=>{
+      const ref = DIA_COL().doc(f);
+      const snap = await tx.get(ref);
+      if(snap.exists && snap.data().cerrado) throw new Error('Ese día ya está guardado.');
+      tx.set(ref, { cerrado: true, cierre, cerradoHora: horaAhora(), cerradoAt: TS(), cerradoPor: currentUser.email, recuperado: true }, { merge: true });
+    });
+    showToast(`📅 ${fmtFechaCorta(f)} guardado`);
+    logAudit('guardar','historial',`Recuperó y guardó el día ${f} — ${crudo.ventas.length} ventas, total ${fmt(cierre.vtaTotal)}`,{ fecha: f });
+    diasPendientes = diasPendientes.filter(x=>x!==f); renderPendientes();
+    await loadHistorial();
+  } catch(e){ alert('Error: ' + e.message); }
+}
+
+// Pasa las ventas, compras y abonos de un día sin guardar a la caja abierta (para guardarlos juntos)
+async function pasarACaja(f){
+  if(!soloAdmin('mover ventas')) return;
+  if(!cajaLista()) return;
+  try{
+    const crudo = await cargarDiaCrudo(f);
+    const n = crudo.ventas.length, m = crudo.compras.length, k = crudo.abonos.length;
+    const fondoEf = crudo.dia.saldoInicialEf || 0, fondoTr = crudo.dia.saldoInicialTr || 0;
+    if(!confirm(`Se pasarán a la caja abierta ${n} venta(s), ${m} compra(s) y ${k} abono(s) del ${fmtFecha(f)}.`
+      + (fondoEf||fondoTr ? `\nEl fondo de compras de ese día (${fmt(fondoEf+fondoTr)}) se suma al de la caja.` : '')
+      + '\n\n¿Continuar?')) return;
+    const ops = [];
+    const sinId = ({_id, ...resto}) => resto;
+    crudo.ventas.forEach(v=>ops.push(b=>{ b.set(VENTAS().doc(v._id), sinId(v)); b.delete(DIA_COL().doc(f).collection('ventas').doc(v._id)); }));
+    crudo.compras.forEach(c=>ops.push(b=>{ b.set(COMPRAS().doc(c._id), sinId(c)); b.delete(DIA_COL().doc(f).collection('compras').doc(c._id)); }));
+    crudo.abonos.forEach(a=>ops.push(b=>{
+      const nuevo = ABONOS().doc(a._id);
+      const mov = a.mov ? { ...a.mov, abonoPath: nuevo.path } : null;
+      b.set(nuevo, { ...sinId(a), ...(mov ? { mov } : {}) });
+      b.delete(DIA_COL().doc(f).collection('abonos').doc(a._id));
+      // El fiado guarda dónde está el abono: se actualiza la ruta
+      if(mov && a.fioId && fios.some(x=>x._id===a.fioId)){
+        b.update(FIOS_COL().doc(a.fioId), { movimientos: firebase.firestore.FieldValue.arrayRemove(a.mov) });
+        b.update(FIOS_COL().doc(a.fioId), { movimientos: firebase.firestore.FieldValue.arrayUnion(mov) });
+      }
+    }));
+    // Lotes pequeños (cada operación son 2 a 4 escrituras)
+    for(let i=0; i<ops.length; i+=100){
+      const b = db.batch(); ops.slice(i, i+100).forEach(op=>op(b)); await b.commit();
+    }
+    // El fondo va al final, una sola vez
+    if(fondoEf || fondoTr){
+      const b = db.batch();
+      b.set(DIA(), { saldoInicialEf: INC(fondoEf), saldoInicialTr: INC(fondoTr) }, { merge: true });
+      b.set(DIA_COL().doc(f), { saldoInicialEf: 0, saldoInicialTr: 0, movidoA: jornada.id }, { merge: true });
+      await b.commit();
+    }
+    showToast(`➡️ Movimientos del ${fmtFechaCorta(f)} pasados a la caja abierta`);
+    logAudit('editar','historial',`Pasó a la caja abierta los movimientos sin guardar del ${f}: ${n} ventas, ${m} compras, ${k} abonos`,{ fecha: f });
+    diasPendientes = diasPendientes.filter(x=>x!==f); renderPendientes();
+    verDia(f, false);
+  } catch(e){ alert('Error: ' + e.message); }
 }
 
 // ══════════════════════════════════════
@@ -1966,9 +2147,10 @@ function renderCalendario(){
   for(let d=1; d<=dias; d++){
     const f = `${y}-${pad2(m+1)}-${pad2(d)}`;
     const doc = histDocs[f];
-    const cls = ['cal-day', doc?'saved':'', f===hoy?'hoy':'', f===histSel?'sel':''].join(' ');
+    const pend = !doc && diasPendientes.includes(f);
+    const cls = ['cal-day', doc?'saved':'', pend?'pend':'', f===hoy?'hoy':'', f===histSel?'sel':''].join(' ');
     html += `<button class="${cls}" onclick="verDia('${f}')">
-      <span>${d}</span>${doc?`<span class="cal-day-monto">$${fmtK(doc.cierre.vtaTotal||0)}</span>`:''}
+      <span>${d}</span>${doc?`<span class="cal-day-monto">$${fmtK(doc.cierre.vtaTotal||0)}</span>`:pend?'<span class="cal-day-monto">⚠️</span>':''}
     </button>`;
   }
   $('cal-grid').innerHTML = html;
@@ -1981,14 +2163,30 @@ function renderCalendario(){
     <div class="cal-stat"><div class="cal-stat-lbl">Compras del mes</div><div class="cal-stat-val" style="color:var(--red)">${fmt(tot('gasTotal'))}</div></div>`;
 }
 
-function verDia(f, scroll=true){
+async function verDia(f, scroll=true){
   histSel = f;
   renderCalendario();
   const d = histDocs[f];
   const div = $('hist-detalle');
   if(!d){
-    div.innerHTML = `<div class="card"><div class="card-title" style="text-transform:capitalize">${fmtFecha(f)}</div>
-      <div class="empty-msg">No hay datos guardados para este día.${f===today()?' Usa “📅 Guardar día” en la pestaña Caja.':''}</div></div>`;
+    const titulo = `<div class="card-title" style="text-transform:capitalize">${fmtFecha(f)}</div>`;
+    div.innerHTML = `<div class="card">${titulo}<div class="empty-msg">Buscando movimientos…</div></div>`;
+    let crudo = null;
+    try{ crudo = await cargarDiaCrudo(f); } catch(e){ console.error('dia crudo', e); }
+    if(histSel !== f) return;   // el usuario ya tocó otro día
+    const hay = crudo && (crudo.ventas.length || crudo.compras.length || crudo.abonos.length);
+    if(!hay){
+      div.innerHTML = `<div class="card">${titulo}<div class="empty-msg">No hay datos guardados para este día.</div></div>`;
+    } else {
+      const c = buildCierre(crudo, f);
+      div.innerHTML = `<div class="card pend-card">
+        ${titulo}
+        <div class="pend-aviso">⚠️ Este día tiene ${crudo.ventas.length} venta(s) por ${fmt(c.vtaTotal)} que nunca se guardaron. Puedes guardarlas como este día o pasarlas a la caja abierta para guardarlas junto con otras.</div>
+        ${resumenHTML(c)}
+        <button class="btn-primary btn-cierre" onclick="guardarDiaCrudo('${f}')">💾 Guardar como ${fmtFechaCorta(f)}</button>
+        <button class="btn-primary btn-hist" onclick="pasarACaja('${f}')">➡️ Pasar a la caja abierta</button>
+      </div>`;
+    }
   } else {
     div.innerHTML = `<div class="card">
       <div class="card-title"><span style="text-transform:capitalize">${fmtFecha(f)}</span>${d.importado?'<span class="badge-imp">Importado</span>':''}</div>
