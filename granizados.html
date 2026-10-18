@@ -143,10 +143,11 @@
   /* ─── TABS ─── */
   .tab-bar {
     display: flex; background: var(--surface); border-bottom: 1px solid var(--border);
-    position: sticky; top: 0; z-index: 50;
+    position: sticky; top: 0; z-index: 50; overflow-x: auto; scrollbar-width: none;
   }
+  .tab-bar::-webkit-scrollbar { display: none; }
   .tab-btn {
-    flex: 1; padding: 8px 1px 7px; border: none; background: none;
+    flex: 1 0 auto; min-width: 54px; padding: 8px 4px 7px; border: none; background: none;
     font-size: 0.68rem; white-space: nowrap; font-weight: 700; color: var(--gray);
     cursor: pointer; border-bottom: 3px solid transparent; transition: all 0.2s;
   }
@@ -202,7 +203,7 @@
   .form-row { display: flex; gap: 8px; flex-wrap: wrap; }
   .fg { flex: 1; min-width: 100px; }
   label { display: block; font-size: 0.74rem; font-weight: 700; color: var(--gray); margin-bottom: 4px; }
-  input[type=text], input[type=number], select, textarea {
+  input[type=text], input[type=number], input[type=date], select, textarea {
     width: 100%; padding: 9px 11px; border: 1.5px solid var(--border); border-radius: 9px;
     font-size: 0.9rem; color: var(--text); background: var(--light); outline: none; transition: border-color 0.2s;
   }
@@ -396,6 +397,34 @@
   .res-debe-row { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; padding: 4px 0; font-size: 0.86rem; }
   .res-debe-row b { font-size: 1.15rem; color: #e0f2fe; }
   .res-debe-sub { font-size: 0.7rem; color: #bae6fd; opacity: 0.85; margin-bottom: 4px; }
+  .res-dinero-h   { font-size: 0.78rem; font-weight: 800; color: #bae6fd; margin: 6px 0 2px; }
+  .res-dinero-h:first-child { margin-top: 0; }
+  .res-dinero-row { display: flex; justify-content: space-between; gap: 8px; font-size: 0.8rem; padding: 2px 0; color: #e0f2fe; }
+  .res-dinero-row b { white-space: nowrap; }
+  .res-dinero-tot { border-top: 1px solid rgba(255,255,255,0.2); margin-top: 2px; padding-top: 4px; font-size: 0.9rem; font-weight: 800; }
+  .res-dinero-tot b { font-size: 1.05rem; color: #fff; }
+  .res-gran-total { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin-top: 10px; padding-top: 8px; border-top: 2px solid rgba(255,255,255,0.35); font-weight: 900; }
+  .res-gran-total b { font-size: 1.35rem; color: #fff; }
+  .res-fiado-aparte {
+    display: flex; justify-content: space-between; align-items: center; gap: 8px;
+    background: var(--wa-bg); border: 1px dashed var(--wa-bd); color: var(--wa-tx);
+    border-radius: 12px; padding: 10px 12px; margin-bottom: 10px; font-weight: 800; font-size: 0.86rem;
+  }
+  .res-fiado-aparte small { font-weight: 600; opacity: 0.8; font-size: 0.68rem; }
+  .res-fiado-aparte b { font-size: 1.1rem; white-space: nowrap; }
+
+  /* ─── AUDITORÍA ─── */
+  .aud-item { background: var(--card2); border: 1px solid var(--border); border-left: 4px solid var(--gray); border-radius: 10px; padding: 9px 11px; margin-bottom: 7px; }
+  .aud-top  { display: flex; justify-content: space-between; gap: 8px; font-size: 0.7rem; color: var(--gray); margin-bottom: 3px; }
+  .aud-det  { font-size: 0.83rem; line-height: 1.4; }
+  .aud-user { font-size: 0.7rem; color: var(--gray); margin-top: 3px; }
+  .aud-acc  { font-weight: 800; text-transform: uppercase; font-size: 0.64rem; letter-spacing: 0.03em; }
+  .aud-crear    { border-left-color: var(--green); }  .aud-crear .aud-acc    { color: var(--green); }
+  .aud-editar   { border-left-color: var(--accent); } .aud-editar .aud-acc   { color: var(--accent); }
+  .aud-eliminar { border-left-color: var(--red); }    .aud-eliminar .aud-acc { color: var(--red); }
+  .aud-cobrar   { border-left-color: var(--purple); } .aud-cobrar .aud-acc   { color: var(--purple); }
+  .aud-guardar  { border-left-color: var(--yellow); } .aud-guardar .aud-acc  { color: var(--yellow); }
+  .aud-exportar, .aud-importar { border-left-color: var(--accent2); }
   .hist-sub { font-size: 0.72rem; color: var(--gray); }
 
   /* ─── HISTORIAL / CALENDARIO ─── */
@@ -483,6 +512,7 @@
     <button class="tab-btn solo-admin" id="tab-btn-inventario" onclick="goTab('inventario')"><span class="tab-ico">📦</span>Insumos</button>
     <button class="tab-btn solo-admin" id="tab-btn-fiados"     onclick="goTab('fiados')"><span class="tab-ico">🧾</span>Fiados</button>
     <button class="tab-btn solo-admin" id="tab-btn-historial"  onclick="goTab('historial')"><span class="tab-ico">📅</span>Historial</button>
+    <button class="tab-btn solo-admin" id="tab-btn-auditoria"  onclick="goTab('auditoria')"><span class="tab-ico">🔍</span>Auditoría</button>
   </div>
 
   <!-- ══ TAB: CAJA ══ -->
@@ -649,6 +679,50 @@
         </select>
       </div>
       <div id="fio-list"><div class="empty-msg">Sin fiados</div></div>
+    </div>
+  </div>
+
+  <!-- ══ TAB: AUDITORÍA ══ -->
+  <div class="tab-content" id="tab-auditoria">
+    <div class="card">
+      <div class="card-title">🔍 Auditoría</div>
+      <div class="receta-txt">Registro de todo lo que se hace en granizados. Solo lectura: no se puede modificar ni eliminar.</div>
+      <div class="form-row" style="margin-bottom:8px">
+        <div class="fg"><label>Desde</label><input type="date" id="aud-desde"/></div>
+        <div class="fg"><label>Hasta</label><input type="date" id="aud-hasta"/></div>
+      </div>
+      <div class="form-row" style="margin-bottom:8px">
+        <select id="aud-modulo" class="fg" onchange="cargarAuditoria()">
+          <option value="">Todos los módulos</option>
+          <option value="granizados-ventas">💰 Ventas</option>
+          <option value="granizados-compras">🛒 Compras</option>
+          <option value="granizados-productos">🧃 Productos</option>
+          <option value="granizados-insumos">📦 Insumos</option>
+          <option value="granizados-fiados">🧾 Fiados</option>
+          <option value="granizados-historial">📅 Historial</option>
+          <option value="granizados-sistema">⚙️ Sistema</option>
+        </select>
+        <select id="aud-accion" class="fg" onchange="cargarAuditoria()">
+          <option value="">Todas las acciones</option>
+          <option value="login">🔐 Login</option>
+          <option value="logout">🚪 Logout</option>
+          <option value="crear">➕ Crear</option>
+          <option value="editar">✏️ Editar</option>
+          <option value="eliminar">🗑️ Eliminar</option>
+          <option value="cobrar">💰 Cobrar</option>
+          <option value="guardar">💾 Guardar</option>
+          <option value="exportar">📤 Exportar</option>
+          <option value="importar">📥 Importar</option>
+        </select>
+      </div>
+      <div class="form-row" style="margin-bottom:4px">
+        <button class="btn-sm btn-ghost fg" onclick="setAudRango(1)">Hoy</button>
+        <button class="btn-sm btn-ghost fg" onclick="setAudRango(7)">7 días</button>
+        <button class="btn-sm btn-ghost fg" onclick="setAudRango(30)">30 días</button>
+      </div>
+      <button class="btn-primary" onclick="cargarAuditoria()">🔍 Buscar</button>
+      <div class="hist-sub" id="aud-info" style="margin:10px 0 6px"></div>
+      <div id="aud-list"></div>
     </div>
   </div>
 
@@ -849,6 +923,18 @@ const INV_COL   = () => db.collection('granizados_inventario');
 const PROD_COL  = () => db.collection('granizados_productos');
 const FIOS_COL  = () => db.collection('granizados_fios');          // una cuenta por persona
 const ABONOS    = () => DIA().collection('abonos');               // abonos recibidos ese día
+const AUDIT_LOG = () => db.collection('audit_log');               // misma colección que index.html
+
+// Registra una acción en audit_log (mismo formato que index.html). Nunca bloquea.
+function logAudit(accion, modulo, detalle, datos){
+  try{
+    AUDIT_LOG().add({
+      ts: TS(), fecha: today(), hora: new Date().toTimeString().slice(0,8),
+      uid: currentUser?.uid || '', usuario: userNombre || currentUser?.email || 'desconocido',
+      accion, modulo: 'granizados-' + modulo, detalle, datos: datos || {}
+    }).catch(()=>{});
+  } catch(_){}
+}
 
 // ── Formateo ──
 const fmt     = n => (n<0?'−$':'$') + Math.abs(n||0).toLocaleString('es-CO');
@@ -888,6 +974,7 @@ let abonoTipo    = 'efectivo';
 let relojTimer   = null;
 let userRole     = 'mesero';     // usuarios/{uid}.role — igual que index.html
 let userNombre   = '';
+let loginPendiente = false;     // para registrar el login solo cuando se ingresa con usuario y clave
 const esAdmin = () => userRole === 'admin';
 // Los usuarios no admin solo pueden ingresar datos; editar y eliminar es de admin
 function soloAdmin(accion){
@@ -919,6 +1006,7 @@ auth.onAuthStateChanged(async user => {
     $('h-user').innerHTML = `${esc(userNombre)}<span class="role-badge${esAdmin()?' admin':''}">${esAdmin()?'👑 Admin':esc(userRole)}</span>`;
     setupListeners();
     startReloj();
+    if(loginPendiente){ loginPendiente = false; logAudit('login','sistema',`Inició sesión: ${userNombre} (${userRole})`,{ rol: userRole }); }
   } else {
     $('login-screen').style.display = 'flex';
     $('main-screen').style.display  = 'none';
@@ -932,12 +1020,16 @@ async function doLogin(){
   const pass  = $('l-pass').value;
   $('l-error').textContent='';
   try{
+    loginPendiente = true;
     await auth.signInWithEmailAndPassword(email, pass);
-  } catch(e){ $('l-error').textContent = 'Usuario o contraseña incorrectos.'; }
+  } catch(e){ loginPendiente = false; $('l-error').textContent = 'Usuario o contraseña incorrectos.'; }
 }
 $('l-pass').addEventListener('keydown', e=>{ if(e.key==='Enter') doLogin(); });
 
-function doLogout(){ auth.signOut(); }
+function doLogout(){
+  logAudit('logout','sistema',`Cerró sesión: ${userNombre}`);
+  auth.signOut();
+}
 
 // ══════════════════════════════════════
 //   TEMA OSCURO / CLARO
@@ -1061,11 +1153,12 @@ function setupListeners(){
 // ══════════════════════════════════════
 function goTab(tab){
   if(!esAdmin()) tab = 'caja';   // el mesero solo usa el módulo de ventas
-  ['caja','compras','productos','inventario','fiados','historial'].forEach(t=>{
+  ['caja','compras','productos','inventario','fiados','historial','auditoria'].forEach(t=>{
     $('tab-btn-'+t).classList.toggle('active', t===tab);
     $('tab-'+t).classList.toggle('active', t===tab);
   });
   if(tab==='historial') loadHistorial();
+  if(tab==='auditoria' && !$('aud-desde').value) setAudRango(1);
 }
 
 // ══════════════════════════════════════
@@ -1268,6 +1361,9 @@ async function addVenta(){
     vaciarCarrito();
     $('vta-mix-ef').value = ''; $('vta-mix-tr').value = ''; $('vta-cliente').value = '';
     showToast(ventasTipo==='fiado' ? `🧾 Fiado de ${fmt(monto)} a ${extra.cliente}` : `✅ Venta de ${fmt(monto)} registrada`);
+    const pagoTxt = ventasTipo==='mixto' ? `mixto (Ef ${fmt(extra.montoEf)} + Tr ${fmt(extra.montoTr)})`
+                  : ventasTipo==='fiado' ? `fiado a ${extra.cliente}` : ventasTipo;
+    logAudit('crear','ventas',`Venta ${fmt(monto)} — ${desc} — pago ${pagoTxt}`,{ monto, tipo: ventasTipo, ...extra, fioMov: null });
     setVtaTipo('efectivo');
   } catch(e){ $('vta-error').textContent='Error: '+e.message; }
   finally{ btn.disabled = false; }
@@ -1329,6 +1425,7 @@ async function delVenta(id){
     });
     await batch.commit();
     showToast('Venta eliminada');
+    logAudit('eliminar','ventas',`Eliminó venta ${fmt(v?.monto)} — ${v?.desc||''} — ${v?.hora||''}${v?.tipo==='fiado'?` (fiado a ${v.cliente})`:''}`,{ monto: v?.monto||0, tipo: v?.tipo||'' });
   } catch(e){ alert(e.message); }
 }
 
@@ -1362,7 +1459,7 @@ function renderFios(){
       <div class="inv-btns">
         ${debe ? `<button class="btn-entrada" onclick="openAbono('${f._id}')">💰 Abonar</button>` : ''}
         <button class="btn-edit-inv" style="flex:1" onclick="toggleFio('${f._id}')">${abierto?'▲ Ocultar':'📋 Movimientos'} (${movs.length})</button>
-        ${!debe && esAdmin() ? `<button class="btn-sm btn-danger" onclick="delFio('${f._id}')">🗑</button>` : ''}
+        ${esAdmin() ? `<button class="btn-sm btn-danger" onclick="delFio('${f._id}')" title="Eliminar fiado">🗑</button>` : ''}
       </div>
       ${abierto ? `<div class="fio-movs">${movs.map(m=>`
         <div class="fio-mov">
@@ -1428,6 +1525,7 @@ async function saveAbono(){
     await batch.commit();
     closeModal('modal-abono');
     showToast(monto === f.saldo ? `✅ ${f.cliente} quedó a paz y salvo` : `💰 Abono de ${fmt(monto)} registrado`);
+    logAudit('cobrar','fiados',`Abono de ${f.cliente}: ${fmt(monto)} (${abonoTipo}${abonoTipo==='mixto'?` Ef ${fmt(montoEf)} + Tr ${fmt(montoTr)}`:''}) — saldo ${fmt((f.saldo||0)-monto)}`,{ cliente: f.cliente, monto, montoEf, montoTr });
   } catch(e){ $('abo-error').textContent='Error: '+e.message; }
   finally{ btn.disabled = false; }
 }
@@ -1446,16 +1544,69 @@ async function delAbono(fioId, movId){
     });
     await batch.commit();
     showToast('Abono eliminado');
+    logAudit('eliminar','fiados',`Eliminó abono de ${f.cliente}: ${fmt(mov.monto)} del ${mov.fecha}`,{ cliente: f.cliente, monto: mov.monto });
   } catch(e){ alert(e.message); }
 }
 
 async function delFio(id){
   if(!soloAdmin('eliminar fiados')) return;
   const f = fios.find(x=>x._id===id); if(!f) return;
-  if((f.saldo||0) > 0){ alert('Solo se puede eliminar una cuenta que ya está pagada.'); return; }
-  if(!confirm(`¿Eliminar la cuenta de ${f.cliente} con todo su historial de fiados y abonos?`)) return;
-  try{ await FIOS_COL().doc(id).delete(); showToast('Cuenta eliminada'); }
+  const debe = (f.saldo||0) > 0;
+  const msg = debe
+    ? `${f.cliente} todavía debe ${fmt(f.saldo)}.\n\n¿Eliminar el fiado de todas formas? Se borra la deuda y su historial de fiados y abonos.`
+    : `¿Eliminar la cuenta de ${f.cliente} con todo su historial de fiados y abonos?`;
+  if(!confirm(msg)) return;
+  try{
+    await FIOS_COL().doc(id).delete();
+    showToast('Fiado eliminado');
+    logAudit('eliminar','fiados',`Eliminó el fiado de ${f.cliente}${debe?` con saldo pendiente de ${fmt(f.saldo)}`:' (pagado)'} — fiado total ${fmt(f.totalFiado)}, abonado ${fmt(f.totalAbonado)}`,{ cliente: f.cliente, saldo: f.saldo||0 });
+  }
   catch(e){ alert(e.message); }
+}
+
+// ══════════════════════════════════════
+//   AUDITORÍA (PANEL)
+// ══════════════════════════════════════
+const AUD_MODULOS = {
+  'granizados-ventas':'💰 Ventas', 'granizados-compras':'🛒 Compras', 'granizados-productos':'🧃 Productos',
+  'granizados-insumos':'📦 Insumos', 'granizados-fiados':'🧾 Fiados', 'granizados-historial':'📅 Historial',
+  'granizados-sistema':'⚙️ Sistema'
+};
+
+function setAudRango(dias){
+  const hasta = new Date(), desde = new Date();
+  desde.setDate(desde.getDate() - (dias-1));
+  $('aud-desde').value = desde.toLocaleDateString('en-CA');
+  $('aud-hasta').value = hasta.toLocaleDateString('en-CA');
+  cargarAuditoria();
+}
+
+async function cargarAuditoria(){
+  if(!esAdmin()) return;
+  const desde = $('aud-desde').value, hasta = $('aud-hasta').value;
+  const info = $('aud-info'), list = $('aud-list');
+  if(!desde || !hasta){ info.textContent = 'Selecciona un rango de fechas.'; return; }
+  info.textContent = 'Cargando…'; list.innerHTML = '';
+  try{
+    const snap = await AUDIT_LOG().where('fecha','>=',desde).where('fecha','<=',hasta).orderBy('fecha','desc').get();
+    const fMod = $('aud-modulo').value, fAcc = $('aud-accion').value;
+    const docs = snap.docs.map(d=>d.data())
+      .filter(d=>String(d.modulo||'').startsWith('granizados-'))
+      .filter(d=>!fMod || d.modulo===fMod)
+      .filter(d=>!fAcc || d.accion===fAcc)
+      .sort((a,b)=>((b.fecha||'')+(b.hora||'')).localeCompare((a.fecha||'')+(a.hora||'')));
+    info.textContent = `${docs.length} registro${docs.length!==1?'s':''}`;
+    if(!docs.length){ list.innerHTML = '<div class="empty-msg">Sin registros para ese filtro</div>'; return; }
+    list.innerHTML = docs.map(d=>`
+      <div class="aud-item aud-${esc(d.accion)}">
+        <div class="aud-top">
+          <span>${AUD_MODULOS[d.modulo]||esc(d.modulo)} · <span class="aud-acc">${esc(d.accion)}</span></span>
+          <span>${esc(d.fecha)} ${esc(d.hora)}</span>
+        </div>
+        <div class="aud-det">${esc(d.detalle)}</div>
+        <div class="aud-user">👤 ${esc(d.usuario||'—')}</div>
+      </div>`).join('');
+  } catch(e){ info.textContent = 'Error al cargar: ' + e.message; }
 }
 
 // ══════════════════════════════════════
@@ -1465,9 +1616,13 @@ async function saveSaldoInicial(){
   if((diaData.saldoInicialEf || diaData.saldoInicialTr) && !soloAdmin('cambiar el fondo ya guardado')) return;
   const ef = moneyVal('ini-ef');
   const tr = moneyVal('ini-tr');
+  const antes = { ef: diaData.saldoInicialEf||0, tr: diaData.saldoInicialTr||0 };
   try{
     await DIA().set({ saldoInicialEf: ef, saldoInicialTr: tr, updatedAt: TS() }, { merge: true });
     showToast('🪙 Fondo para compras guardado');
+    logAudit((antes.ef||antes.tr)?'editar':'crear','compras',
+      (antes.ef||antes.tr) ? `Cambió el fondo de compras: Ef ${fmt(antes.ef)} → ${fmt(ef)}, Tr ${fmt(antes.tr)} → ${fmt(tr)}`
+                           : `Fondo de compras: Ef ${fmt(ef)}, Tr ${fmt(tr)}`, { ef, tr });
   } catch(e){ showToast('Error: '+e.message); }
 }
 
@@ -1491,6 +1646,7 @@ async function addCompra(){
     $('cmp-desc').value='';
     $('cmp-monto').value='';
     showToast('🛒 Compra registrada');
+    logAudit('crear','compras',`Compra: ${desc} — ${fmt(monto)} (${compraTipo})`,{ desc, monto, tipo: compraTipo });
   } catch(e){ $('cmp-error').textContent='Error: '+e.message; }
 }
 
@@ -1513,7 +1669,11 @@ function renderCompras(){
 async function delCompra(id){
   if(!soloAdmin('eliminar compras')) return;
   if(!confirm('¿Eliminar esta compra?')) return;
-  try{ await COMPRAS().doc(id).delete(); showToast('Compra eliminada'); }
+  const c = comprasCache.find(x=>x._id===id) || {};
+  try{
+    await COMPRAS().doc(id).delete(); showToast('Compra eliminada');
+    logAudit('eliminar','compras',`Eliminó compra: ${c.desc||''} — ${fmt(c.monto)}`,{ desc: c.desc||'', monto: c.monto||0 });
+  }
   catch(e){ alert(e.message); }
 }
 
@@ -1595,6 +1755,7 @@ async function saveProd(){
   });
   const receta = Object.entries(map).map(([insumoId,cant])=>({insumoId,cant}));
   if(prodEditId && !soloAdmin('editar productos')) return;
+  const previo = productos.find(x=>x._id===prodEditId);   // antes de guardar, para la auditoría
   try{
     if(prodEditId){
       await PROD_COL().doc(prodEditId).update({ nombre, precio, receta, updatedAt: TS() });
@@ -1603,6 +1764,9 @@ async function saveProd(){
     }
     closeModal('modal-prod');
     showToast(prodEditId ? 'Producto actualizado' : 'Producto creado');
+    logAudit(prodEditId?'editar':'crear','productos',
+      prodEditId ? `Editó producto "${nombre}"${previo && previo.precio!==precio ? ` — precio ${fmt(previo.precio)} → ${fmt(precio)}` : ''} — ${receta.length} insumo(s)`
+                 : `Creó producto "${nombre}" a ${fmt(precio)} — ${receta.length} insumo(s)`, { nombre, precio });
   } catch(e){ $('prod-error').textContent='Error: '+e.message; }
 }
 
@@ -1610,7 +1774,10 @@ async function delProd(id){
   if(!soloAdmin('eliminar productos')) return;
   const p = productos.find(x=>x._id===id); if(!p) return;
   if(!confirm(`¿Eliminar el producto "${p.nombre}"? Las ventas ya hechas no se modifican.`)) return;
-  try{ await PROD_COL().doc(id).delete(); showToast('Producto eliminado'); }
+  try{
+    await PROD_COL().doc(id).delete(); showToast('Producto eliminado');
+    logAudit('eliminar','productos',`Eliminó producto "${p.nombre}" (${fmt(p.precio)})`,{ nombre: p.nombre });
+  }
   catch(e){ alert(e.message); }
 }
 
@@ -1653,16 +1820,35 @@ function buildCierre(){
   };
 }
 
+// Dinero del día: lo que entró (ventas + abonos) + lo que queda de la caja de compras,
+// por efectivo y por transferencia, y el total. El fiado va aparte porque aún no ingresa.
+function dineroHTML(c){
+  const ingEf = (c.vtaEf||0) + (c.abonoEf||0), ingTr = (c.vtaTr||0) + (c.abonoTr||0);
+  const totEf = ingEf + (c.quedaEf||0),       totTr = ingTr + (c.quedaTr||0);
+  const neg = n => n<0 ? ' class="neg"' : '';
+  const bloque = (titulo, ing, abono, queda, tot) => `
+    <div class="res-dinero-h">${titulo}</div>
+    <div class="res-dinero-row"><span>Lo que debes tener (ventas${abono?' + abonos':''})</span><b>${fmt(ing)}</b></div>
+    <div class="res-dinero-row"><span>Lo que queda de la caja</span><b${neg(queda)}>${fmt(queda)}</b></div>
+    <div class="res-dinero-row res-dinero-tot"><span>Total</span><b${neg(tot)}>${fmt(tot)}</b></div>`;
+  return `
+    <div class="res-debe">
+      ${bloque('💵 Efectivo', ingEf, c.abonoEf, c.quedaEf||0, totEf)}
+      ${bloque('🏦 Transferencias', ingTr, c.abonoTr, c.quedaTr||0, totTr)}
+      <div class="res-gran-total"><span>💰 TOTAL DINERO</span><b${neg(totEf+totTr)}>${fmt(totEf + totTr)}</b></div>
+      <div class="res-debe-sub">Efectivo ${fmt(totEf)} + transferencias ${fmt(totTr)}</div>
+    </div>
+    <div class="res-fiado-aparte">
+      <span>🧾 Fiado del día<br><small>Aún no ingresa · no está sumado en el total</small></span>
+      <b>${fmt(c.vtaFiado||0)}</b>
+    </div>`;
+}
+
 function resumenHTML(c){
   const row = (l,v,cls='') => `<div class="res-row ${cls}"><span>${l}</span><span>${v}</span></div>`;
   const money = n => `<span class="${n<0?'neg':''}">${fmt(n)}</span>`;
   return `
-    <div class="res-debe">
-      <div class="res-debe-row"><span>💵 Debes tener en efectivo</span><b class="${c.debeEf<0?'neg':''}">${fmt(c.debeEf)}</b></div>
-      <div class="res-debe-sub">Queda del fondo ${fmt(c.quedaEf)} + ventas ${fmt(c.vtaEf)}${c.abonoEf?` + abonos ${fmt(c.abonoEf)}`:''}</div>
-      <div class="res-debe-row"><span>🏦 Debes tener en transferencias</span><b class="${c.debeTr<0?'neg':''}">${fmt(c.debeTr)}</b></div>
-      <div class="res-debe-sub">Queda del fondo ${fmt(c.quedaTr)} + ventas ${fmt(c.vtaTr)}${c.abonoTr?` + abonos ${fmt(c.abonoTr)}`:''}</div>
-    </div>
+    ${dineroHTML(c)}
 
     <div class="res-sec">
       <div class="res-h">💰 Ventas (${c.numVentas})</div>
@@ -1714,6 +1900,7 @@ function openCierre(){
 
 async function guardarDia(){
   if(diaData.cerrado && !soloAdmin('actualizar un día ya guardado')) return;
+  const actualizar = !!diaData.cerrado;
   const btn = $('btn-confirmar-cierre'); btn.disabled = true;
   try{
     await DIA().set({
@@ -1722,6 +1909,8 @@ async function guardarDia(){
     }, { merge: true });
     closeModal('modal-cierre');
     showToast('📅 Día guardado');
+    const t = calcTotales();
+    logAudit('guardar','historial',`${actualizar?'Actualizó':'Guardó'} el día ${diaActual} — ventas ${fmt(t.vtaTotal)}, total dinero ${fmt(t.debeEf + t.debeTr)}`,{ fecha: diaActual });
   } catch(e){ $('cierre-error').textContent='Error: '+e.message; btn.disabled = false; }
 }
 
@@ -1823,7 +2012,7 @@ const XLS_COLS = {
     ['Fondo efectivo','fondoEf','$'], ['Fondo transferencia','fondoTr','$'],
     ['Gastado efectivo','gasEf','$'], ['Gastado transferencia','gasTr','$'],
     ['Queda efectivo','quedaEf','$'], ['Queda transferencia','quedaTr','$'],
-    ['Debe tener efectivo','debeEf','$'], ['Debe tener transferencia','debeTr','$'],
+    ['Debe tener efectivo','debeEf','$'], ['Debe tener transferencia','debeTr','$'], ['Total dinero','totalDinero','$'],
     ['Guardado a las','hora'], ['Guardado por','por']
   ],
   Productos: [ ['Fecha','fecha'], ['Producto','nombre'], ['Cantidad','cant'], ['Total','total','$'] ],
@@ -1851,7 +2040,7 @@ function filasExcel(fechas){
   const out = { Resumen:[], Productos:[], Compras:[], Insumos:[], Fiados:[] };
   [...fechas].sort().forEach(f=>{
     const d = histDocs[f], c = d?.cierre; if(!c) return;
-    out.Resumen.push({ ...c, fecha: f, hora: d.cerradoHora||'', por: d.cerradoPor||'' });
+    out.Resumen.push({ ...c, fecha: f, hora: d.cerradoHora||'', por: d.cerradoPor||'', totalDinero: (c.debeEf||0) + (c.debeTr||0) });
     (c.productos||[]).forEach(p=>out.Productos.push({ fecha: f, ...p }));
     (c.compras||[]).forEach(x=>out.Compras.push({ fecha: f, ...x, tipo: x.tipo==='transferencia'?'Transferencia':'Efectivo' }));
     (c.insumos||[]).forEach(i=>out.Insumos.push({ fecha: f, ...i, stockFinal: i.stockFinal ?? '' }));
@@ -1882,6 +2071,7 @@ async function exportarDias(fechas, nombre){
     });
     XLSX.writeFile(wb, nombre + '.xlsx');
     showToast(`⬇️ ${fechas.length} día(s) exportados`);
+    logAudit('exportar','historial',`Exportó a Excel ${fechas.length} día(s): ${nombre}.xlsx`,{ dias: fechas.length });
   } catch(e){ $('excel-msg').textContent = 'Error: ' + e.message; }
 }
 
@@ -2029,6 +2219,7 @@ async function importarExcel(input){
       await batch.commit();
     }
     showToast(`⬆️ ${aGuardar.length} día(s) importados`);
+    logAudit('importar','historial',`Importó desde Excel ${aGuardar.length} día(s): ${aGuardar.length>6 ? aGuardar.slice(0,6).join(', ')+'…' : aGuardar.join(', ')}`,{ dias: aGuardar.length });
     histSel = aGuardar[aGuardar.length-1];
     calMes = { y: +histSel.slice(0,4), m: +histSel.slice(5,7) - 1 };
     await loadHistorial();
@@ -2074,6 +2265,7 @@ async function saveInvProduct(){
     }
     closeModal('modal-inv');
     showToast(docId?'Insumo actualizado':'Insumo agregado');
+    logAudit(docId?'editar':'crear','insumos',`${docId?'Editó':'Creó'} insumo "${nombre}" — stock ${fmtCant(stock)} ${unidad} (mín. ${fmtCant(stockMin)})`,{ nombre, stock, unidad });
   } catch(e){ $('inv-error').textContent='Error: '+e.message; }
 }
 
@@ -2119,7 +2311,10 @@ async function delInvItem(id){
   const usadoEn = productos.filter(p=>(p.receta||[]).some(r=>r.insumoId===id)).map(p=>p.nombre);
   const aviso = usadoEn.length ? `\n\nSe usa en: ${usadoEn.join(', ')}. Esos productos dejarán de descontarlo.` : '';
   if(!confirm(`¿Eliminar "${it.nombre}" de los insumos?${aviso}`)) return;
-  try{ await INV_COL().doc(id).delete(); showToast('Insumo eliminado'); }
+  try{
+    await INV_COL().doc(id).delete(); showToast('Insumo eliminado');
+    logAudit('eliminar','insumos',`Eliminó insumo "${it.nombre}" (tenía ${fmtCant(it.stock)} ${it.unidad||'und'})`,{ nombre: it.nombre });
+  }
   catch(e){ alert(e.message); }
 }
 
@@ -2155,6 +2350,7 @@ async function saveMov(){
     });
     closeModal('modal-mov');
     showToast(movTipo==='entrada'?`📥 +${cantidad} ${it.unidad||'und'}`:`📤 −${cantidad} ${it.unidad||'und'}`);
+    logAudit(movTipo==='entrada'?'crear':'editar','insumos',`${movTipo==='entrada'?'Entrada':'Salida'} de ${fmtCant(cantidad)} ${it.unidad||'und'} de "${it.nombre}"${nota?` — ${nota}`:''}`,{ nombre: it.nombre, cantidad, tipo: movTipo });
   } catch(e){ $('mov-error').textContent='Error: '+e.message; }
 }
 
