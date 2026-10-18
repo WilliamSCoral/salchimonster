@@ -1088,7 +1088,9 @@ function renderJornadaInfo(){
   if(!jornada){ b.style.display = 'none'; $('h-fecha').textContent = ''; return; }
   $('h-fecha').textContent = `Desde ${fmtFechaCorta(jornada.desde)}`;
   b.style.display = 'flex';
-  b.textContent = `🕒 Caja abierta desde el ${fmtFecha(jornada.desde)}, ${jornada.desdeHora||''}. Todo se acumula aquí hasta que el administrador guarde el día.`;
+  b.textContent = jornada.continuaDia
+    ? `🕒 Continuando las ventas del ${fmtFecha(jornada.continuaDia)}. Todo se acumula aquí hasta que el administrador guarde el día.`
+    : `🕒 Caja abierta desde el ${fmtFecha(jornada.desde)}, ${jornada.desdeHora||''}. Todo se acumula aquí hasta que el administrador guarde el día.`;
 }
 
 // Escucha la caja abierta; si el admin guarda el día (aquí o en otro equipo) pasa sola a la nueva
@@ -1978,7 +1980,7 @@ function resumenHTML(c){
 }
 
 // Fecha que se propone al guardar: si es de madrugada (antes de las 6 a. m.) se sugiere el día anterior
-const fechaSugerida = () => new Date(Date.now() - 6*3600*1000).toLocaleDateString('en-CA');
+const fechaSugerida = () => jornada?.continuaDia || new Date(Date.now() - 6*3600*1000).toLocaleDateString('en-CA');
 
 // Verifica que un día se pueda usar para guardar: que no esté guardado ni tenga ventas viejas sin guardar
 async function validarFechaGuardado(fecha){
@@ -2073,9 +2075,11 @@ async function pasarACaja(f){
     const crudo = await cargarDiaCrudo(f);
     const n = crudo.ventas.length, m = crudo.compras.length, k = crudo.abonos.length;
     const fondoEf = crudo.dia.saldoInicialEf || 0, fondoTr = crudo.dia.saldoInicialTr || 0;
-    if(!confirm(`Se pasarán a la caja abierta ${n} venta(s), ${m} compra(s) y ${k} abono(s) del ${fmtFecha(f)}.`
-      + (fondoEf||fondoTr ? `\nEl fondo de compras de ese día (${fmt(fondoEf+fondoTr)}) se suma al de la caja.` : '')
-      + '\n\n¿Continuar?')) return;
+    const yaHay = ventasCache.length + comprasCache.length + abonosCache.length;
+    if(!confirm(`Las ${n} venta(s), ${m} compra(s) y ${k} abono(s) del ${fmtFecha(f)} vuelven a la Caja tal como estaban, para que sigas vendiendo como ese día.`
+      + (fondoEf||fondoTr ? `\nTambién vuelve su fondo de compras (${fmt(fondoEf+fondoTr)}).` : '')
+      + (yaHay ? `\nSe juntan con los ${yaHay} movimiento(s) que ya hay en la caja.` : '')
+      + '\n\nCuando termines, presiona "Guardar día" con esa fecha.\n\n¿Continuar?')) return;
     const ops = [];
     const sinId = ({_id, ...resto}) => resto;
     crudo.ventas.forEach(v=>ops.push(b=>{ b.set(VENTAS().doc(v._id), sinId(v)); b.delete(DIA_COL().doc(f).collection('ventas').doc(v._id)); }));
@@ -2102,10 +2106,16 @@ async function pasarACaja(f){
       b.set(DIA_COL().doc(f), { saldoInicialEf: 0, saldoInicialTr: 0, movidoA: jornada.id }, { merge: true });
       await b.commit();
     }
-    showToast(`➡️ Movimientos del ${fmtFechaCorta(f)} pasados a la caja abierta`);
-    logAudit('editar','historial',`Pasó a la caja abierta los movimientos sin guardar del ${f}: ${n} ventas, ${m} compras, ${k} abonos`,{ fecha: f });
+    // La caja queda como "abierta desde" ese día, así se sugiere guardarla con esa fecha
+    if(!jornada.continuaDia || f < jornada.continuaDia){
+      const primera = crudo.ventas[crudo.ventas.length-1] || crudo.compras[crudo.compras.length-1] || {};
+      await CONFIG_JORNADA().set({ desde: f, desdeHora: primera.hora || '', continuaDia: f }, { merge: true });
+    }
+    showToast(`▶️ Las ventas del ${fmtFechaCorta(f)} están otra vez en la Caja`);
+    logAudit('editar','historial',`Continuó en la caja el día sin guardar ${f}: ${n} ventas, ${m} compras, ${k} abonos`,{ fecha: f });
     diasPendientes = diasPendientes.filter(x=>x!==f); renderPendientes();
-    verDia(f, false);
+    histSel = null; $('hist-detalle').innerHTML = '';
+    goTab('caja'); window.scrollTo(0,0);
   } catch(e){ alert('Error: ' + e.message); }
 }
 
@@ -2181,10 +2191,10 @@ async function verDia(f, scroll=true){
       const c = buildCierre(crudo, f);
       div.innerHTML = `<div class="card pend-card">
         ${titulo}
-        <div class="pend-aviso">⚠️ Este día tiene ${crudo.ventas.length} venta(s) por ${fmt(c.vtaTotal)} que nunca se guardaron. Puedes guardarlas como este día o pasarlas a la caja abierta para guardarlas junto con otras.</div>
+        <div class="pend-aviso">⚠️ Este día tiene ${crudo.ventas.length} venta(s) por ${fmt(c.vtaTotal)} que nunca se guardaron. Para seguir vendiendo como ese día, toca <b>Continuar este día en la caja</b>: todo vuelve a la Caja tal como estaba.</div>
         ${resumenHTML(c)}
-        <button class="btn-primary btn-cierre" onclick="guardarDiaCrudo('${f}')">💾 Guardar como ${fmtFechaCorta(f)}</button>
-        <button class="btn-primary btn-hist" onclick="pasarACaja('${f}')">➡️ Pasar a la caja abierta</button>
+        <button class="btn-primary" onclick="pasarACaja('${f}')">▶️ Continuar este día en la caja</button>
+        <button class="btn-primary btn-hist" onclick="guardarDiaCrudo('${f}')">💾 Guardarlo ya como ${fmtFechaCorta(f)}</button>
       </div>`;
     }
   } else {
