@@ -496,6 +496,22 @@
   🧪 MODO PRUEBA — Los datos no afectan el sistema real
 </div>
 
+<!-- BANNER EDICIÓN DE UN DÍA GUARDADO -->
+<div id="edit-hist-banner" style="display:none;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;background:#6d28d9;color:#fff;padding:8px 14px;font-size:0.82rem;font-weight:700;border-bottom:2px solid #4c1d95;">
+  <span id="edit-hist-txt"></span>
+  <span style="display:flex;gap:6px">
+    <button onclick="actualizarDiaHist()" style="background:#fff;color:#4c1d95;border:none;padding:6px 10px;border-radius:8px;font-weight:800;font-size:0.8rem;cursor:pointer">💾 Actualizar día</button>
+    <button onclick="salirEdicionHist()" style="background:rgba(255,255,255,0.18);color:#fff;border:1px solid rgba(255,255,255,0.4);padding:6px 10px;border-radius:8px;font-weight:700;font-size:0.8rem;cursor:pointer">✕ Salir sin guardar</button>
+  </span>
+</div>
+<div id="edit-pend-banner" style="display:none;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;background:#ede9fe;color:#4c1d95;padding:8px 14px;font-size:0.82rem;font-weight:700;border-bottom:2px solid #c4b5fd;">
+  <span id="edit-pend-txt"></span>
+  <span style="display:flex;gap:6px">
+    <button onclick="continuarEdicion()" style="background:#6d28d9;color:#fff;border:none;padding:6px 10px;border-radius:8px;font-weight:800;font-size:0.8rem;cursor:pointer">✏️ Continuar</button>
+    <button onclick="descartarEdicionPendiente()" style="background:#fff;color:#4c1d95;border:1px solid #c4b5fd;padding:6px 10px;border-radius:8px;font-weight:700;font-size:0.8rem;cursor:pointer">Descartar</button>
+  </span>
+</div>
+
 <!-- TABS -->
 <div class="tabs">
   <div class="tab active" id="tab-0" onclick="goTab(0)"><span class="tab-icon">🧾</span>Facturas</div>
@@ -1297,6 +1313,7 @@
   <div class="modal">
     <div class="modal-title">📅 <span id="hist-modal-fecha">—</span> <button class="btn-sm btn-ghost" onclick="closeModal('modal-hist')">✕</button></div>
     <div id="hist-modal-body"></div>
+    <button class="btn-export mt8" onclick="editarDiaHist()" style="background:linear-gradient(135deg,#7c3aed,#5b21b6)">✏️ Editar este día</button>
     <button class="btn-export mt8" onclick="exportExcelFromRecord()">📥 Exportar a Excel</button>
     <div style="height:8px"></div>
     <button class="btn-danger" style="width:100%;padding:11px" onclick="deleteRecord()">🗑 Eliminar este registro</button>
@@ -2095,6 +2112,11 @@ const today = () => new Date().toISOString().slice(0,10);
 // ── Modo prueba: colecciones separadas ──
 const DRAFT = () => db.collection(currentTestMode ? 'test_draft' : 'draft');
 const HIST  = () => db.collection(currentTestMode ? 'test_historial' : 'historial');
+// Espacio de trabajo: el día en curso ('current') o la copia de un día guardado que el admin
+// está editando ('edicion'). La edición vive aparte: el día en curso no se toca y los demás
+// equipos siguen trabajando normal.
+let editHist = null;   // { key, fecha, original } mientras se edita un día guardado
+const DAY = () => DRAFT().doc(editHist ? 'edicion' : 'current');
 
 // ── Modales ──
 function openModal(id){ const el=$(id); if(el){ el.classList.add('open'); } }
@@ -2244,7 +2266,7 @@ function applyRoleUI() {
 // ══════════════════════════════════════
 function setupListeners() {
   clearListeners();
-  const draftRef = DRAFT().doc('current');
+  const draftRef = DAY();
 
   const tsSort = (a,b) => (a.createdAt?.toMillis?.()??0) - (b.createdAt?.toMillis?.()??0);
 
@@ -2301,6 +2323,8 @@ function setupListeners() {
   setupCuadresListener();
   // ── Modo detalle ──
   loadModoDetalle();
+  // ── Edición de un día guardado que quedó sin terminar ──
+  if(!editHist && currentRole==='admin') revisarEdicionPendiente();
 }
 
 function clearListeners() {
@@ -2475,8 +2499,8 @@ async function addFactura() {
       data = {num, desc, monto, tipo:'fio', mixto:false, cliente};
     }
     data.createdAt=TS(); data.createdBy=currentUser.uid;
-    // Guardar también en colección global de fíos
-    try {
+    // Guardar también en colección global de fíos (al editar un día guardado se sincroniza al actualizar)
+    if(!editHist) try {
       await FIOS_COL().add({
         cliente, desc: desc || '', monto, fecha: today(),
         estado: 'pendiente', facturaNum: num,
@@ -2498,7 +2522,7 @@ async function addFactura() {
   setFacturaTipo('efectivo');
   $('f-desc').focus();
   try {
-    await DRAFT().doc('current').collection('facturas').add(data);
+    await DAY().collection('facturas').add(data);
     const tipoLog = data.tipo==='fio'?`Fío — cliente: ${data.cliente}` : data.mixto?'Mixto':data.tipo;
     logAudit('crear','facturas',`Creó factura #${num} — "${desc||'sin desc'}" — ${fmt(monto)} (${tipoLog})`,{num,desc,monto,tipo:data.tipo});
   }
@@ -2586,7 +2610,7 @@ async function saveEditFactura(){
     const monto = moneyVal('ef-monto');
     if(!monto){ $('ef-error').textContent='Ingresa un valor válido.'; return; }
     try{
-      await DRAFT().doc('current').collection('facturas').doc(docId).update({desc, monto, tipo:efTipo});
+      await DAY().collection('facturas').doc(docId).update({desc, monto, tipo:efTipo});
       logAudit('editar','facturas',`Editó factura — desc: "${desc}", monto: ${fmt(monto)}, tipo: ${efTipo}`,{docId,desc,monto,tipo:efTipo});
       closeModal('modal-edit-factura');
     } catch(e){ $('ef-error').textContent='Error: '+e.message; }
@@ -2597,7 +2621,7 @@ async function saveEditFactura(){
     if(!totalMixto){ $('ef-error').textContent='Los pagos no pueden sumar $0.'; return; }
     if(pagosGuardar.some(p=>!p.monto)){ $('ef-error').textContent='Todos los pagos deben tener un valor.'; return; }
     try{
-      await DRAFT().doc('current').collection('facturas').doc(docId).update({desc, pagos:pagosGuardar, total:totalMixto, monto:totalMixto});
+      await DAY().collection('facturas').doc(docId).update({desc, pagos:pagosGuardar, total:totalMixto, monto:totalMixto});
       logAudit('editar','facturas',`Editó factura mixta — desc: "${desc}", total: ${fmt(totalMixto)}`,{docId,desc,totalMixto});
       closeModal('modal-edit-factura');
     } catch(e){ $('ef-error').textContent='Error: '+e.message; }
@@ -2614,7 +2638,7 @@ async function editarNumFactura(docId, numActual){
   const duplicado=state.facturas.find(f=>parseInt(f.num)===n && f._docId!==docId);
   if(duplicado && !confirm(`⚠️ La factura #${n} ya existe. ¿Continuar de todas formas?`)) return;
   try{
-    await DRAFT().doc('current').collection('facturas').doc(docId).update({num:String(n)});
+    await DAY().collection('facturas').doc(docId).update({num:String(n)});
     logAudit('editar','facturas',`Cambió número de factura: ${numActual} → ${n}`);
   } catch(e){ alert('Error: '+e.message); }
 }
@@ -2622,17 +2646,17 @@ async function editarNumFactura(docId, numActual){
 async function delFactura(docId){
   if(currentRole !== 'admin'){ alert('⛔ Solo los administradores pueden eliminar facturas.'); return; }
   if(locked) return;
-  const factSnap = await DRAFT().doc('current').collection('facturas').doc(docId).get();
+  const factSnap = await DAY().collection('facturas').doc(docId).get();
   const factPreview = factSnap.exists ? (factSnap.data().desc||'sin descripción')+' — '+fmt(factSnap.data().monto||factSnap.data().total||0) : 'esta factura';
   if(!confirm('¿Eliminar '+factPreview+'?\n\nEsta acción no se puede deshacer.')) return;
   try{
-    const factRef = DRAFT().doc('current').collection('facturas').doc(docId);
+    const factRef = DAY().collection('facturas').doc(docId);
     const factDoc = await factRef.get();
     const factData = factDoc.data() || {};
     const batch = db.batch();
     batch.delete(factRef);
     // Limpiar pedidos_cocina vinculados por comandaId (solo si la factura lo tiene)
-    if(factData.comandaId){
+    if(factData.comandaId && !editHist){
       const snap = await db.collection('pedidos_cocina').where('comandaId','==',factData.comandaId).get();
       snap.docs.forEach(d => batch.delete(d.ref));
     }
@@ -2645,7 +2669,7 @@ async function clearFacturas(){
   if(currentRole !== 'admin'){ alert('⛔ Solo los administradores pueden eliminar facturas.'); return; }
   if(locked) return;
   if(!confirm('¿Eliminar todas las facturas?')) return;
-  const snap=await DRAFT().doc('current').collection('facturas').get();
+  const snap=await DAY().collection('facturas').get();
   const batch=db.batch(); snap.docs.forEach(d=>batch.delete(d.ref)); await batch.commit();
   logAudit('limpiar','facturas',`Limpió todas las facturas del día (${snap.size} registros)`);
 }
@@ -2738,7 +2762,7 @@ async function addGasto(){
   setGastoTipo('efectivo');
   $('g-desc').focus();
   try{
-    await DRAFT().doc('current').collection('gastos').add({desc,monto,tipo,createdAt:TS(),createdBy:currentUser.uid});
+    await DAY().collection('gastos').add({desc,monto,tipo,createdAt:TS(),createdBy:currentUser.uid});
     logAudit('crear','gastos',`Creó gasto: "${desc}" — ${fmt(monto)} (${tipo})`,{desc,monto,tipo});
   }
   catch(e){ alert('Error: '+e.message); }
@@ -2746,19 +2770,19 @@ async function addGasto(){
 async function delGasto(docId){
   if(locked) return;
   try{
-    const docSnap0=await DRAFT().doc('current').collection('gastos').doc(docId).get();
+    const docSnap0=await DAY().collection('gastos').doc(docId).get();
     const d0=docSnap0.data()||{};
     if(!confirm('¿Eliminar el gasto "'+( d0.desc||'sin descripción')+'" — '+fmt(d0.monto||0)+'?\n\nEsta acción no se puede deshacer.')) return;
-    const docSnap=await DRAFT().doc('current').collection('gastos').doc(docId).get();
+    const docSnap=await DAY().collection('gastos').doc(docId).get();
     const d=docSnap.data()||{};
-    await DRAFT().doc('current').collection('gastos').doc(docId).delete();
+    await DAY().collection('gastos').doc(docId).delete();
     logAudit('eliminar','gastos',`Eliminó gasto: "${d.desc||'?'}" — ${fmt(d.monto||0)}`,{desc:d.desc,monto:d.monto});
   }catch(e){ alert('Error: '+e.message); }
 }
 async function clearGastos(){
   if(locked) return;
   if(!confirm('¿Eliminar todos los gastos?')) return;
-  const snap=await DRAFT().doc('current').collection('gastos').get();
+  const snap=await DAY().collection('gastos').get();
   const batch=db.batch(); snap.docs.forEach(d=>batch.delete(d.ref)); await batch.commit();
   logAudit('limpiar','gastos',`Limpió todos los gastos del día (${snap.size} registros)`);
 }
@@ -2828,7 +2852,7 @@ async function addEmpleado(){
   const esAbono = $('e-es-abono') ? $('e-es-abono').checked : true;
   $('e-nombre').value=''; $('e-pago').value=''; $('e-nombre').focus();
   try{
-    await DRAFT().doc('current').collection('empleados').add({nombre,pago,tipo:empleadoTipo,esAbono,createdAt:TS(),createdBy:currentUser.uid});
+    await DAY().collection('empleados').add({nombre,pago,tipo:empleadoTipo,esAbono,createdAt:TS(),createdBy:currentUser.uid});
     logAudit('crear','empleados',`Registró abono a empleado: "${nombre}" — ${fmt(pago)} (${empleadoTipo}, ${esAbono?'abono':'referencia'})`,{nombre,pago,tipo:empleadoTipo,esAbono});
   }
   catch(e){ alert('Error: '+e.message); }
@@ -2836,17 +2860,17 @@ async function addEmpleado(){
 async function delEmpleado(docId){
   if(locked) return;
   try{
-    const docSnap=await DRAFT().doc('current').collection('empleados').doc(docId).get();
+    const docSnap=await DAY().collection('empleados').doc(docId).get();
     const d=docSnap.data()||{};
     if(!confirm('¿Eliminar el pago de "'+( d.nombre||'empleado')+'" — '+fmt(d.pago||0)+'?\n\nEsta acción no se puede deshacer.')) return;
-    await DRAFT().doc('current').collection('empleados').doc(docId).delete();
+    await DAY().collection('empleados').doc(docId).delete();
     logAudit('eliminar','empleados',`Eliminó empleado: "${d.nombre||'?'}" — ${fmt(d.pago||0)}`,{nombre:d.nombre,pago:d.pago});
   }catch(e){ alert('Error: '+e.message); }
 }
 async function clearEmpleados(){
   if(locked) return;
   if(!confirm('¿Eliminar todos los empleados?')) return;
-  const snap=await DRAFT().doc('current').collection('empleados').get();
+  const snap=await DAY().collection('empleados').get();
   const batch=db.batch(); snap.docs.forEach(d=>batch.delete(d.ref)); await batch.commit();
   logAudit('limpiar','empleados',`Limpió todos los empleados del día (${snap.size} registros)`);
 }
@@ -2885,7 +2909,7 @@ async function saveEditEmpleado(){
   try{
     if(!esHist){
       // Editar en borrador actual
-      await DRAFT().doc('current').collection('empleados').doc($('ee-docid').value).update({nombre, pago, tipo:eeTipo, esAbono});
+      await DAY().collection('empleados').doc($('ee-docid').value).update({nombre, pago, tipo:eeTipo, esAbono});
       logAudit('editar','empleados',`Editó empleado: "${nombre}" — ${fmt(pago)} (${eeTipo}, ${esAbono?'abono':'referencia'})`,{nombre,pago,tipo:eeTipo,esAbono});
     } else {
       // Editar en registro guardado del historial
@@ -3972,6 +3996,7 @@ function verificarSolapePeriodo(){
 }
 
 async function registrarPagoEmpleado(){
+  if(enEdicionHist()) return;
   const empId=$('pagoemp-id').value;
   const emp=empleadosReg.find(e=>e._docId===empId);
   if(!emp){ alert('Empleado no encontrado.'); return; }
@@ -4079,7 +4104,7 @@ function updateCaja(){
   renderCaja();
   clearTimeout(cajaUpdateTimer);
   cajaUpdateTimer=setTimeout(async()=>{
-    try{ await DRAFT().doc('current').set({baseEfectivo:state.baseEfectivo,baseTr:state.baseTr},{merge:true}); }
+    try{ await DAY().set({baseEfectivo:state.baseEfectivo,baseTr:state.baseTr},{merge:true}); }
     catch(e){ console.error(e); }
   }, 800);
 }
@@ -4091,7 +4116,7 @@ async function addCompra(){
   if(monto<=0){ alert('Ingresa un valor válido.'); return; }
   $('c-desc').value=''; $('c-monto').value=''; $('c-desc').focus();
   try{
-    await DRAFT().doc('current').collection('compras').add({desc,monto,tipo:compraTipo,createdAt:TS(),createdBy:currentUser.uid});
+    await DAY().collection('compras').add({desc,monto,tipo:compraTipo,createdAt:TS(),createdBy:currentUser.uid});
     logAudit('crear','compras',`Creó compra de caja: "${desc}" — ${fmt(monto)} (${compraTipo})`,{desc,monto,tipo:compraTipo});
   }
   catch(e){ alert('Error: '+e.message); }
@@ -4099,17 +4124,17 @@ async function addCompra(){
 async function delCompra(docId){
   if(locked) return;
   try{
-    const docSnap=await DRAFT().doc('current').collection('compras').doc(docId).get();
+    const docSnap=await DAY().collection('compras').doc(docId).get();
     const d=docSnap.data()||{};
     if(!confirm('¿Eliminar la compra "'+( d.desc||'sin descripción')+'" — '+fmt(d.monto||0)+'?\n\nEsta acción no se puede deshacer.')) return;
-    await DRAFT().doc('current').collection('compras').doc(docId).delete();
+    await DAY().collection('compras').doc(docId).delete();
     logAudit('eliminar','compras',`Eliminó compra: "${d.desc||'?'}" — ${fmt(d.monto||0)}`,{desc:d.desc,monto:d.monto});
   }catch(e){ alert('Error: '+e.message); }
 }
 async function clearCompras(){
   if(locked) return;
   if(!confirm('¿Eliminar todas las compras?')) return;
-  const snap=await DRAFT().doc('current').collection('compras').get();
+  const snap=await DAY().collection('compras').get();
   const batch=db.batch(); snap.docs.forEach(d=>batch.delete(d.ref)); await batch.commit();
   logAudit('limpiar','compras',`Limpió todas las compras de caja (${snap.size} registros)`);
 }
@@ -4148,7 +4173,7 @@ async function saveEditCompra(){
   if(!monto){ $('ec-error').textContent = 'Ingresa un valor válido.'; return; }
   $('ec-error').textContent = '';
   try{
-    await DRAFT().doc('current').collection('compras').doc(docId).update({desc, monto, tipo: ecTipo});
+    await DAY().collection('compras').doc(docId).update({desc, monto, tipo: ecTipo});
     logAudit('editar','compras',`Editó compra: "${desc}" — ${fmt(monto)} (${ecTipo})`,{docId,desc,monto,tipo:ecTipo});
     closeModal('modal-edit-compra');
   } catch(e){ $('ec-error').textContent = 'Error: '+e.message; }
@@ -4285,6 +4310,7 @@ function renderResumen(){
 //   GUARDAR DÍA
 // ══════════════════════════════════════
 function showSave(){
+  if(editHist){ actualizarDiaHist(); return; }
   const now=new Date();
   const DIAS=['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
   const MESES_L=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
@@ -4333,6 +4359,7 @@ async function saveDay(){
 //   NUEVO DÍA
 // ══════════════════════════════════════
 async function newDay(){
+  if(editHist){ alert(`Estás editando el día guardado "${editHist.fecha}". Actualízalo o sal de la edición primero.`); return; }
   if(!confirm('¿Iniciar un nuevo día?\n\nEsto eliminará todos los datos actuales del día.\n\nAsegúrate de haber guardado primero.')) return;
   try{
     const draftRef=DRAFT().doc('current');
@@ -4716,6 +4743,203 @@ async function showRecord(docId){
   } catch(e){ alert('Error al cargar el registro: '+e.message); }
 }
 
+// ══════════════════════════════════════
+//   EDITAR UN DÍA GUARDADO
+// ══════════════════════════════════════
+// El historial guarda el estado como JSON: los Timestamp quedan como {seconds, nanoseconds}
+function revivirTimestamps(o){
+  if(Array.isArray(o)) return o.map(revivirTimestamps);
+  if(o && typeof o==='object'){
+    const k=Object.keys(o);
+    if(k.length===2 && typeof o.seconds==='number' && typeof o.nanoseconds==='number') return new firebase.firestore.Timestamp(o.seconds, o.nanoseconds);
+    const r={}; k.forEach(x=>r[x]=revivirTimestamps(o[x])); return r;
+  }
+  return o;
+}
+const SUBCOLS_DIA = ['facturas','gastos','empleados','compras'];
+
+async function vaciarEdicion(){
+  const ref=DRAFT().doc('edicion');
+  const snaps=await Promise.all(SUBCOLS_DIA.map(c=>ref.collection(c).get()));
+  const docs=snaps.flatMap(sn=>sn.docs);
+  for(let i=0;i<docs.length;i+=400){ const b=db.batch(); docs.slice(i,i+400).forEach(d=>b.delete(d.ref)); await b.commit(); }
+  await ref.delete();
+}
+
+function mostrarEdicionUI(){
+  const b=$('edit-hist-banner');
+  if(editHist){
+    b.style.display='flex';
+    $('edit-hist-txt').textContent=`✏️ Editando el día guardado: ${editHist.fecha}. El día en curso no se toca.`;
+  } else b.style.display='none';
+}
+
+function entrarEdicion(key, fecha, original){
+  editHist={ key, fecha, original:original||{} };
+  locked=false;
+  setupListeners();          // ahora escucha draft/edicion
+  unlockUI();
+  mostrarEdicionUI();
+  $('edit-pend-banner').style.display='none';
+  closeModal('modal-hist');
+  goTab(0);
+}
+
+async function editarDiaHist(){
+  if(currentRole!=='admin'){ alert('⛔ Solo los administradores pueden editar días guardados.'); return; }
+  if(editHist){ alert(`Ya estás editando el día "${editHist.fecha}". Actualízalo o sal de la edición primero.`); return; }
+  const key=currentHistKey; if(!key) return;
+  try{
+    const [snap, pend]=await Promise.all([HIST().doc(key).get(), DRAFT().doc('edicion').get()]);
+    if(!snap.exists){ alert('No se encontró el registro.'); return; }
+    const r=snap.data(), st=r.state||{};
+    if(pend.exists && pend.data().histKey){
+      const pd=pend.data();
+      if(pd.editor!==currentUser.uid){
+        if(!confirm(`⚠️ ${pd.editorNombre||'Otro administrador'} tiene abierta la edición del día "${pd.histFecha||pd.histKey}".\n\n¿Descartarla y editar este día?`)) return;
+      } else if(pd.histKey===key){
+        if(confirm(`Tienes una edición sin terminar de este mismo día.\n\nAceptar = continuar donde ibas\nCancelar = empezar de nuevo desde lo guardado`)){
+          entrarEdicion(key, pd.histFecha||r.fecha, pd.original?JSON.parse(pd.original):st); return;
+        }
+      } else if(!confirm(`Tienes una edición sin terminar del día "${pd.histFecha||pd.histKey}". Se descartará para editar este. ¿Continuar?`)) return;
+    }
+    if(!confirm(`¿Editar el día "${r.fecha}"?\n\nSe abre en un espacio aparte, tal como quedó guardado (canceladas, fíos, mixtos, domicilios…).\nEl día en curso no se toca: los demás equipos siguen trabajando normal y tú vuelves a él al terminar.\n\nCuando termines presiona "💾 Actualizar día".`)) return;
+    await vaciarEdicion();
+    const ref=DRAFT().doc('edicion');
+    const ops=[];
+    SUBCOLS_DIA.forEach(col=>(st[col]||[]).forEach(item=>{
+      const { _docId, ...datos }=item;
+      ops.push(b=>b.set(_docId ? ref.collection(col).doc(_docId) : ref.collection(col).doc(), revivirTimestamps(datos)));
+    }));
+    for(let i=0;i<ops.length;i+=400){ const b=db.batch(); ops.slice(i,i+400).forEach(op=>op(b)); await b.commit(); }
+    await ref.set({ baseEfectivo:st.baseEfectivo||0, baseTr:st.baseTr||0, locked:false,
+      histKey:key, histFecha:r.fecha, editor:currentUser.uid, editorNombre:currentUserName,
+      original:JSON.stringify(st), iniciadoAt:TS() });
+    logAudit('editar','historial',`Abrió para editar el día guardado "${r.fecha}" (${key})`,{key,fecha:r.fecha});
+    entrarEdicion(key, r.fecha, st);
+  } catch(e){ alert('Error al abrir el día para editar: '+e.message); }
+}
+
+// Totales de un estado cualquiera (sin tocar el de pantalla)
+function totalsDe(st){
+  const prev=state;
+  state={ facturas:st.facturas||[], gastos:(st.gastos||[]).map(g=>({...g,tipo:g.tipo||'efectivo'})),
+          empleados:(st.empleados||[]).map(e=>({...e,tipo:e.tipo||'efectivo'})),
+          compras:(st.compras||[]).map(c=>({...c,tipo:c.tipo||'efectivo'})),
+          baseEfectivo:st.baseEfectivo||0, baseTr:st.baseTr||0 };
+  const t=totals(); state=prev; return t;
+}
+
+// Ajusta la lista de Fíos según cómo quedaron las facturas fiadas del día editado
+async function sincronizarFiosEdicion(orig, nuevo, key){
+  const esFio=f=>f && f.tipo==='fio' && !f.cancelada;
+  const montoDe=f=>f.mixto ? (f.total||f.monto||0) : (f.monto||f.total||0);
+  const porNum=arr=>{ const m={}; (arr||[]).filter(esFio).forEach(f=>m[String(f.num)]=f); return m; };
+  const A=porNum(orig), B=porNum(nuevo);
+  // Los fíos guardan la fecha en que se crearon (puede quedar un día corrida): se busca ±1 día
+  const base=new Date(key+'T12:00:00');
+  const cerca=fe=>fe && Math.abs(new Date(fe+'T12:00:00')-base)<=36*3600*1000;
+  const buscar=f=>{ const c=fiosCache.filter(x=>String(x.facturaNum)===String(f.num) && cerca(x.fecha));
+                    return c.find(x=>x.cliente===f.cliente) || (c.length===1 ? c[0] : null); };
+  const res={ creados:0, actualizados:0, eliminados:0, avisos:[] };
+  const batch=db.batch(); let ops=0;
+  Object.keys(A).forEach(num=>{
+    if(B[num]) return;
+    const doc=buscar(A[num]); if(!doc) return;
+    if(doc.estado==='pendiente'){ batch.delete(FIOS_COL().doc(doc._docId)); res.eliminados++; ops++; }
+    else res.avisos.push(`El fío de ${doc.cliente} (#${num}) ya estaba cobrado; no se eliminó.`);
+  });
+  Object.keys(B).forEach(num=>{
+    const f=B[num], o=A[num];
+    const doc=buscar(o||f);
+    if(!doc){
+      batch.set(FIOS_COL().doc(),{ cliente:f.cliente||'Sin nombre', desc:f.desc||'', monto:montoDe(f), fecha:key,
+        estado:'pendiente', facturaNum:String(f.num), creadoPor:currentUser.uid, createdAt:TS(), desdeEdicion:true });
+      res.creados++; ops++; return;
+    }
+    if(o && o.cliente===f.cliente && montoDe(o)===montoDe(f) && (o.desc||'')===(f.desc||'')) return;
+    if(doc.cliente===f.cliente && doc.monto===montoDe(f) && (doc.desc||'')===(f.desc||'')) return;
+    if(doc.estado!=='pendiente') res.avisos.push(`El fío de ${doc.cliente} (#${num}) ya estaba cobrado; se actualizó su valor igual.`);
+    batch.update(FIOS_COL().doc(doc._docId),{ cliente:f.cliente||doc.cliente, monto:montoDe(f), desc:f.desc||'' });
+    res.actualizados++; ops++;
+  });
+  if(ops) await batch.commit();
+  return res;
+}
+
+async function actualizarDiaHist(){
+  if(!editHist) return;
+  if(currentRole!=='admin'){ alert('⛔ Solo los administradores pueden actualizar días guardados.'); return; }
+  const { key, fecha, original }=editHist;
+  const t=totals(), antes=totalsDe(original);
+  if(!confirm(`¿Guardar los cambios en "${fecha}"?\n\nVenta del día: ${fmt(antes.ventaDia)} → ${fmt(t.ventaDia)}\nNeto del día: ${fmt(antes.netoDia)} → ${fmt(t.netoDia)}\nTotal disponible: ${fmt(antes.total)} → ${fmt(t.total)}\n\nReemplaza lo que estaba guardado en ese día.`)) return;
+  try{
+    const fios=await sincronizarFiosEdicion(original.facturas, state.facturas, key);
+    await HIST().doc(key).set({
+      state:JSON.parse(JSON.stringify(state)), totals:t,
+      editadoAt:new Date().toISOString(), editadoPor:currentUser.uid, editadoPorNombre:currentUserName
+    },{merge:true});
+    logAudit('editar','historial',`Actualizó el día guardado "${fecha}" (${key}) — venta ${fmt(antes.ventaDia)} → ${fmt(t.ventaDia)}, facturas ${(original.facturas||[]).length} → ${state.facturas.length}; fíos: +${fios.creados} ~${fios.actualizados} −${fios.eliminados}`,{key,fecha,...fios,avisos:fios.avisos.length});
+    await salirEdicion();
+    const resumenFios=(fios.creados||fios.actualizados||fios.eliminados)
+      ? `\n\nFíos: ${fios.creados} creado(s), ${fios.actualizados} actualizado(s), ${fios.eliminados} eliminado(s).` : '';
+    alert(`✅ Día "${fecha}" actualizado.${resumenFios}${fios.avisos.length?'\n\n⚠️ '+fios.avisos.join('\n⚠️ '):''}`);
+    goTab(5);
+  } catch(e){ alert('Error al actualizar el día: '+e.message); }
+}
+
+// Vuelve al día en curso tal como estaba
+async function salirEdicion(){
+  editHist=null;
+  try{ await vaciarEdicion(); } catch(e){ console.error('vaciar edición', e); }
+  locked=false;
+  setupListeners();          // vuelve a escuchar draft/current (si estaba guardado se bloquea solo)
+  unlockUI();
+  mostrarEdicionUI();
+}
+
+async function salirEdicionHist(){
+  if(!editHist) return;
+  if(!confirm(`¿Salir sin guardar? Los cambios hechos al día "${editHist.fecha}" se pierden y vuelves al día en curso.`)) return;
+  logAudit('editar','historial',`Salió sin guardar de la edición del día "${editHist.fecha}" (${editHist.key})`,{key:editHist.key});
+  await salirEdicion();
+  goTab(0);
+}
+
+async function revisarEdicionPendiente(){
+  try{
+    const snap=await DRAFT().doc('edicion').get();
+    const d=snap.exists ? snap.data() : null;
+    const b=$('edit-pend-banner');
+    if(d && d.histKey && d.editor===currentUser?.uid && !editHist){
+      b.style.display='flex';
+      $('edit-pend-txt').textContent=`✏️ Tienes una edición sin terminar del día "${d.histFecha||d.histKey}".`;
+    } else b.style.display='none';
+  } catch(e){}
+}
+
+async function continuarEdicion(){
+  try{
+    const snap=await DRAFT().doc('edicion').get(); if(!snap.exists) return;
+    const d=snap.data();
+    entrarEdicion(d.histKey, d.histFecha||d.histKey, d.original ? JSON.parse(d.original) : {});
+  } catch(e){ alert('Error: '+e.message); }
+}
+
+async function descartarEdicionPendiente(){
+  if(!confirm('¿Descartar esa edición? Los cambios que no actualizaste se pierden (lo guardado en el historial no cambia).')) return;
+  try{ await vaciarEdicion(); } catch(e){ alert('Error: '+e.message); return; }
+  $('edit-pend-banner').style.display='none';
+  logAudit('editar','historial','Descartó una edición de día guardado sin terminar');
+}
+
+// Mientras se edita un día guardado, la pantalla muestra ese día: las acciones del día en curso esperan
+function enEdicionHist(){
+  if(!editHist) return false;
+  alert(`Estás editando el día guardado "${editHist.fecha}".\n\nActualízalo o sal de la edición para hacer esto en el día en curso.`);
+  return true;
+}
+
 async function deleteRecord(){
   if(!confirm('¿Eliminar este registro?')) return;
   try{
@@ -4995,6 +5219,7 @@ function abrirCobroFio(docId) {
 }
 
 async function confirmarCobroFio() {
+  if(enEdicionHist()) return;
   const docId = $('cf-docid').value;
   const monto = moneyVal('cf-monto');
   if (!monto) { $('cf-error').textContent = 'Ingresa el monto cobrado.'; return; }
@@ -5058,6 +5283,7 @@ function buildExcelData(st, t, fecha) {
     const esDom=f.tipoPedido==='domicilio';
     const domVal=f.domicilioValor||0;
     if(esDom) totalDomiciliosXls+=domVal;
+    if(f.tipo==='fio'){ data.push([f.num,f.desc||'',f.mixto?(f.total||f.monto||0):(f.monto||f.total||0),'Fío — '+(f.cliente||''),esDom?domVal:'']); return; }
     if(!f.mixto){ data.push([f.num,f.desc||'',f.monto,f.tipo==='efectivo'?'Efectivo':'Transferencia',esDom?domVal:'']); }
     else{
       const pagos3=f.pagos||[];
@@ -5148,15 +5374,47 @@ async function parseImport(rows){
   const getRows=(start,end)=>{ if(start<0) return []; const res=[]; for(let i=start+2;i<(end>0?end:rows.length);i++){ const c0=String(rows[i][0]||'').trim(),c1=String(rows[i][1]||'').trim(); if(!c0&&!c1) continue; res.push(rows[i]); } return res; };
   const fRows=getRows(iF,iG>0?iG:iE>0?iE:iC>0?iC:iR>0?iR:rows.length);
   const baseMap={},order=[];
-  fRows.forEach(r=>{ const num=String(r[0]||'').trim(),desc=String(r[1]||'').trim(),monto=parseVal(r[2]),tipo=String(r[3]||'').toLowerCase().includes('trans')?'transferencia':'efectivo'; if(!num||monto<=0) return; if(desc.toUpperCase().startsWith('TOTAL')) return; const dashIdx=num.lastIndexOf('-'),isSub=dashIdx>0&&!isNaN(num.slice(dashIdx+1)),baseNum=isSub?num.slice(0,dashIdx):num; if(!baseMap[baseNum]){baseMap[baseNum]={desc,ef:[],tr:[]};order.push(baseNum);} if(tipo==='efectivo') baseMap[baseNum].ef.push(monto); else baseMap[baseNum].tr.push(monto); });
-  const newFacturas=[]; order.forEach(bn=>{ const g=baseMap[bn],isMixto=(g.ef.length>0&&g.tr.length>0)||g.tr.length>1; if(!isMixto&&g.ef.length>=1&&g.tr.length===0){ newFacturas.push({num:bn,desc:g.desc,monto:g.ef.reduce((a,b)=>a+b,0),tipo:'efectivo',mixto:false}); } else if(!isMixto&&g.tr.length===1&&g.ef.length===0){ newFacturas.push({num:bn,desc:g.desc,monto:g.tr[0],tipo:'transferencia',mixto:false}); } else{ const pagos=[]; g.ef.forEach(m=>pagos.push({tipo:'efectivo',monto:m})); g.tr.forEach(m=>pagos.push({tipo:'transferencia',monto:m})); newFacturas.push({num:bn,desc:g.desc,total:pagos.reduce((s,p)=>s+p.monto,0),mixto:true,pagos}); } });
+  // Tipo de la factura según la columna "Tipo": Efectivo, Transferencia, Fío — cliente, Cancelada — motivo
+  const sinTilde=t=>t.normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().trim();
+  const despuesGuion=t=>t.split('—').slice(1).join('—').trim();
+  const especiales=[];   // canceladas y fíos: se importan tal cual, sin sumarse como pagos
+  fRows.forEach(r=>{
+    const num=String(r[0]||'').trim(), desc=String(r[1]||'').trim(), monto=parseVal(r[2]);
+    const tipoTxt=String(r[3]||'').trim(), tipoN=sinTilde(tipoTxt), dom=parseVal(r[4]);
+    if(!num||monto<=0) return;
+    if(desc.toUpperCase().startsWith('TOTAL')) return;
+    const domExtra=dom>0?{tipoPedido:'domicilio',domicilioValor:dom}:{};
+    if(tipoN.startsWith('cancelada')){
+      especiales.push({num,desc:desc.replace(/^\[CANCELADA\]\s*/i,''),monto,tipo:'cancelada',cancelada:true,motivoCancelacion:despuesGuion(tipoTxt)||'Sin motivo',mixto:false});
+      return;
+    }
+    if(tipoN.startsWith('fio')){
+      especiales.push({num,desc,monto,tipo:'fio',mixto:false,cliente:despuesGuion(tipoTxt)||'Sin nombre',...domExtra});
+      return;
+    }
+    const tipo=tipoN.includes('trans')?'transferencia':'efectivo';
+    const dashIdx=num.lastIndexOf('-'), isSub=dashIdx>0&&!isNaN(num.slice(dashIdx+1)), baseNum=isSub?num.slice(0,dashIdx):num;
+    if(!baseMap[baseNum]){ baseMap[baseNum]={desc,ef:[],tr:[],dom:0}; order.push(baseNum); }
+    if(dom>0) baseMap[baseNum].dom=dom;
+    if(tipo==='efectivo') baseMap[baseNum].ef.push(monto); else baseMap[baseNum].tr.push(monto);
+  });
+  const newFacturas=[];
+  order.forEach(bn=>{
+    const g=baseMap[bn], isMixto=(g.ef.length>0&&g.tr.length>0)||g.tr.length>1;
+    const domExtra=g.dom>0?{tipoPedido:'domicilio',domicilioValor:g.dom}:{};
+    if(!isMixto&&g.ef.length>=1&&g.tr.length===0){ newFacturas.push({num:bn,desc:g.desc,monto:g.ef.reduce((x,y)=>x+y,0),tipo:'efectivo',mixto:false,...domExtra}); }
+    else if(!isMixto&&g.tr.length===1&&g.ef.length===0){ newFacturas.push({num:bn,desc:g.desc,monto:g.tr[0],tipo:'transferencia',mixto:false,...domExtra}); }
+    else{ const pagos=[]; g.ef.forEach(m=>pagos.push({tipo:'efectivo',monto:m})); g.tr.forEach(m=>pagos.push({tipo:'transferencia',monto:m})); newFacturas.push({num:bn,desc:g.desc,total:pagos.reduce((x,y)=>x+y.monto,0),mixto:true,pagos,...domExtra}); }
+  });
+  newFacturas.push(...especiales);
+  newFacturas.sort((x,y)=>(parseInt(x.num)||0)-(parseInt(y.num)||0));
   const newGastos=[]; getRows(iG,iE>0?iE:iC>0?iC:iR>0?iR:rows.length).forEach(r=>{ const desc=String(r[0]||'').trim(),monto=parseVal(r[1]); if(!desc||monto<=0||desc.toUpperCase().startsWith('TOTAL')) return; newGastos.push({desc,monto}); });
   const newEmpleados=[]; getRows(iE,iC>0?iC:iR>0?iR:rows.length).forEach(r=>{ const nombre=String(r[0]||'').trim(),pago=parseVal(r[1]),tipoStr=String(r[2]||'').toLowerCase(); if(!nombre||pago<=0||nombre.toUpperCase().startsWith('TOTAL')) return; newEmpleados.push({nombre,pago,tipo:tipoStr.includes('trans')?'transferencia':'efectivo'}); });
   let newBaseEf=0,newBaseTr=0; const newCompras=[];
   if(iC>=0){ const r1=rows[iC+1]||[],r2=rows[iC+2]||[]; if(String(r1[0]||'').toLowerCase().includes('efectivo')) newBaseEf=parseVal(r1[1]); if(String(r2[0]||'').toLowerCase().includes('transfer')) newBaseTr=parseVal(r2[1]); const end=iR>0?iR:rows.length; const skip=['total compras','saldo caja','--- saldo']; for(let i=iC+4;i<end;i++){ const r=rows[i],desc=String(r[0]||'').trim(),monto=parseVal(r[1]),tipoStr=String(r[2]||'').toLowerCase(); if(!desc||monto<=0) continue; if(skip.some(s=>desc.toLowerCase().startsWith(s))) continue; newCompras.push({desc,monto,tipo:tipoStr.includes('trans')?'transferencia':'efectivo'}); } }
   if(!newFacturas.length&&!newGastos.length&&!newEmpleados.length){ alert('No se encontraron datos en el archivo.'); return; }
   try{
-    const draftRef=DRAFT().doc('current');
+    const draftRef=DAY();
     const [fS,gS,eS,cS]=await Promise.all([draftRef.collection('facturas').get(),draftRef.collection('gastos').get(),draftRef.collection('empleados').get(),draftRef.collection('compras').get()]);
     const batch=db.batch();
     [...fS.docs,...gS.docs,...eS.docs,...cS.docs].forEach(d=>batch.delete(d.ref));
@@ -7131,6 +7389,7 @@ async function eliminarComanda(docId, mesa){
 }
 
 async function cancelarComanda(docId){
+  if(enEdicionHist()) return;
   const c = comandasAbiertas.find(x=>x._docId===docId); if(!c) return;
   const motivo = prompt(`⚠️ ¿Cancelar el pedido de Mesa ${c.mesa}?\n\nEl pedido quedará registrado como CANCELADO (no se elimina).\n\nMOTIVO (opcional):`);
   if(motivo === null) return; // user pressed Cancel
@@ -7304,6 +7563,7 @@ async function descontarInventarioPorVenta(items, motivo){
 }
 
 async function cerrarComanda(){
+  if(enEdicionHist()) return;
   const docId=$('cc-docid').value;
   const c=comandasAbiertas.find(x=>x._docId===docId); if(!c) return;
   $('cc-error').textContent='';
@@ -7383,6 +7643,7 @@ function setSemPagoTipo(empId, tipo){
 }
 
 async function registrarPagoSemanal(empId){
+  if(enEdicionHist()) return;
   if(!currentUser){ alert('Debes iniciar sesión.'); return; }
   const rec = semEmpCalc.find(r=>r.emp._docId===empId);
   if(!rec){ alert('Empleado no encontrado.'); return; }
