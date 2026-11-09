@@ -236,6 +236,16 @@
         <h2>Lista de productos</h2>
         <div id="lista-productos"></div>
       </div>
+      <div class="card" style="border-color:rgba(255,77,109,.4)">
+        <h2>⚠️ Borrar información</h2>
+        <div class="sub">Para limpiar después de una simulación. No se puede deshacer.</div>
+        <div style="display:flex;flex-direction:column;gap:8px;margin-top:12px">
+          <label><input type="checkbox" id="bo-noches" checked style="width:auto"/> Ventas, conteos e historial de noches</label>
+          <label><input type="checkbox" id="bo-fiados" checked style="width:auto"/> Clientes, fiados y abonos</label>
+          <label><input type="checkbox" id="bo-productos" style="width:auto"/> Productos (los granizados y vasos se vuelven a crear)</label>
+        </div>
+        <div class="acciones"><button class="btn btn-danger" id="btn-borrar" onclick="borrarTodo()">🗑️ Borrar todo lo marcado</button></div>
+      </div>
     </div>
   </main>
 </section>
@@ -1174,6 +1184,42 @@ async function borrarAbono(movId){
   if(m.nocheId && m.abonoNocheId) batch.delete(ABONOS_NOCHE(m.nocheId).doc(m.abonoNocheId));
   await batch.commit();
   logAudit('borrar_abono', `Eliminó abono ${plata(m.monto)} de ${c.nombre}`, { clienteId: c.id, monto: m.monto });
+}
+
+// ══════════════════════════════════════
+//   BORRAR INFORMACIÓN (solo admin)
+// ══════════════════════════════════════
+async function borrarColeccion(ref, subcolecciones = []){
+  const snap = await ref.get();
+  let n = 0;
+  for(const d of snap.docs){
+    for(const sub of subcolecciones){
+      const hijos = await ref.doc(d.id).collection(sub).get();
+      for(const h of hijos.docs) await ref.doc(d.id).collection(sub).doc(h.id).delete();
+    }
+    await ref.doc(d.id).delete(); n++;
+  }
+  return n;
+}
+
+async function borrarTodo(){
+  if(!esAdmin()) return;
+  const que = { noches: $('bo-noches').checked, fiados: $('bo-fiados').checked, productos: $('bo-productos').checked };
+  const lista = [que.noches && '• Ventas, conteos e historial de noches', que.fiados && '• Clientes, fiados y abonos', que.productos && '• Productos'].filter(Boolean);
+  if(!lista.length){ alert('Marca qué quieres borrar.'); return; }
+  if(!confirm(`⚠️ Se va a borrar:\n\n${lista.join('\n')}\n\nNo se puede deshacer. ¿Continuar?`)) return;
+  if((prompt('Para confirmar escribe BORRAR') || '').trim().toUpperCase() !== 'BORRAR'){ alert('Cancelado.'); return; }
+  $('btn-borrar').disabled = true; $('btn-borrar').textContent = 'Borrando…';
+  try{
+    const r = {};
+    if(que.noches)    r.noches    = await borrarColeccion(NOCHES(), ['ventas', 'abonos']);
+    if(que.fiados)    r.clientes  = await borrarColeccion(CLIENTES(), ['movimientos']);
+    if(que.productos){ r.productos = await borrarColeccion(PRODUCTOS()); await sembrarGranizados(); }
+    carrito = {};
+    logAudit('borrar_todo', `Borró información de licorera: ${lista.join(', ')}`, r);
+    toast('🗑️ Información borrada');
+  } catch(e){ alert('No se pudo borrar todo: ' + e.message); }
+  $('btn-borrar').disabled = false; $('btn-borrar').textContent = '🗑️ Borrar todo lo marcado';
 }
 
 // ══════════════════════════════════════
