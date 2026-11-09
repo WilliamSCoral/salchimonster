@@ -163,6 +163,7 @@
       <button id="nav-inventario" class="activo" onclick="irA('inventario')">📦 Inventario</button>
       <button id="nav-productos" class="solo-admin" onclick="irA('productos')">🍾 Productos</button>
       <button id="nav-granizados" onclick="irA('granizados')">🧊 Granizados</button>
+      <button id="nav-fiados" onclick="irA('fiados')">🧾 Fiados</button>
     </nav>
   </header>
 
@@ -190,6 +191,22 @@
     <!-- ── GRANIZADOS ── -->
     <div id="vista-granizados" class="oculto">
       <div id="gran-cuerpo"></div>
+    </div>
+
+    <!-- ── FIADOS ── -->
+    <div id="vista-fiados" class="oculto">
+      <div class="card">
+        <div class="fila">
+          <div><h2>🧾 Fiados</h2><div class="sub">Clientes, saldos y abonos.</div></div>
+          <button class="btn btn-sm" onclick="modalNuevoCliente()">➕ Nuevo cliente</button>
+        </div>
+        <div class="totales">
+          <div class="tot"><div class="k">Total por cobrar</div><div class="v neon" id="fi-total">$0</div></div>
+          <div class="tot"><div class="k">Clientes con saldo</div><div class="v" id="fi-cant">0</div></div>
+        </div>
+        <input id="fi-buscar" placeholder="🔎 Buscar cliente" style="margin-top:12px" oninput="pintarFiados()"/>
+        <div id="fi-lista" style="margin-top:8px"></div>
+      </div>
     </div>
 
     <!-- ── PRODUCTOS (admin) ── -->
@@ -251,6 +268,9 @@ const INC  = n  => firebase.firestore.FieldValue.increment(n);
 const PRODUCTOS = () => db.collection('licorera_productos');
 const NOCHES    = () => db.collection('licorera_noches');
 const AUDIT_LOG = () => db.collection('audit_log');
+const CLIENTES  = () => db.collection('licorera_clientes');
+const MOVS      = id => CLIENTES().doc(id).collection('movimientos');     // fiados y abonos del cliente
+const ABONOS_NOCHE = id => NOCHES().doc(id).collection('abonos');       // abonos recibidos durante una venta (para la caja)
 
 // ══════════════════════════════════════
 //   UTILIDADES
@@ -294,6 +314,10 @@ let ventas = [];             // ventas de granizados de la noche abierta
 let escuchaVentas = null, ventasDeNoche = null;
 let carrito = {};            // { prodId: cantidad }
 let pagoTipo = 'efectivo', pagoMixtoEf = 0, pagoFiadoNombre = '';
+let clientes = [];           // licorera_clientes
+let abonosNoche = [], escuchaAbonos = null;
+let clienteAbierto = null, escuchaMovs = null, movsCliente = [];
+let abonoTipo = 'efectivo';
 const esAdmin = () => usuarioRol === 'admin';
 
 // ══════════════════════════════════════
@@ -303,6 +327,7 @@ auth.onAuthStateChanged(async u => {
   if(!u){
     escuchas.forEach(f => f()); escuchas = [];
     if(escuchaVentas){ escuchaVentas(); escuchaVentas = null; ventasDeNoche = null; }
+  if(escuchaAbonos){ escuchaAbonos(); escuchaAbonos = null; }
     $('app').classList.add('oculto'); $('login').classList.remove('oculto');
     return;
   }
@@ -338,7 +363,7 @@ $('l-pass').addEventListener('keydown', e => { if(e.key === 'Enter') doLogin(); 
 function doLogout(){ auth.signOut(); }
 
 function irA(vista){
-  ['inventario', 'granizados', 'productos'].forEach(v => {
+  ['inventario', 'granizados', 'fiados', 'productos'].forEach(v => {
     $('vista-' + v).classList.toggle('oculto', v !== vista);
     $('nav-' + v).classList.toggle('activo', v === vista);
   });
@@ -360,11 +385,18 @@ function errorFirestore(donde){
 function escuchar(){
   escuchas.forEach(f => f()); escuchas = [];
   if(escuchaVentas){ escuchaVentas(); escuchaVentas = null; ventasDeNoche = null; }
+  if(escuchaAbonos){ escuchaAbonos(); escuchaAbonos = null; }
   escuchas.push(PRODUCTOS().onSnapshot(s => {
     productos = s.docs.map(d => ({ id: d.id, ...d.data() }))
       .sort((a, b) => (a.categoria || '').localeCompare(b.categoria || '') || (a.orden ?? 99) - (b.orden ?? 99) || (a.nombre || '').localeCompare(b.nombre || '') || (a.presentacion || '').localeCompare(b.presentacion || ''));
     pintarProductos(); pintarInventario(); pintarGranizados();
   }, errorFirestore('productos')));
+
+  escuchas.push(CLIENTES().onSnapshot(s => {
+    clientes = s.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => (a.nombre || '').localeCompare(b.nombre || ''));
+    pintarFiados();
+    if(clienteAbierto) pintarCliente();
+  }, e => console.error('clientes', e)));
 
   escuchas.push(NOCHES().where('estado', '==', 'abierta').limit(1).onSnapshot(s => {
     nocheAbierta = s.empty ? null : { id: s.docs[0].id, ...s.docs[0].data() };
@@ -463,9 +495,10 @@ function pintarHistorial(){
 //   MODALES
 // ══════════════════════════════════════
 function abrirModal(html){
+  if(escuchaMovs){ escuchaMovs(); escuchaMovs = null; } clienteAbierto = null;
   $('modal-raiz').innerHTML = `<div class="modal-fondo" onclick="if(event.target===this)cerrarModal()"><div class="modal">${html}</div></div>`;
 }
-function cerrarModal(){ $('modal-raiz').innerHTML = ''; }
+function cerrarModal(){ if(escuchaMovs){ escuchaMovs(); escuchaMovs = null; } clienteAbierto = null; $('modal-raiz').innerHTML = ''; }
 
 // Tabla de conteo con un input por producto
 function tablaConteo(idPrefix, valores, extraCols){
@@ -636,7 +669,7 @@ function verResumenCierre(){
   const licor = calc.filas.filter(f => !esVaso(f.p));
   const totalLicor = licor.reduce((s, f) => s + f.valor, 0);
   const unidLicor = licor.reduce((s, f) => s + f.vendido, 0);
-  const g = totalesVentas(), base = num(nocheAbierta.baseCaja);
+  const g = totalesVentas(), base = num(nocheAbierta.baseCaja), ab = totalesAbonos();
   const vendidos = licor.filter(f => f.vendido);
   abrirModal(`
     <h3>📊 Cerrar venta — 2. Resumen</h3>
@@ -665,7 +698,8 @@ function verResumenCierre(){
     <div class="cat"><div class="cat-titulo">💰 Caja</div>
       <div class="totales" style="margin-top:4px">
         <div class="tot"><div class="k">Base de caja</div><div class="v">${plata(base)}</div></div>
-        <div class="tot"><div class="k">Base + efectivo granizados</div><div class="v">${plata(base + g.efectivo)}</div></div>
+        <div class="tot"><div class="k">🧾 Abonos de fiados</div><div class="v">${plata(ab.total)}</div><div class="sub">💵 ${plata(ab.efectivo)} · 🏦 ${plata(ab.transferencia)}</div></div>
+        <div class="tot"><div class="k">💵 Efectivo en caja</div><div class="v">${plata(base + g.efectivo + ab.efectivo)}</div><div class="sub">base + efectivo granizados + abonos</div></div>
       </div></div>
     ${htmlVasos(compararVasos(calc.filas))}
     <div class="acciones">
@@ -696,7 +730,10 @@ async function cerrarNoche(){
     k.cantidad += i.cantidad; k.valor += i.subtotal;
   }));
   granizados.vasos = compararVasos(filas);
-  const resumen = { unidades, total, granizados: g.total, totalNoche: total + g.total, baseCaja: base, efectivoCaja: base + g.efectivo };
+  const ab = totalesAbonos();
+  const resumen = { unidades, total, granizados: g.total, totalNoche: total + g.total, baseCaja: base,
+    abonos: { total: ab.total, efectivo: ab.efectivo, transferencia: ab.transferencia, cantidad: ab.cantidad },
+    efectivoCaja: base + g.efectivo + ab.efectivo };
   $('btn-cerrar').disabled = true;
   try{
     const id = nocheAbierta.id;
@@ -743,7 +780,8 @@ function verNoche(id, datos){
       <div class="tot"><div class="k">🧊 Granizados</div><div class="v">${plata(h.resumen?.granizados)}</div></div>
       <div class="tot"><div class="k">Total noche</div><div class="v neon">${plata(h.resumen?.totalNoche ?? h.resumen?.total)}</div></div>
       ${h.resumen?.baseCaja !== undefined ? `<div class="tot"><div class="k">💰 Base de caja</div><div class="v">${plata(h.resumen.baseCaja)}</div></div>
-      <div class="tot"><div class="k">💵 Efectivo granizados + base</div><div class="v">${plata(h.resumen.efectivoCaja)}</div></div>` : ''}
+      ${h.resumen.abonos ? `<div class="tot"><div class="k">🧾 Abonos de fiados</div><div class="v">${plata(h.resumen.abonos.total)}</div></div>` : ''}
+      <div class="tot"><div class="k">💵 Efectivo en caja</div><div class="v">${plata(h.resumen.efectivoCaja)}</div></div>` : ''}
     </div>
     <div class="acciones"><button class="btn btn-ghost btn-full" onclick="cerrarModal()">Cerrar</button></div>`;
   abrirModal(html);
@@ -791,14 +829,24 @@ function escucharVentas(){
   const id = nocheAbierta?.id || null;
   if(id === ventasDeNoche) return;
   if(escuchaVentas){ escuchaVentas(); escuchaVentas = null; }
-  ventasDeNoche = id; ventas = [];
+  if(escuchaAbonos){ escuchaAbonos(); escuchaAbonos = null; }
+  ventasDeNoche = id; ventas = []; abonosNoche = [];
   if(!id){ pintarGranizados(); return; }
   escuchaVentas = VENTAS(id).orderBy('t', 'desc').onSnapshot(s => {
     ventas = s.docs.map(d => ({ id: d.id, ...d.data() }));
     pintarGranizados(); pintarInventario();
   }, e => console.error('ventas', e));
+  escuchaAbonos = ABONOS_NOCHE(id).onSnapshot(s => {
+    abonosNoche = s.docs.map(d => ({ id: d.id, ...d.data() }));
+    pintarGranizados();
+  }, e => console.error('abonos', e));
 }
 
+function totalesAbonos(lista = abonosNoche){
+  const r = { total: 0, efectivo: 0, transferencia: 0, cantidad: lista.length };
+  lista.forEach(a => { r.total += a.monto; r.efectivo += a.montos?.efectivo || 0; r.transferencia += a.montos?.transferencia || 0; });
+  return r;
+}
 // Lo que entró por cada forma de pago (mixto se reparte entre efectivo y transferencia)
 const montosVenta = v => v.montos || { efectivo: v.pago === 'efectivo' ? v.total : 0, transferencia: v.pago === 'transferencia' ? v.total : 0, fiado: v.pago === 'fiado' ? v.total : 0 };
 function totalesVentas(lista = ventas){
@@ -873,7 +921,8 @@ function pintarGranizados(){
     </div>` : ''}
     ${pagoTipo === 'fiado' ? `<div style="margin-top:10px"><div class="lbl">🧾 ¿A quién se le fía?</div>
       <input id="fiado-nombre" list="lista-fiados" placeholder="Nombre de la persona" value="${esc(pagoFiadoNombre)}" oninput="pagoFiadoNombre=this.value"/>
-      <datalist id="lista-fiados">${[...new Set(ventas.filter(v => v.cliente).map(v => v.cliente))].map(n => `<option>${esc(n)}</option>`).join('')}</datalist></div>` : ''}
+      <datalist id="lista-fiados">${clientes.map(c => `<option>${esc(c.nombre)}</option>`).join('')}</datalist>
+      <div class="sub" style="margin-top:4px">Si no existe, se crea como cliente nuevo.</div></div>` : ''}
     <div class="acciones">
       <button class="btn" style="flex:1" id="btn-venta" onclick="registrarVenta()">Registrar ${plata(totalCarrito)}</button>
       <button class="btn btn-ghost" onclick="carrito={};pintarGranizados()">Vaciar</button>
@@ -889,7 +938,8 @@ function pintarGranizados(){
       <div class="tot"><div class="k">🧾 Fiado</div><div class="v">${plata(t.fiado)}</div></div>
       <div class="tot"><div class="k">Granizados</div><div class="v">${cant(t.granizados)}</div></div>
       <div class="tot"><div class="k">💰 Base de caja</div><div class="v">${plata(nocheAbierta.baseCaja)}</div></div>
-      <div class="tot"><div class="k">💵 Efectivo en caja</div><div class="v">${plata(num(nocheAbierta.baseCaja) + t.efectivo)}</div></div>
+      <div class="tot"><div class="k">🧾 Abonos recibidos</div><div class="v">${plata(totalesAbonos().total)}</div></div>
+      <div class="tot"><div class="k">💵 Efectivo en caja</div><div class="v">${plata(num(nocheAbierta.baseCaja) + t.efectivo + totalesAbonos().efectivo)}</div></div>
     </div>
     <div style="margin-top:10px">${ventas.length ? ventas.map(v => `
       <div class="venta-row"><div>
@@ -931,12 +981,29 @@ async function registrarVenta(){
     if(!cliente){ alert('Escribe a quién se le fía.'); $('fiado-nombre')?.focus(); return; }
     montos.fiado = total;
   } else montos[pagoTipo] = total;
+  let cli = null;
+  if(cliente){
+    cli = buscarCliente(cliente);
+    if(!cli && !confirm(`"${cliente}" no está en la lista de clientes.\n¿Crearlo y fiarle ${plata(total)}?`)) return;
+  }
   $('btn-venta').disabled = true;
   try{
-    await VENTAS(nocheAbierta.id).add({
-      items, total, granizados, pago: pagoTipo, montos, cliente, por: usuarioNombre, porUid: usuario.uid,
-      hora: new Date().toLocaleTimeString('es-CO', {hour:'2-digit', minute:'2-digit'}), t: Date.now(), creadaEn: TS()
-    });
+    const nid = nocheAbierta.id, hora = new Date().toLocaleTimeString('es-CO', {hour:'2-digit', minute:'2-digit'});
+    const batch = db.batch();
+    const ventaRef = VENTAS(nid).doc();
+    const venta = { items, total, granizados, pago: pagoTipo, montos, cliente, por: usuarioNombre, porUid: usuario.uid, hora, t: Date.now(), creadaEn: TS() };
+    if(cliente){
+      // El fiado queda en la cuenta del cliente y sube su saldo
+      const cliRef = cli ? CLIENTES().doc(cli.id) : CLIENTES().doc();
+      if(!cli) batch.set(cliRef, { nombre: cliente, telefono: '', saldo: 0, totalFiado: 0, totalAbonado: 0, creadoEn: TS(), creadoPor: usuarioNombre });
+      const movRef = MOVS(cliRef.id).doc();
+      batch.set(movRef, { tipo: 'fiado', monto: total, detalle: items.map(i => `${i.cantidad}× ${i.nombre}`).join(', '),
+        nocheId: nid, ventaId: ventaRef.id, fecha: hoy(), hora, por: usuarioNombre, t: Date.now() });
+      batch.update(cliRef, { saldo: INC(total), totalFiado: INC(total), actualizadoEn: TS() });
+      venta.clienteId = cliRef.id; venta.movId = movRef.id; venta.cliente = cli ? cli.nombre : cliente;
+    }
+    batch.set(ventaRef, venta);
+    await batch.commit();
     carrito = {}; pagoTipo = 'efectivo'; pagoMixtoEf = 0; pagoFiadoNombre = '';
     if(cliente) logAudit('fiado', `Fió ${plata(total)} a ${cliente}`, { cliente, total });
     toast(`✅ Venta ${plata(total)}`);
@@ -946,9 +1013,167 @@ async function registrarVenta(){
 async function borrarVenta(id){
   if(!esAdmin() || !nocheAbierta) return;
   const v = ventas.find(x => x.id === id); if(!v) return;
-  if(!confirm(`¿Eliminar la venta de ${plata(v.total)} (${v.hora})?`)) return;
-  await VENTAS(nocheAbierta.id).doc(id).delete();
+  if(!confirm(`¿Eliminar la venta de ${plata(v.total)} (${v.hora})?${v.clienteId ? `\nTambién se quita el fiado de ${v.cliente}.` : ''}`)) return;
+  const batch = db.batch();
+  batch.delete(VENTAS(nocheAbierta.id).doc(id));
+  if(v.clienteId){
+    batch.delete(MOVS(v.clienteId).doc(v.movId));
+    batch.update(CLIENTES().doc(v.clienteId), { saldo: INC(-v.total), totalFiado: INC(-v.total), actualizadoEn: TS() });
+  }
+  await batch.commit();
   logAudit('borrar_venta', `Eliminó venta de granizados ${plata(v.total)}`, { items: v.items, pago: v.pago });
+}
+
+// ══════════════════════════════════════
+//   FIADOS
+// ══════════════════════════════════════
+const normal = t => String(t || '').trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+const buscarCliente = nombre => clientes.find(c => normal(c.nombre) === normal(nombre));
+
+function pintarFiados(){
+  if(!$('fi-lista')) return;
+  const conSaldo = clientes.filter(c => num(c.saldo) > 0);
+  $('fi-total').textContent = plata(conSaldo.reduce((s, c) => s + num(c.saldo), 0));
+  $('fi-cant').textContent = conSaldo.length;
+  const q = normal($('fi-buscar').value);
+  const lista = clientes.filter(c => !q || normal(c.nombre).includes(q))
+    .sort((a, b) => (num(b.saldo) > 0) - (num(a.saldo) > 0) || num(b.saldo) - num(a.saldo) || a.nombre.localeCompare(b.nombre));
+  $('fi-lista').innerHTML = lista.length ? lista.map(c => `
+    <div class="hist-item" onclick="abrirCliente('${c.id}')">
+      <div><div class="hist-fecha" style="text-transform:none">${esc(c.nombre)}</div>
+        <div class="hist-meta">${c.telefono ? '📞 ' + esc(c.telefono) + ' · ' : ''}Fiado ${plata(c.totalFiado)} · Abonado ${plata(c.totalAbonado)}</div></div>
+      <div class="${num(c.saldo) > 0 ? 'precio' : 'sub'}">${num(c.saldo) > 0 ? plata(c.saldo) : '✓ Al día'}</div>
+    </div>`).join('') : `<div class="vacio">${clientes.length ? 'No hay clientes con ese nombre.' : 'Todavía no hay clientes.'}</div>`;
+}
+
+function modalNuevoCliente(){
+  abrirModal(`<h3>➕ Nuevo cliente</h3>
+    <div class="form-grid">
+      <div><div class="lbl">Nombre</div><input id="nc-nombre" placeholder="Nombre y apellido"/></div>
+      <div><div class="lbl">Teléfono (opcional)</div><input id="nc-tel" inputmode="tel" placeholder="300 000 0000"/></div>
+    </div>
+    <div class="acciones"><button class="btn" id="btn-nc" onclick="crearCliente()">Crear cliente</button><button class="btn btn-ghost" onclick="cerrarModal()">Cancelar</button></div>`);
+  $('nc-nombre').focus();
+}
+async function crearCliente(){
+  const nombre = $('nc-nombre').value.trim(), telefono = $('nc-tel').value.trim();
+  if(!nombre){ alert('Escribe el nombre.'); return; }
+  if(buscarCliente(nombre)){ alert('Ya existe un cliente con ese nombre.'); return; }
+  $('btn-nc').disabled = true;
+  try{
+    await CLIENTES().add({ nombre, telefono, saldo: 0, totalFiado: 0, totalAbonado: 0, creadoEn: TS(), creadoPor: usuarioNombre });
+    logAudit('crear_cliente', `Creó cliente ${nombre}`, { nombre, telefono });
+    cerrarModal(); toast('✅ Cliente creado');
+  } catch(e){ alert('No se pudo crear: ' + e.message); $('btn-nc').disabled = false; }
+}
+
+function abrirCliente(id){
+  clienteAbierto = id; movsCliente = []; abonoTipo = 'efectivo';
+  if(escuchaMovs) escuchaMovs();
+  escuchaMovs = MOVS(id).orderBy('t', 'desc').onSnapshot(s => {
+    movsCliente = s.docs.map(d => ({ id: d.id, ...d.data() }));
+    pintarCliente();
+  }, e => console.error('movimientos', e));
+  pintarCliente();
+}
+function cerrarCliente(){
+  if(escuchaMovs){ escuchaMovs(); escuchaMovs = null; }
+  clienteAbierto = null; cerrarModal();
+}
+
+function pintarCliente(){
+  const c = clientes.find(x => x.id === clienteAbierto);
+  if(!c){ cerrarCliente(); return; }
+  // Conserva lo que se esté escribiendo en el abono al refrescar
+  const montoPrevio = $('ab-monto')?.value || '', efPrevio = $('ab-ef')?.value || '';
+  const saldo = num(c.saldo);
+  const abonos = movsCliente.filter(m => m.tipo === 'abono');
+  $('modal-raiz').innerHTML = `<div class="modal-fondo" onclick="if(event.target===this)cerrarCliente()"><div class="modal">
+    <div class="fila"><h3 style="margin:0">🧾 ${esc(c.nombre)}</h3><button class="btn btn-ghost btn-sm" onclick="cerrarCliente()">✕</button></div>
+    ${c.telefono ? `<div class="sub">📞 ${esc(c.telefono)}</div>` : ''}
+    <div class="totales">
+      <div class="tot"><div class="k">Saldo pendiente</div><div class="v ${saldo > 0 ? 'neon' : ''}">${plata(saldo)}</div></div>
+      <div class="tot"><div class="k">Total fiado</div><div class="v">${plata(c.totalFiado)}</div></div>
+      <div class="tot"><div class="k">Total abonado</div><div class="v">${plata(c.totalAbonado)}</div><div class="sub">${abonos.length} abono(s)</div></div>
+    </div>
+
+    ${saldo > 0 ? `<div class="cat"><div class="cat-titulo">💵 Registrar abono</div>
+      <div class="form-grid" style="margin-top:4px">
+        <div><div class="lbl">Monto</div><input id="ab-monto" inputmode="numeric" placeholder="$ 0" value="${esc(montoPrevio)}" oninput="formatoPlata(this);actualizarMixtoAbono()"/></div>
+        <div style="display:flex;align-items:flex-end"><button class="btn btn-ghost btn-full" onclick="$('ab-monto').value='${saldo.toLocaleString('es-CO')}';actualizarMixtoAbono()">Pago total (${plata(saldo)})</button></div>
+      </div>
+      <div class="pago">${[['efectivo', '💵 Efectivo'], ['transferencia', '🏦 Transf.'], ['mixto', '🔀 Mixto']].map(([k, t]) =>
+        `<button class="${abonoTipo === k ? 'activo' : ''}" onclick="abonoTipo='${k}';pintarCliente()">${t}</button>`).join('')}</div>
+      ${abonoTipo === 'mixto' ? `<div class="form-grid">
+        <div><div class="lbl">💵 Efectivo</div><input id="ab-ef" inputmode="numeric" placeholder="$ 0" value="${esc(efPrevio)}" oninput="formatoPlata(this);actualizarMixtoAbono()"/></div>
+        <div><div class="lbl">🏦 Transferencia</div><div class="precio" style="padding:10px 0" id="ab-tr">$0</div></div></div>` : ''}
+      ${nocheAbierta ? '' : `<div class="aviso">La venta está cerrada: el abono queda en la cuenta del cliente pero no entra a la caja de ninguna noche.</div>`}
+      <div class="acciones"><button class="btn btn-full" id="btn-abono" onclick="registrarAbono()">Registrar abono</button></div>
+    </div>` : `<div class="aviso" style="background:var(--verde-bg);border-color:rgba(166,255,0,.35);color:var(--txt)">✓ Este cliente está al día.</div>`}
+
+    <div class="cat"><div class="cat-titulo">📜 Movimientos</div>
+      ${movsCliente.length ? movsCliente.map(m => `
+        <div class="venta-row"><div>
+          <div class="prod">${m.tipo === 'abono' ? '💵 Abono' : '🧾 Fiado'}${m.detalle ? ` <span class="pres" style="display:inline">· ${esc(m.detalle)}</span>` : ''}</div>
+          <div class="pres">${esc(m.fecha ? fechaLarga(m.fecha) : '')} ${esc(m.hora || '')} · ${esc(m.por || '')}${m.tipo === 'abono' ? tagPago(m) : ''}</div></div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <span class="${m.tipo === 'abono' ? 'precio' : ''}" style="font-weight:700;white-space:nowrap">${m.tipo === 'abono' ? '−' : '+'}${plata(m.monto)}</span>
+            ${m.tipo === 'abono' && esAdmin() ? `<button class="btn btn-ghost btn-sm" onclick="borrarAbono('${m.id}')">🗑️</button>` : ''}
+          </div></div>`).join('') : '<div class="vacio">Sin movimientos.</div>'}
+    </div>
+  </div></div>`;
+  actualizarMixtoAbono();
+}
+
+function actualizarMixtoAbono(){
+  if(!$('ab-tr')) return;
+  $('ab-tr').textContent = plata(Math.max(0, valorPlata('ab-monto') - valorPlata('ab-ef')));
+}
+
+async function registrarAbono(){
+  const c = clientes.find(x => x.id === clienteAbierto); if(!c) return;
+  const monto = valorPlata('ab-monto'), saldo = num(c.saldo);
+  if(monto <= 0){ alert('Escribe el monto del abono.'); return; }
+  if(monto > saldo){ alert(`El abono no puede ser mayor al saldo (${plata(saldo)}).`); return; }
+  const montos = { efectivo: 0, transferencia: 0 };
+  if(abonoTipo === 'mixto'){
+    const ef = valorPlata('ab-ef');
+    if(ef <= 0 || ef >= monto){ alert('En pago mixto escribe cuánto es en efectivo (mayor a $0 y menor al monto). El resto va por transferencia.'); return; }
+    montos.efectivo = ef; montos.transferencia = monto - ef;
+  } else montos[abonoTipo] = monto;
+  if(!confirm(`¿Registrar abono de ${plata(monto)} para ${c.nombre}?\nSaldo quedará en ${plata(saldo - monto)}.`)) return;
+  $('btn-abono').disabled = true;
+  try{
+    const hora = new Date().toLocaleTimeString('es-CO', {hour:'2-digit', minute:'2-digit'}), nid = nocheAbierta?.id || null;
+    const batch = db.batch();
+    const movRef = MOVS(c.id).doc();
+    const abNocheRef = nid ? ABONOS_NOCHE(nid).doc() : null;
+    batch.set(movRef, { tipo: 'abono', monto, montos, pago: abonoTipo, nocheId: nid, abonoNocheId: abNocheRef?.id || null,
+      fecha: hoy(), hora, por: usuarioNombre, t: Date.now() });
+    batch.update(CLIENTES().doc(c.id), { saldo: INC(-monto), totalAbonado: INC(monto), actualizadoEn: TS() });
+    if(abNocheRef) batch.set(abNocheRef, { clienteId: c.id, cliente: c.nombre, monto, montos, pago: abonoTipo, movId: movRef.id, hora, por: usuarioNombre, t: Date.now() });
+    await batch.commit();
+    logAudit('abono', `Abono ${plata(monto)} de ${c.nombre}`, { clienteId: c.id, monto, montos });
+    abonoTipo = 'efectivo';
+    if($('ab-monto')) $('ab-monto').value = '';
+    if($('ab-ef')) $('ab-ef').value = '';
+    pintarCliente();
+    toast(`💵 Abono ${plata(monto)}`);
+  } catch(e){ alert('No se pudo registrar: ' + e.message); if($('btn-abono')) $('btn-abono').disabled = false; }
+}
+
+async function borrarAbono(movId){
+  if(!esAdmin()) return;
+  const c = clientes.find(x => x.id === clienteAbierto), m = movsCliente.find(x => x.id === movId);
+  if(!c || !m) return;
+  if(m.nocheId && m.nocheId !== nocheAbierta?.id){ alert('Este abono pertenece a una venta ya cerrada; no se puede eliminar.'); return; }
+  if(!confirm(`¿Eliminar el abono de ${plata(m.monto)}? El saldo de ${c.nombre} vuelve a subir.`)) return;
+  const batch = db.batch();
+  batch.delete(MOVS(c.id).doc(movId));
+  batch.update(CLIENTES().doc(c.id), { saldo: INC(m.monto), totalAbonado: INC(-m.monto), actualizadoEn: TS() });
+  if(m.nocheId && m.abonoNocheId) batch.delete(ABONOS_NOCHE(m.nocheId).doc(m.abonoNocheId));
+  await batch.commit();
+  logAudit('borrar_abono', `Eliminó abono ${plata(m.monto)} de ${c.nombre}`, { clienteId: c.id, monto: m.monto });
 }
 
 // ══════════════════════════════════════
