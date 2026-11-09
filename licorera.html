@@ -412,7 +412,7 @@ function pintarInventario(){
     $('estado-sub').innerHTML = `${esc(fechaLarga(n.fecha))} · abrió ${esc(n.abiertaPor || '')} a las ${horaDe(n.abiertaEn)}<br>💰 Base de caja: <b>${plata(n.baseCaja)}</b>${esAdmin() ? ` <button class="btn btn-ghost btn-sm" style="padding:2px 8px" onclick="editarBase()">✏️</button>` : ''}`;
     $('acciones-noche').innerHTML = `
       <button class="btn btn-ghost btn-sm" onclick="modalEntrada()">➕ Entrada de mercancía</button>
-      <button class="btn btn-sm" onclick="modalCierre()">🔒 Cerrar venta</button>`;
+      ${esAdmin() ? `<button class="btn btn-sm" onclick="modalCierre()">🔒 Cerrar venta</button>` : ''}`;
   } else {
     $('estado-txt').textContent = 'Venta cerrada';
     $('estado-sub').textContent = ultimaCerrada ? `Último cierre: ${fechaLarga(ultimaCerrada.fecha)}` : 'Aún no se ha cerrado ninguna noche.';
@@ -570,6 +570,7 @@ async function guardarEntrada(){
 
 // ── Cerrar noche: conteo final y cálculo de venta ──
 function modalCierre(){
+  if(!esAdmin()){ alert('⛔ Solo un admin puede cerrar la venta.'); return; }
   const n = nocheAbierta;
   abrirModal(`
     <h3>🔒 Cerrar venta — conteo final</h3>
@@ -631,6 +632,7 @@ function recalcularCierre(){
 }
 
 async function cerrarNoche(){
+  if(!esAdmin()) return;
   const { filas, faltan, negativos } = calcularCierre();
   if(faltan){ alert(`Faltan ${faltan} producto(s) por contar.`); return; }
   if(negativos && !confirm(`⚠️ Hay ${negativos} producto(s) con venta negativa (quedó más de lo que había).\n¿Cerrar igual?`)) return;
