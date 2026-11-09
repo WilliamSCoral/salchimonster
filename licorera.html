@@ -112,6 +112,25 @@
   @media (min-width:700px){ .modal-fondo{align-items:center;padding:20px} .modal{border-radius:18px} }
   .modal h3{font-size:1.1rem;margin-bottom:12px}
 
+  /* ── Granizados ── */
+  .gran-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:12px}
+  @media (min-width:640px){ .gran-grid{grid-template-columns:repeat(3,1fr)} }
+  .gran-btn{background:var(--bg2);border:1px solid var(--line);border-radius:14px;padding:14px 10px;color:var(--txt);text-align:center;position:relative;transition:transform .08s,border-color .15s}
+  .gran-btn:active{transform:scale(.96)}
+  .gran-btn.combo{border-color:rgba(166,255,0,.35)}
+  .gran-btn .g-nom{font-weight:700}
+  .gran-btn .g-pre{color:var(--verde);font-weight:800;font-size:1.15rem;margin-top:4px}
+  .gran-btn .g-cnt{position:absolute;top:-8px;right:-8px;background:var(--verde);color:#071000;font-weight:800;border-radius:99px;min-width:26px;height:26px;display:flex;align-items:center;justify-content:center;font-size:.85rem}
+  .carrito-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--line);gap:8px}
+  .stepper{display:flex;align-items:center;gap:8px}
+  .stepper button{width:30px;height:30px;border-radius:8px;background:var(--card2);color:var(--txt);border:1px solid var(--line);font-weight:800}
+  .pago{display:flex;gap:8px;margin-top:12px}
+  .pago button{flex:1;background:var(--bg2);color:var(--muted);border:1px solid var(--line);border-radius:10px;padding:10px;font-weight:700}
+  .pago button.activo{background:var(--verde-bg);color:var(--verde);border-color:var(--verde)}
+  .venta-row{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:10px 2px;border-bottom:1px solid var(--line)}
+  .venta-row:last-child{border-bottom:0}
+  .tag{font-size:.7rem;padding:2px 7px;border-radius:99px;border:1px solid var(--line);color:var(--muted);margin-left:6px}
+
   .toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:var(--card2);border:1px solid var(--verde);color:var(--txt);padding:10px 16px;border-radius:12px;z-index:60;box-shadow:0 0 20px rgba(166,255,0,.25);font-size:.9rem}
 </style>
 </head>
@@ -143,7 +162,7 @@
     <nav>
       <button id="nav-inventario" class="activo" onclick="irA('inventario')">📦 Inventario</button>
       <button id="nav-productos" class="solo-admin" onclick="irA('productos')">🍾 Productos</button>
-      <button disabled title="Próximo módulo">🧊 Granizados · pronto</button>
+      <button id="nav-granizados" onclick="irA('granizados')">🧊 Granizados</button>
     </nav>
   </header>
 
@@ -168,12 +187,21 @@
       </div>
     </div>
 
+    <!-- ── GRANIZADOS ── -->
+    <div id="vista-granizados" class="oculto">
+      <div id="gran-cuerpo"></div>
+    </div>
+
     <!-- ── PRODUCTOS (admin) ── -->
     <div id="vista-productos" class="oculto">
       <div class="card">
         <h2 id="pf-titulo">➕ Nuevo producto</h2>
         <div class="sub">Cada presentación es un producto distinto (ej. Aguardiente media / botella).</div>
         <div class="form-grid">
+          <div><div class="lbl">Tipo</div><select id="pf-tipo" onchange="cambioTipoProducto()">
+            <option value="inventario">📦 Licor / inventario (se cuenta)</option>
+            <option value="granizado">🧊 Granizado (venta manual)</option></select></div>
+          <div class="oculto" id="pf-unid-box"><div class="lbl">Granizados por venta</div><input id="pf-unid" type="number" inputmode="numeric" min="1" value="1"/></div>
           <div><div class="lbl">Nombre</div><input id="pf-nombre" placeholder="Aguardiente Antioqueño"/></div>
           <div><div class="lbl">Presentación</div><input id="pf-pres" placeholder="Media, botella, lata…" list="lista-pres"/></div>
           <div><div class="lbl">Categoría</div><input id="pf-cat" placeholder="Aguardiente" list="lista-cat"/></div>
@@ -262,6 +290,10 @@ let ultimaCerrada = null;    // última noche cerrada (su conteo final = stock a
 let historial = [];
 let editandoId = null;
 let escuchas = [];
+let ventas = [];             // ventas de granizados de la noche abierta
+let escuchaVentas = null, ventasDeNoche = null;
+let carrito = {};            // { prodId: cantidad }
+let pagoTipo = 'efectivo';
 const esAdmin = () => usuarioRol === 'admin';
 
 // ══════════════════════════════════════
@@ -270,6 +302,7 @@ const esAdmin = () => usuarioRol === 'admin';
 auth.onAuthStateChanged(async u => {
   if(!u){
     escuchas.forEach(f => f()); escuchas = [];
+    if(escuchaVentas){ escuchaVentas(); escuchaVentas = null; ventasDeNoche = null; }
     $('app').classList.add('oculto'); $('login').classList.remove('oculto');
     return;
   }
@@ -288,6 +321,7 @@ auth.onAuthStateChanged(async u => {
   $('login').classList.add('oculto'); $('app').classList.remove('oculto');
   irA('inventario');
   escuchar();
+  if(esAdmin()) sembrarGranizados();
 });
 
 async function doLogin(){
@@ -304,7 +338,7 @@ $('l-pass').addEventListener('keydown', e => { if(e.key === 'Enter') doLogin(); 
 function doLogout(){ auth.signOut(); }
 
 function irA(vista){
-  ['inventario', 'productos'].forEach(v => {
+  ['inventario', 'granizados', 'productos'].forEach(v => {
     $('vista-' + v).classList.toggle('oculto', v !== vista);
     $('nav-' + v).classList.toggle('activo', v === vista);
   });
@@ -325,15 +359,17 @@ function errorFirestore(donde){
 
 function escuchar(){
   escuchas.forEach(f => f()); escuchas = [];
+  if(escuchaVentas){ escuchaVentas(); escuchaVentas = null; ventasDeNoche = null; }
   escuchas.push(PRODUCTOS().onSnapshot(s => {
     productos = s.docs.map(d => ({ id: d.id, ...d.data() }))
       .sort((a, b) => (a.categoria || '').localeCompare(b.categoria || '') || (a.nombre || '').localeCompare(b.nombre || '') || (a.presentacion || '').localeCompare(b.presentacion || ''));
-    pintarProductos(); pintarInventario();
+    pintarProductos(); pintarInventario(); pintarGranizados();
   }, errorFirestore('productos')));
 
   escuchas.push(NOCHES().where('estado', '==', 'abierta').limit(1).onSnapshot(s => {
     nocheAbierta = s.empty ? null : { id: s.docs[0].id, ...s.docs[0].data() };
-    pintarInventario();
+    escucharVentas();
+    pintarInventario(); pintarGranizados();
   }, errorFirestore('noche abierta')));
 
   escuchas.push(NOCHES().orderBy('cerradaEn', 'desc').limit(30).onSnapshot(s => {
@@ -346,7 +382,10 @@ function escuchar(){
 // ══════════════════════════════════════
 //   CÁLCULOS
 // ══════════════════════════════════════
-const activos = () => productos.filter(p => p.activo !== false);
+const esGranizado = p => p.tipo === 'granizado';
+const activos = () => productos.filter(p => p.activo !== false && !esGranizado(p));        // se cuentan en inventario
+const granizadosActivos = () => productos.filter(p => p.activo !== false && esGranizado(p))
+  .sort((a, b) => (a.orden ?? 99) - (b.orden ?? 99) || (a.nombre || '').localeCompare(b.nombre || ''));
 // Stock con el que quedó la última noche cerrada (si el producto es nuevo, 0)
 const stockGuardado = id => num(ultimaCerrada?.conteoFinal?.[id]);
 // Durante la noche: lo contado al abrir + lo que entró
@@ -405,7 +444,7 @@ function pintarHistorial(){
     <div class="hist-item" onclick="verNoche('${h.id}')">
       <div><div class="hist-fecha">${esc(fechaLarga(h.fecha))}</div>
         <div class="hist-meta">${cant(h.resumen?.unidades)} unidades · cerró ${esc(h.cerradaPor || '')} ${horaDe(h.cerradaEn)}</div></div>
-      <div class="precio">${plata(h.resumen?.total)}</div>
+      <div class="precio">${plata(h.resumen?.totalNoche ?? h.resumen?.total)}</div>
     </div>`).join('');
 }
 
@@ -514,7 +553,9 @@ function modalCierre(){
     })}
     <div class="totales">
       <div class="tot"><div class="k">Unidades vendidas</div><div class="v" id="cie-unid">0</div></div>
-      <div class="tot"><div class="k">Venta por inventario</div><div class="v neon" id="cie-total">$0</div></div>
+      <div class="tot"><div class="k">Venta por inventario</div><div class="v" id="cie-total">$0</div></div>
+      <div class="tot"><div class="k">🧊 Granizados</div><div class="v">${plata(totalesVentas().total)}</div></div>
+      <div class="tot"><div class="k">Total noche</div><div class="v neon" id="cie-gran-total">$0</div></div>
     </div>
     <div id="cie-alerta"></div>
     <div class="acciones"><button class="btn" id="btn-cerrar" onclick="cerrarNoche()">Cerrar noche y guardar</button><button class="btn btn-ghost" onclick="cerrarModal()">Seguir abierta</button></div>`);
@@ -546,6 +587,7 @@ function recalcularCierre(){
   }
   $('cie-unid').textContent = cant(unid);
   $('cie-total').textContent = plata(total);
+  $('cie-gran-total').textContent = plata(total + totalesVentas().total);
   $('cie-alerta').innerHTML =
     (negativos ? `<div class="alerta">⚠️ ${negativos} producto(s) con más unidades de las que había. Revisa el conteo o registra la entrada que faltó.</div>` : '') +
     (faltan ? `<div class="aviso">Faltan ${faltan} producto(s) por contar.</div>` : '');
@@ -565,23 +607,29 @@ async function cerrarNoche(){
       final: f.final, vendido: f.vendido, valor: f.valor });
     unidades += f.vendido; total += f.valor;
   }
-  if(!confirm(`¿Cerrar la noche?\n\nUnidades vendidas: ${cant(unidades)}\nVenta por inventario: ${plata(total)}`)) return;
+  const g = totalesVentas();
+  const granizados = { total: g.total, efectivo: g.efectivo, transferencia: g.transferencia, cantidad: g.granizados, ventas: g.ventas, porProducto: {} };
+  ventas.forEach(v => v.items.forEach(i => {
+    const k = granizados.porProducto[i.prodId] ||= { nombre: i.nombre, presentacion: i.presentacion, cantidad: 0, valor: 0 };
+    k.cantidad += i.cantidad; k.valor += i.subtotal;
+  }));
+  if(!confirm(`¿Cerrar la noche?\n\nVenta por inventario: ${plata(total)} (${cant(unidades)} unid.)\nGranizados: ${plata(g.total)}\nTOTAL: ${plata(total + g.total)}`)) return;
   $('btn-cerrar').disabled = true;
   try{
     const id = nocheAbierta.id;
     await NOCHES().doc(id).update({
       estado: 'cerrada', cerradaEn: TS(), cerradaPor: usuarioNombre, cerradaPorUid: usuario.uid,
-      conteoFinal, detalle, resumen: { unidades, total }
+      conteoFinal, detalle, granizados, resumen: { unidades, total, granizados: g.total, totalNoche: total + g.total }
     });
     logAudit('cerrar_noche', `Cerró la noche: ${cant(unidades)} unidades, ${plata(total)}`, { unidades, total });
     cerrarModal(); toast('🔒 Noche cerrada');
-    verNoche(id, { unidades, total, detalle, fecha: nocheAbierta?.fecha || hoy() });
+    verNoche(id, { fecha: nocheAbierta?.fecha || hoy(), detalle, granizados, resumen: { unidades, total, granizados: g.total, totalNoche: total + g.total } });
   } catch(e){ alert('No se pudo cerrar: ' + e.message); $('btn-cerrar').disabled = false; }
 }
 
 // ── Detalle de una noche cerrada ──
 function verNoche(id, datos){
-  const h = datos ? { fecha: datos.fecha, detalle: datos.detalle, resumen: { unidades: datos.unidades, total: datos.total } } : historial.find(x => x.id === id);
+  const h = datos || historial.find(x => x.id === id);
   if(!h) return;
   const det = (h.detalle || []).slice().sort((a, b) => a.categoria.localeCompare(b.categoria) || a.nombre.localeCompare(b.nombre));
   const g = {};
@@ -598,27 +646,167 @@ function verNoche(id, datos){
     }
     html += `</tbody></table></div></div>`;
   }
+  const gz = h.granizados;
+  if(gz && gz.ventas){
+    html += `<div class="cat"><div class="fila"><div class="cat-titulo">🧊 Granizados</div><div class="precio" style="font-size:.85rem">${plata(gz.total)}</div></div>
+      <div class="tabla-scroll"><table><thead><tr><th>Producto</th><th>Vendidos</th><th>Valor</th></tr></thead><tbody>
+      ${Object.values(gz.porProducto || {}).map(x => `<tr><td><span class="prod">${esc(x.nombre)}</span><span class="pres">${esc(x.presentacion)}</span></td><td class="vendido">${cant(x.cantidad)}</td><td>${plata(x.valor)}</td></tr>`).join('')}
+      </tbody></table></div>
+      <div class="sub" style="margin-top:6px">💵 ${plata(gz.efectivo)} · 🏦 ${plata(gz.transferencia)} · ${cant(gz.cantidad)} granizados</div></div>`;
+  }
   html += `<div class="totales">
-      <div class="tot"><div class="k">Unidades vendidas</div><div class="v">${cant(h.resumen?.unidades)}</div></div>
-      <div class="tot"><div class="k">Venta por inventario</div><div class="v neon">${plata(h.resumen?.total)}</div></div>
+      <div class="tot"><div class="k">Venta por inventario</div><div class="v">${plata(h.resumen?.total)}</div></div>
+      <div class="tot"><div class="k">🧊 Granizados</div><div class="v">${plata(h.resumen?.granizados)}</div></div>
+      <div class="tot"><div class="k">Total noche</div><div class="v neon">${plata(h.resumen?.totalNoche ?? h.resumen?.total)}</div></div>
     </div>
     <div class="acciones"><button class="btn btn-ghost btn-full" onclick="cerrarModal()">Cerrar</button></div>`;
   abrirModal(html);
 }
 
 // ══════════════════════════════════════
+//   GRANIZADOS
+// ══════════════════════════════════════
+const VENTAS = id => NOCHES().doc(id).collection('ventas');
+
+// Los 6 granizados base. Se crean una sola vez (si ya existen no se tocan, así respetan lo editado).
+const GRANIZADOS_BASE = [
+  { id: 'granizado-m',        nombre: 'Granizado M',        presentacion: 'Unidad',  precio: 7000,  unidades: 1, orden: 1 },
+  { id: 'granizado-m-combo',  nombre: 'Combo M',            presentacion: '2 × M',   precio: 10000, unidades: 2, orden: 2 },
+  { id: 'granizado-l',        nombre: 'Granizado L',        presentacion: 'Unidad',  precio: 9000,  unidades: 1, orden: 3 },
+  { id: 'granizado-l-combo',  nombre: 'Combo L',            presentacion: '2 × L',   precio: 15000, unidades: 2, orden: 4 },
+  { id: 'granizado-xl',       nombre: 'Granizado XL',       presentacion: 'Unidad',  precio: 12000, unidades: 1, orden: 5 },
+  { id: 'granizado-xl-combo', nombre: 'Combo XL',           presentacion: '2 × XL',  precio: 20000, unidades: 2, orden: 6 },
+];
+async function sembrarGranizados(){
+  try{
+    for(const g of GRANIZADOS_BASE){
+      const ref = PRODUCTOS().doc(g.id);
+      if((await ref.get()).exists) continue;
+      const { id, ...datos } = g;
+      await ref.set({ ...datos, tipo: 'granizado', categoria: 'Granizados', activo: true, creadoEn: TS() });
+    }
+  } catch(e){ console.error('sembrar granizados', e); }
+}
+
+function escucharVentas(){
+  const id = nocheAbierta?.id || null;
+  if(id === ventasDeNoche) return;
+  if(escuchaVentas){ escuchaVentas(); escuchaVentas = null; }
+  ventasDeNoche = id; ventas = [];
+  if(!id){ pintarGranizados(); return; }
+  escuchaVentas = VENTAS(id).orderBy('t', 'desc').onSnapshot(s => {
+    ventas = s.docs.map(d => ({ id: d.id, ...d.data() }));
+    pintarGranizados();
+  }, e => console.error('ventas', e));
+}
+
+function totalesVentas(lista = ventas){
+  const r = { total: 0, efectivo: 0, transferencia: 0, granizados: 0, ventas: lista.length };
+  lista.forEach(v => { r.total += v.total; r[v.pago] = (r[v.pago] || 0) + v.total; r.granizados += v.granizados || 0; });
+  return r;
+}
+
+function pintarGranizados(){
+  if(!$('gran-cuerpo')) return;
+  if(!nocheAbierta){
+    $('gran-cuerpo').innerHTML = `<div class="card vacio">🌙 No hay noche abierta.<br>Ábrela en <b>Inventario</b> para empezar a vender.<br><br>
+      <button class="btn btn-sm" onclick="irA('inventario')">Ir a Inventario</button></div>`;
+    return;
+  }
+  const lista = granizadosActivos();
+  const t = totalesVentas();
+  const enCarrito = Object.entries(carrito).filter(([id, c]) => c > 0 && lista.some(p => p.id === id));
+  const totalCarrito = enCarrito.reduce((s, [id, c]) => s + c * num(productos.find(p => p.id === id)?.precio), 0);
+
+  let html = `<div class="card"><h2>🧊 Vender</h2><div class="sub">Toca para agregar.</div>
+    ${lista.length ? `<div class="gran-grid">${lista.map(p => `
+      <button class="gran-btn${num(p.unidades) > 1 ? ' combo' : ''}" onclick="agregarCarrito('${p.id}')">
+        ${carrito[p.id] ? `<span class="g-cnt">${carrito[p.id]}</span>` : ''}
+        <div class="g-nom">${esc(p.nombre)}</div><div class="pres">${esc(p.presentacion || '')}</div>
+        <div class="g-pre">${plata(p.precio)}</div></button>`).join('')}</div>`
+      : `<div class="vacio">No hay granizados activos.</div>`}`;
+
+  if(enCarrito.length){
+    html += `<div style="margin-top:14px">${enCarrito.map(([id, c]) => {
+      const p = productos.find(x => x.id === id);
+      return `<div class="carrito-row"><div><span class="prod">${esc(p.nombre)}</span><span class="pres">${plata(p.precio)} c/u</span></div>
+        <div class="stepper"><button onclick="cambiarCarrito('${id}',-1)">−</button><b>${c}</b><button onclick="cambiarCarrito('${id}',1)">+</button>
+        <span class="precio" style="min-width:80px;text-align:right">${plata(c * num(p.precio))}</span></div></div>`;
+    }).join('')}</div>
+    <div class="pago">
+      <button class="${pagoTipo === 'efectivo' ? 'activo' : ''}" onclick="setPago('efectivo')">💵 Efectivo</button>
+      <button class="${pagoTipo === 'transferencia' ? 'activo' : ''}" onclick="setPago('transferencia')">🏦 Transferencia</button>
+    </div>
+    <div class="acciones">
+      <button class="btn" style="flex:1" id="btn-venta" onclick="registrarVenta()">Registrar ${plata(totalCarrito)}</button>
+      <button class="btn btn-ghost" onclick="carrito={};pintarGranizados()">Vaciar</button>
+    </div>`;
+  }
+  html += `</div>`;
+
+  html += `<div class="card"><h2>📊 Ventas de la noche</h2>
+    <div class="totales">
+      <div class="tot"><div class="k">Total</div><div class="v neon">${plata(t.total)}</div></div>
+      <div class="tot"><div class="k">💵 Efectivo</div><div class="v">${plata(t.efectivo)}</div></div>
+      <div class="tot"><div class="k">🏦 Transferencia</div><div class="v">${plata(t.transferencia)}</div></div>
+      <div class="tot"><div class="k">Granizados</div><div class="v">${cant(t.granizados)}</div></div>
+    </div>
+    <div style="margin-top:10px">${ventas.length ? ventas.map(v => `
+      <div class="venta-row"><div>
+        <div class="prod">${v.items.map(i => `${i.cantidad}× ${esc(i.nombre)}`).join(', ')}</div>
+        <div class="pres">${esc(v.hora)} · ${esc(v.por)}<span class="tag">${v.pago === 'transferencia' ? '🏦 Transf.' : '💵 Efectivo'}</span></div></div>
+        <div style="display:flex;align-items:center;gap:8px"><span class="precio">${plata(v.total)}</span>
+        ${esAdmin() ? `<button class="btn btn-ghost btn-sm" onclick="borrarVenta('${v.id}')">🗑️</button>` : ''}</div></div>`).join('')
+      : `<div class="vacio">Todavía no hay ventas.</div>`}</div></div>`;
+  $('gran-cuerpo').innerHTML = html;
+}
+
+function agregarCarrito(id){ carrito[id] = (carrito[id] || 0) + 1; pintarGranizados(); }
+function cambiarCarrito(id, d){ carrito[id] = Math.max(0, (carrito[id] || 0) + d); if(!carrito[id]) delete carrito[id]; pintarGranizados(); }
+function setPago(t){ pagoTipo = t; pintarGranizados(); }
+
+async function registrarVenta(){
+  if(!nocheAbierta) return;
+  const items = Object.entries(carrito).filter(([, c]) => c > 0).map(([id, c]) => {
+    const p = productos.find(x => x.id === id);
+    return { prodId: id, nombre: p.nombre, presentacion: p.presentacion || '', precio: num(p.precio), unidades: num(p.unidades) || 1, cantidad: c, subtotal: c * num(p.precio) };
+  });
+  if(!items.length) return;
+  const total = items.reduce((s, i) => s + i.subtotal, 0);
+  const granizados = items.reduce((s, i) => s + i.cantidad * i.unidades, 0);
+  $('btn-venta').disabled = true;
+  try{
+    await VENTAS(nocheAbierta.id).add({
+      items, total, granizados, pago: pagoTipo, por: usuarioNombre, porUid: usuario.uid,
+      hora: new Date().toLocaleTimeString('es-CO', {hour:'2-digit', minute:'2-digit'}), t: Date.now(), creadaEn: TS()
+    });
+    carrito = {}; pagoTipo = 'efectivo';
+    toast(`✅ Venta ${plata(total)}`);
+  } catch(e){ alert('No se pudo registrar: ' + e.message); $('btn-venta').disabled = false; }
+}
+
+async function borrarVenta(id){
+  if(!esAdmin() || !nocheAbierta) return;
+  const v = ventas.find(x => x.id === id); if(!v) return;
+  if(!confirm(`¿Eliminar la venta de ${plata(v.total)} (${v.hora})?`)) return;
+  await VENTAS(nocheAbierta.id).doc(id).delete();
+  logAudit('borrar_venta', `Eliminó venta de granizados ${plata(v.total)}`, { items: v.items, pago: v.pago });
+}
+
+// ══════════════════════════════════════
 //   PRODUCTOS (solo admin)
 // ══════════════════════════════════════
 function pintarProductos(){
-  const cats = [...new Set(['Aguardiente', 'Ron', 'Whisky', 'Tequila', 'Vodka', 'Cerveza', 'Gaseosa', 'Agua', 'Energizante', 'Cigarrillos', 'Otros', ...productos.map(p => p.categoria).filter(Boolean)])];
+  const cats = [...new Set(['Aguardiente', 'Ron', 'Whisky', 'Tequila', 'Vodka', 'Cerveza', 'Gaseosa', 'Agua', 'Energizante', 'Cigarrillos', 'Otros', ...productos.filter(p => !esGranizado(p)).map(p => p.categoria).filter(Boolean)])];
   $('lista-cat').innerHTML = cats.map(c => `<option>${esc(c)}</option>`).join('');
   if(!productos.length){ $('lista-productos').innerHTML = `<div class="vacio">Aún no hay productos. Crea el primero arriba.</div>`; return; }
   let html = '';
-  for(const [cat, prods] of agrupar(productos)){
+  const orden = [...productos.filter(esGranizado).sort((a, b) => (a.orden ?? 99) - (b.orden ?? 99)), ...productos.filter(p => !esGranizado(p))];
+  for(const [cat, prods] of agrupar(orden)){
     html += `<div class="cat"><div class="cat-titulo">${esc(cat)}</div>`;
     for(const p of prods){
       html += `<div class="prod-row${p.activo === false ? ' inactivo' : ''}">
-        <div><span class="prod">${esc(p.nombre)}</span><span class="pres">${esc(p.presentacion || '')}${p.activo === false ? ' · inactivo' : ''}</span></div>
+        <div><span class="prod">${esc(p.nombre)}</span><span class="pres">${esc(p.presentacion || '')}${esGranizado(p) ? ' · 🧊 venta manual' : ''}${p.activo === false ? ' · inactivo' : ''}</span></div>
         <div style="display:flex;align-items:center;gap:8px">
           <span class="precio">${plata(p.precio)}</span>
           <button class="btn btn-ghost btn-sm" onclick="editarProducto('${p.id}')">✏️</button>
@@ -630,8 +818,15 @@ function pintarProductos(){
   $('lista-productos').innerHTML = html;
 }
 
+function cambioTipoProducto(){
+  const gran = $('pf-tipo').value === 'granizado';
+  $('pf-unid-box').classList.toggle('oculto', !gran);
+  $('pf-cat').parentElement.classList.toggle('oculto', gran);
+}
+
 function limpiarFormProducto(){
   editandoId = null;
+  $('pf-tipo').value = 'inventario'; $('pf-unid').value = 1; cambioTipoProducto();
   ['pf-nombre', 'pf-pres', 'pf-cat', 'pf-precio'].forEach(id => $(id).value = '');
   $('pf-titulo').textContent = '➕ Nuevo producto';
   $('pf-guardar').textContent = 'Guardar producto';
@@ -643,6 +838,7 @@ function editarProducto(id){
   const p = productos.find(x => x.id === id); if(!p) return;
   editandoId = id;
   $('pf-nombre').value = p.nombre || ''; $('pf-pres').value = p.presentacion || '';
+  $('pf-tipo').value = esGranizado(p) ? 'granizado' : 'inventario'; $('pf-unid').value = p.unidades || 1; cambioTipoProducto();
   $('pf-cat').value = p.categoria || ''; $('pf-precio').value = p.precio ? Number(p.precio).toLocaleString('es-CO') : '';
   $('pf-titulo').textContent = '✏️ Editar producto';
   $('pf-guardar').textContent = 'Guardar cambios';
@@ -654,8 +850,10 @@ async function guardarProducto(){
   if(!esAdmin()) return;
   const datos = {
     nombre: $('pf-nombre').value.trim(), presentacion: $('pf-pres').value.trim(),
-    categoria: $('pf-cat').value.trim() || 'Otros', precio: valorPlata('pf-precio')
+    categoria: $('pf-cat').value.trim() || 'Otros', precio: valorPlata('pf-precio'), tipo: $('pf-tipo').value
   };
+  if(datos.tipo === 'granizado'){ datos.categoria = 'Granizados'; datos.unidades = Math.max(1, parseInt($('pf-unid').value, 10) || 1); }
+  if(!datos.precio){ $('pf-err').textContent = 'Escribe el precio.'; return; }
   if(!datos.nombre){ $('pf-err').textContent = 'Escribe el nombre.'; return; }
   if(!datos.presentacion){ $('pf-err').textContent = 'Escribe la presentación (media, botella, lata…).'; return; }
   const dup = productos.find(p => p.id !== editandoId && p.nombre.toLowerCase() === datos.nombre.toLowerCase() && (p.presentacion || '').toLowerCase() === datos.presentacion.toLowerCase());
@@ -679,7 +877,7 @@ async function guardarProducto(){
 
 async function toggleProducto(id){
   const p = productos.find(x => x.id === id); if(!p || !esAdmin()) return;
-  if(nocheAbierta && p.activo !== false && !confirm('Hay una noche abierta. Si lo desactivas no aparecerá en el conteo de cierre. ¿Desactivar?')) return;
+  if(nocheAbierta && p.activo !== false && !esGranizado(p) && !confirm('Hay una noche abierta. Si lo desactivas no aparecerá en el conteo de cierre. ¿Desactivar?')) return;
   await PRODUCTOS().doc(id).update({ activo: p.activo === false, actualizadoEn: TS() });
 }
 </script>
