@@ -293,7 +293,7 @@ let escuchas = [];
 let ventas = [];             // ventas de granizados de la noche abierta
 let escuchaVentas = null, ventasDeNoche = null;
 let carrito = {};            // { prodId: cantidad }
-let pagoTipo = 'efectivo';
+let pagoTipo = 'efectivo', pagoMixtoEf = 0, pagoFiadoNombre = '';
 const esAdmin = () => usuarioRol === 'admin';
 
 // ══════════════════════════════════════
@@ -568,28 +568,28 @@ async function guardarEntrada(){
   } catch(e){ alert('No se pudo registrar: ' + e.message); $('btn-ent').disabled = false; }
 }
 
-// ── Cerrar noche: conteo final y cálculo de venta ──
+// ── Cerrar venta: paso 1 conteo final, paso 2 resumen, paso 3 guardar ──
+let cierreConteo = {};     // lo digitado en el conteo final (se conserva al volver del resumen)
+let cierreCalc = null;     // cálculo con el que se muestra el resumen y se guarda
+let cierreNocheId = null;
+
 function modalCierre(){
   if(!esAdmin()){ alert('⛔ Solo un admin puede cerrar la venta.'); return; }
   const n = nocheAbierta;
+  if(cierreNocheId !== n.id){ cierreConteo = {}; cierreNocheId = n.id; }
   abrirModal(`
-    <h3>🔒 Cerrar venta — conteo final</h3>
-    <div class="sub">Cuenta lo que queda. Vendido = inicial + entradas − lo que queda.</div>
-    ${tablaConteo('fin', () => '', {
+    <h3>🔒 Cerrar venta — 1. Conteo final</h3>
+    <div class="sub">Cuenta lo que queda de cada producto. Sin el conteo completo no se puede cerrar.</div>
+    ${tablaConteo('fin', p => cierreConteo[p.id] ?? '', {
       head: '<th>Había</th><th>Vendido</th>',
       headVasos: '<th>Deben quedar</th><th>Dif.</th>',
       fila: p => `<td>${cant(stockEsperado(n, p))}</td><td class="vendido" id="vend-${p.id}">—</td>`,
       oninput: 'recalcularCierre()'
     })}
-    <div class="totales">
-      <div class="tot"><div class="k">Unidades vendidas</div><div class="v" id="cie-unid">0</div></div>
-      <div class="tot"><div class="k">Venta por inventario</div><div class="v" id="cie-total">$0</div></div>
-      <div class="tot"><div class="k">🧊 Granizados</div><div class="v">${plata(totalesVentas().total)}</div></div>
-      <div class="tot"><div class="k">Total noche</div><div class="v neon" id="cie-gran-total">$0</div></div>
-    </div>
     <div id="cie-vasos"></div>
     <div id="cie-alerta"></div>
-    <div class="acciones"><button class="btn" id="btn-cerrar" onclick="cerrarNoche()">Cerrar venta y guardar</button><button class="btn btn-ghost" onclick="cerrarModal()">Seguir abierta</button></div>`);
+    <div class="acciones"><button class="btn" id="btn-resumen" onclick="verResumenCierre()">Ver resumen →</button><button class="btn btn-ghost" onclick="cerrarModal()">Seguir abierta</button></div>`);
+  recalcularCierre();
 }
 
 function calcularCierre(){
@@ -610,7 +610,6 @@ function calcularCierre(){
 
 function recalcularCierre(){
   const { filas, faltan, negativos } = calcularCierre();
-  let unid = 0, total = 0;
   for(const f of filas){
     const td = $('vend-' + f.p.id);
     if(esVaso(f.p)){
@@ -620,51 +619,95 @@ function recalcularCierre(){
       td.textContent = f.vendido === null ? '—' : cant(f.vendido);
       td.classList.toggle('neg', f.vendido !== null && f.vendido < 0);
     }
-    if(!f.p.talla) unid += f.vendido || 0; total += f.valor;
   }
-  $('cie-unid').textContent = cant(unid);
-  $('cie-total').textContent = plata(total);
-  $('cie-gran-total').textContent = plata(total + totalesVentas().total);
-  $('cie-vasos').innerHTML = htmlVasos(compararVasos(filas));
+  $('cie-vasos').innerHTML = faltan ? '' : htmlVasos(compararVasos(filas));
   $('cie-alerta').innerHTML =
     (negativos ? `<div class="alerta">⚠️ ${negativos} producto(s) con más unidades de las que había. Revisa el conteo o registra la entrada que faltó.</div>` : '') +
     (faltan ? `<div class="aviso">Faltan ${faltan} producto(s) por contar.</div>` : '');
+  $('btn-resumen').disabled = faltan > 0;
+}
+
+function verResumenCierre(){
+  const calc = calcularCierre();
+  if(calc.faltan){ alert(`Faltan ${calc.faltan} producto(s) por contar.`); return; }
+  if(calc.negativos && !confirm(`⚠️ Hay ${calc.negativos} producto(s) con venta negativa (quedó más de lo que había).\n¿Continuar igual?`)) return;
+  cierreConteo = {}; calc.filas.forEach(f => cierreConteo[f.p.id] = f.final);
+  cierreCalc = calc;
+  const licor = calc.filas.filter(f => !esVaso(f.p));
+  const totalLicor = licor.reduce((s, f) => s + f.valor, 0);
+  const unidLicor = licor.reduce((s, f) => s + f.vendido, 0);
+  const g = totalesVentas(), base = num(nocheAbierta.baseCaja);
+  const vendidos = licor.filter(f => f.vendido);
+  abrirModal(`
+    <h3>📊 Cerrar venta — 2. Resumen</h3>
+    <div class="tot" style="text-align:center;padding:18px;margin-top:4px">
+      <div class="k">Venta total de la noche</div>
+      <div class="v neon" style="font-size:2.1rem">${plata(totalLicor + g.total)}</div>
+    </div>
+    <div class="totales">
+      <div class="tot"><div class="k">🍾 Licor (inventario)</div><div class="v">${plata(totalLicor)}</div><div class="sub">${cant(unidLicor)} unidades</div></div>
+      <div class="tot"><div class="k">🧊 Granizados</div><div class="v">${plata(g.total)}</div><div class="sub">${cant(g.granizados)} granizados</div></div>
+    </div>
+
+    <div class="cat"><div class="cat-titulo">🍾 Licor vendido</div>
+      ${vendidos.length ? `<div class="tabla-scroll"><table><thead><tr><th>Producto</th><th>Vendido</th><th>Valor</th></tr></thead><tbody>
+      ${vendidos.map(f => `<tr><td><span class="prod">${esc(f.p.nombre)}</span><span class="pres">${esc(f.p.presentacion || '')}</span></td>
+        <td class="vendido${f.vendido < 0 ? ' neg' : ''}">${cant(f.vendido)}</td><td>${plata(f.valor)}</td></tr>`).join('')}
+      </tbody></table></div>` : '<div class="vacio">No se vendió licor.</div>'}</div>
+
+    <div class="cat"><div class="cat-titulo">🧊 Granizados por forma de pago</div>
+      <div class="totales" style="margin-top:4px">
+        <div class="tot"><div class="k">💵 Efectivo</div><div class="v">${plata(g.efectivo)}</div></div>
+        <div class="tot"><div class="k">🏦 Transferencia</div><div class="v">${plata(g.transferencia)}</div></div>
+        <div class="tot"><div class="k">🧾 Fiado</div><div class="v">${plata(g.fiado)}</div></div>
+      </div></div>
+
+    <div class="cat"><div class="cat-titulo">💰 Caja</div>
+      <div class="totales" style="margin-top:4px">
+        <div class="tot"><div class="k">Base de caja</div><div class="v">${plata(base)}</div></div>
+        <div class="tot"><div class="k">Base + efectivo granizados</div><div class="v">${plata(base + g.efectivo)}</div></div>
+      </div></div>
+    ${htmlVasos(compararVasos(calc.filas))}
+    <div class="acciones">
+      <button class="btn" style="flex:1" id="btn-cerrar" onclick="cerrarNoche()">✅ Cerrar venta</button>
+      <button class="btn btn-ghost" onclick="modalCierre()">← Volver al conteo</button>
+    </div>`);
 }
 
 async function cerrarNoche(){
-  if(!esAdmin()) return;
-  const { filas, faltan, negativos } = calcularCierre();
-  if(faltan){ alert(`Faltan ${faltan} producto(s) por contar.`); return; }
-  if(negativos && !confirm(`⚠️ Hay ${negativos} producto(s) con venta negativa (quedó más de lo que había).\n¿Cerrar igual?`)) return;
+  if(!esAdmin() || !cierreCalc || !nocheAbierta) return;
+  const { filas } = cierreCalc;
   const conteoFinal = {}, detalle = [];
   let unidades = 0, total = 0;
   for(const f of filas){
     conteoFinal[f.p.id] = f.final;
     // Se guarda una copia del nombre y precio para que el historial no cambie si luego se edita el producto
     detalle.push({ prodId: f.p.id, nombre: f.p.nombre, presentacion: f.p.presentacion || '', categoria: f.p.categoria || 'Otros',
-      precio: num(f.p.precio), inicial: num(nocheAbierta.conteoInicial?.[f.p.id]), entradas: num(nocheAbierta.entradas?.[f.p.id]),
+      precio: esVaso(f.p) ? 0 : num(f.p.precio), inicial: num(nocheAbierta.conteoInicial?.[f.p.id]), entradas: num(nocheAbierta.entradas?.[f.p.id]),
       final: f.final, vendido: f.vendido, valor: f.valor });
-    if(!f.p.talla) unidades += f.vendido; total += f.valor;
+    if(!esVaso(f.p)) unidades += f.vendido;
+    total += f.valor;
   }
   const g = totalesVentas();
   const base = num(nocheAbierta.baseCaja), fechaNoche = nocheAbierta.fecha || hoy();
-  const granizados = { total: g.total, efectivo: g.efectivo, transferencia: g.transferencia, cantidad: g.granizados, ventas: g.ventas, porProducto: {} };
+  const granizados = { total: g.total, efectivo: g.efectivo, transferencia: g.transferencia, fiado: g.fiado, cantidad: g.granizados, ventas: g.ventas, porProducto: {} };
   ventas.forEach(v => v.items.forEach(i => {
     const k = granizados.porProducto[i.prodId] ||= { nombre: i.nombre, presentacion: i.presentacion, cantidad: 0, valor: 0 };
     k.cantidad += i.cantidad; k.valor += i.subtotal;
   }));
   granizados.vasos = compararVasos(filas);
-  if(!confirm(`¿Cerrar la venta?\n\nVenta por inventario: ${plata(total)} (${cant(unidades)} unid.)\nGranizados: ${plata(g.total)}\nTOTAL: ${plata(total + g.total)}`)) return;
+  const resumen = { unidades, total, granizados: g.total, totalNoche: total + g.total, baseCaja: base, efectivoCaja: base + g.efectivo };
   $('btn-cerrar').disabled = true;
   try{
     const id = nocheAbierta.id;
     await NOCHES().doc(id).update({
       estado: 'cerrada', cerradaEn: TS(), cerradaPor: usuarioNombre, cerradaPorUid: usuario.uid,
-      conteoFinal, detalle, granizados, resumen: { unidades, total, granizados: g.total, totalNoche: total + g.total, baseCaja: base, efectivoCaja: base + g.efectivo }
+      conteoFinal, detalle, granizados, resumen
     });
-    logAudit('cerrar_noche', `Cerró la noche: ${cant(unidades)} unidades, ${plata(total)}`, { unidades, total });
+    logAudit('cerrar_noche', `Cerró la venta: ${plata(resumen.totalNoche)}`, resumen);
+    cierreConteo = {}; cierreCalc = null;
     cerrarModal(); toast('🔒 Venta cerrada');
-    verNoche(id, { fecha: fechaNoche, detalle, granizados, resumen: { unidades, total, granizados: g.total, totalNoche: total + g.total, baseCaja: base, efectivoCaja: base + g.efectivo } });
+    verNoche(id, { fecha: fechaNoche, detalle, granizados, resumen });
   } catch(e){ alert('No se pudo cerrar: ' + e.message); if($('btn-cerrar')) $('btn-cerrar').disabled = false; }
 }
 
@@ -693,7 +736,7 @@ function verNoche(id, datos){
       <div class="tabla-scroll"><table><thead><tr><th>Producto</th><th>Vendidos</th><th>Valor</th></tr></thead><tbody>
       ${Object.values(gz.porProducto || {}).map(x => `<tr><td><span class="prod">${esc(x.nombre)}</span><span class="pres">${esc(x.presentacion)}</span></td><td class="vendido">${cant(x.cantidad)}</td><td>${plata(x.valor)}</td></tr>`).join('')}
       </tbody></table></div>
-      <div class="sub" style="margin-top:6px">💵 ${plata(gz.efectivo)} · 🏦 ${plata(gz.transferencia)} · ${cant(gz.cantidad)} granizados</div>${gz.vasos ? htmlVasos(gz.vasos) : ''}</div>`;
+      <div class="sub" style="margin-top:6px">💵 ${plata(gz.efectivo)} · 🏦 ${plata(gz.transferencia)}${gz.fiado ? ` · 🧾 ${plata(gz.fiado)}` : ''} · ${cant(gz.cantidad)} granizados</div>${gz.vasos ? htmlVasos(gz.vasos) : ''}</div>`;
   }
   html += `<div class="totales">
       <div class="tot"><div class="k">Venta por inventario</div><div class="v">${plata(h.resumen?.total)}</div></div>
@@ -756,9 +799,11 @@ function escucharVentas(){
   }, e => console.error('ventas', e));
 }
 
+// Lo que entró por cada forma de pago (mixto se reparte entre efectivo y transferencia)
+const montosVenta = v => v.montos || { efectivo: v.pago === 'efectivo' ? v.total : 0, transferencia: v.pago === 'transferencia' ? v.total : 0, fiado: v.pago === 'fiado' ? v.total : 0 };
 function totalesVentas(lista = ventas){
-  const r = { total: 0, efectivo: 0, transferencia: 0, granizados: 0, ventas: lista.length };
-  lista.forEach(v => { r.total += v.total; r[v.pago] = (r[v.pago] || 0) + v.total; r.granizados += v.granizados || 0; });
+  const r = { total: 0, efectivo: 0, transferencia: 0, fiado: 0, granizados: 0, ventas: lista.length };
+  lista.forEach(v => { const m = montosVenta(v); r.total += v.total; r.efectivo += m.efectivo || 0; r.transferencia += m.transferencia || 0; r.fiado += m.fiado || 0; r.granizados += v.granizados || 0; });
   return r;
 }
 
@@ -818,10 +863,17 @@ function pintarGranizados(){
         <div class="stepper"><button onclick="cambiarCarrito('${id}',-1)">−</button><b>${c}</b><button onclick="cambiarCarrito('${id}',1)">+</button>
         <span class="precio" style="min-width:80px;text-align:right">${plata(c * num(p.precio))}</span></div></div>`;
     }).join('')}</div>
-    <div class="pago">
-      <button class="${pagoTipo === 'efectivo' ? 'activo' : ''}" onclick="setPago('efectivo')">💵 Efectivo</button>
-      <button class="${pagoTipo === 'transferencia' ? 'activo' : ''}" onclick="setPago('transferencia')">🏦 Transferencia</button>
+    <div class="pago" style="flex-wrap:wrap">
+      ${[['efectivo', '💵 Efectivo'], ['transferencia', '🏦 Transferencia'], ['mixto', '🔀 Mixto'], ['fiado', '🧾 Fiado']].map(([k, t]) =>
+        `<button style="flex:1 1 40%" class="${pagoTipo === k ? 'activo' : ''}" onclick="setPago('${k}')">${t}</button>`).join('')}
     </div>
+    ${pagoTipo === 'mixto' ? `<div class="form-grid">
+      <div><div class="lbl">💵 Efectivo</div><input id="mix-ef" inputmode="numeric" placeholder="$ 0" value="${pagoMixtoEf ? pagoMixtoEf.toLocaleString('es-CO') : ''}" oninput="formatoPlata(this);pagoMixtoEf=valorPlata('mix-ef');$('mix-tr').textContent=plata(Math.max(0,${totalCarrito}-pagoMixtoEf))"/></div>
+      <div><div class="lbl">🏦 Transferencia</div><div class="v precio" style="padding:10px 0" id="mix-tr">${plata(Math.max(0, totalCarrito - pagoMixtoEf))}</div></div>
+    </div>` : ''}
+    ${pagoTipo === 'fiado' ? `<div style="margin-top:10px"><div class="lbl">🧾 ¿A quién se le fía?</div>
+      <input id="fiado-nombre" list="lista-fiados" placeholder="Nombre de la persona" value="${esc(pagoFiadoNombre)}" oninput="pagoFiadoNombre=this.value"/>
+      <datalist id="lista-fiados">${[...new Set(ventas.filter(v => v.cliente).map(v => v.cliente))].map(n => `<option>${esc(n)}</option>`).join('')}</datalist></div>` : ''}
     <div class="acciones">
       <button class="btn" style="flex:1" id="btn-venta" onclick="registrarVenta()">Registrar ${plata(totalCarrito)}</button>
       <button class="btn btn-ghost" onclick="carrito={};pintarGranizados()">Vaciar</button>
@@ -834,6 +886,7 @@ function pintarGranizados(){
       <div class="tot"><div class="k">Total</div><div class="v neon">${plata(t.total)}</div></div>
       <div class="tot"><div class="k">💵 Efectivo</div><div class="v">${plata(t.efectivo)}</div></div>
       <div class="tot"><div class="k">🏦 Transferencia</div><div class="v">${plata(t.transferencia)}</div></div>
+      <div class="tot"><div class="k">🧾 Fiado</div><div class="v">${plata(t.fiado)}</div></div>
       <div class="tot"><div class="k">Granizados</div><div class="v">${cant(t.granizados)}</div></div>
       <div class="tot"><div class="k">💰 Base de caja</div><div class="v">${plata(nocheAbierta.baseCaja)}</div></div>
       <div class="tot"><div class="k">💵 Efectivo en caja</div><div class="v">${plata(num(nocheAbierta.baseCaja) + t.efectivo)}</div></div>
@@ -841,16 +894,22 @@ function pintarGranizados(){
     <div style="margin-top:10px">${ventas.length ? ventas.map(v => `
       <div class="venta-row"><div>
         <div class="prod">${v.items.map(i => `${i.cantidad}× ${esc(i.nombre)}`).join(', ')}</div>
-        <div class="pres">${esc(v.hora)} · ${esc(v.por)}<span class="tag">${v.pago === 'transferencia' ? '🏦 Transf.' : '💵 Efectivo'}</span></div></div>
+        <div class="pres">${esc(v.hora)} · ${esc(v.por)}${tagPago(v)}</div></div>
         <div style="display:flex;align-items:center;gap:8px"><span class="precio">${plata(v.total)}</span>
         ${esAdmin() ? `<button class="btn btn-ghost btn-sm" onclick="borrarVenta('${v.id}')">🗑️</button>` : ''}</div></div>`).join('')
       : `<div class="vacio">Todavía no hay ventas.</div>`}</div></div>`;
   $('gran-cuerpo').innerHTML = html;
 }
 
+function tagPago(v){
+  const m = montosVenta(v);
+  if(v.pago === 'mixto') return `<span class="tag">🔀 Mixto · 💵 ${plata(m.efectivo)} + 🏦 ${plata(m.transferencia)}</span>`;
+  if(v.pago === 'fiado') return `<span class="tag" style="color:var(--amarillo);border-color:rgba(255,210,63,.4)">🧾 Fiado · ${esc(v.cliente || '')}</span>`;
+  return `<span class="tag">${v.pago === 'transferencia' ? '🏦 Transf.' : '💵 Efectivo'}</span>`;
+}
 function agregarCarrito(id){ carrito[id] = (carrito[id] || 0) + 1; pintarGranizados(); }
 function cambiarCarrito(id, d){ carrito[id] = Math.max(0, (carrito[id] || 0) + d); if(!carrito[id]) delete carrito[id]; pintarGranizados(); }
-function setPago(t){ pagoTipo = t; pintarGranizados(); }
+function setPago(t){ pagoTipo = t; pintarGranizados(); if(t === 'mixto') $('mix-ef')?.focus(); if(t === 'fiado') $('fiado-nombre')?.focus(); }
 
 async function registrarVenta(){
   if(!nocheAbierta) return;
@@ -861,13 +920,25 @@ async function registrarVenta(){
   if(!items.length) return;
   const total = items.reduce((s, i) => s + i.subtotal, 0);
   const granizados = items.reduce((s, i) => s + i.cantidad * i.unidades, 0);
+  const montos = { efectivo: 0, transferencia: 0, fiado: 0 };
+  let cliente = '';
+  if(pagoTipo === 'mixto'){
+    const ef = valorPlata('mix-ef');
+    if(ef <= 0 || ef >= total){ alert('En pago mixto escribe cuánto es en efectivo (mayor a $0 y menor al total). El resto va por transferencia.'); return; }
+    montos.efectivo = ef; montos.transferencia = total - ef;
+  } else if(pagoTipo === 'fiado'){
+    cliente = ($('fiado-nombre')?.value || '').trim();
+    if(!cliente){ alert('Escribe a quién se le fía.'); $('fiado-nombre')?.focus(); return; }
+    montos.fiado = total;
+  } else montos[pagoTipo] = total;
   $('btn-venta').disabled = true;
   try{
     await VENTAS(nocheAbierta.id).add({
-      items, total, granizados, pago: pagoTipo, por: usuarioNombre, porUid: usuario.uid,
+      items, total, granizados, pago: pagoTipo, montos, cliente, por: usuarioNombre, porUid: usuario.uid,
       hora: new Date().toLocaleTimeString('es-CO', {hour:'2-digit', minute:'2-digit'}), t: Date.now(), creadaEn: TS()
     });
-    carrito = {}; pagoTipo = 'efectivo';
+    carrito = {}; pagoTipo = 'efectivo'; pagoMixtoEf = 0; pagoFiadoNombre = '';
+    if(cliente) logAudit('fiado', `Fió ${plata(total)} a ${cliente}`, { cliente, total });
     toast(`✅ Venta ${plata(total)}`);
   } catch(e){ alert('No se pudo registrar: ' + e.message); $('btn-venta').disabled = false; }
 }
