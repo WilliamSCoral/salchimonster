@@ -390,6 +390,10 @@ const granizadosActivos = () => productos.filter(p => p.activo !== false && esGr
 const stockGuardado = id => num(ultimaCerrada?.conteoFinal?.[id]);
 // Durante la noche: lo contado al abrir + lo que entró
 const stockEnNoche = (n, id) => num(n.conteoInicial?.[id]) + num(n.entradas?.[id]);
+const esVaso = p => !!p.talla && !esGranizado(p);
+// Vasos: lo que debería quedar = inicial + entradas − granizados vendidos de esa talla (combo = 2)
+const vasosVendidos = p => esVaso(p) ? (granizadosPorTalla()[p.talla] || 0) : 0;
+const stockEsperado = (n, p) => stockEnNoche(n, p.id) - vasosVendidos(p);
 
 function agrupar(lista){
   const g = {};
@@ -427,8 +431,9 @@ function pintarInventario(){
     html += `<div class="cat"><div class="cat-titulo">${esc(cat)}</div><div class="tabla-scroll"><table>
       <thead><tr><th>Producto</th>${n ? '<th>Inicial</th><th>Entradas</th>' : ''}<th>Stock</th></tr></thead><tbody>`;
     for(const p of prods){
-      const st = n ? stockEnNoche(n, p.id) : stockGuardado(p.id);
-      html += `<tr><td><span class="prod">${esc(p.nombre)}</span><span class="pres">${esc(p.presentacion || '')}</span></td>
+      const st = n ? stockEsperado(n, p) : stockGuardado(p.id);
+      const vv = n ? vasosVendidos(p) : 0;
+      html += `<tr><td><span class="prod">${esc(p.nombre)}</span><span class="pres">${esc(p.presentacion || '')}${vv ? ` · <span class="neon">−${cant(vv)} en granizados</span>` : ''}</span></td>
         ${n ? `<td>${cant(n.conteoInicial?.[p.id])}</td><td>${num(n.entradas?.[p.id]) ? '+' + cant(n.entradas[p.id]) : '—'}</td>` : ''}
         <td><b>${cant(st)}</b></td></tr>`;
     }
@@ -460,7 +465,7 @@ function cerrarModal(){ $('modal-raiz').innerHTML = ''; }
 function tablaConteo(idPrefix, valores, extraCols){
   let html = '';
   for(const [cat, prods] of agrupar(activos())){
-    html += `<div class="cat"><div class="cat-titulo">${esc(cat)}</div><div class="tabla-scroll"><table><thead><tr><th>Producto</th>${extraCols ? extraCols.head : ''}<th>Cuenta</th></tr></thead><tbody>`;
+    html += `<div class="cat"><div class="cat-titulo">${esc(cat)}</div><div class="tabla-scroll"><table><thead><tr><th>Producto</th>${extraCols ? (prods.every(esVaso) && extraCols.headVasos ? extraCols.headVasos : extraCols.head) : ''}<th>Cuenta</th></tr></thead><tbody>`;
     for(const p of prods){
       const v = valores(p);
       html += `<tr><td><span class="prod">${esc(p.nombre)}</span><span class="pres">${esc(p.presentacion || '')}</span></td>
@@ -548,7 +553,8 @@ function modalCierre(){
     <div class="sub">Cuenta lo que queda. Vendido = inicial + entradas − lo que queda.</div>
     ${tablaConteo('fin', () => '', {
       head: '<th>Había</th><th>Vendido</th>',
-      fila: p => `<td>${cant(stockEnNoche(n, p.id))}</td><td class="vendido" id="vend-${p.id}">—</td>`,
+      headVasos: '<th>Deben quedar</th><th>Dif.</th>',
+      fila: p => `<td>${cant(stockEsperado(n, p))}</td><td class="vendido" id="vend-${p.id}">—</td>`,
       oninput: 'recalcularCierre()'
     })}
     <div class="totales">
@@ -569,10 +575,11 @@ function calcularCierre(){
     const el = $('fin-' + p.id); if(!el) continue;
     const vacio = el.value.trim() === '';
     const habia = stockEnNoche(n, p.id), final = num(el.value);
-    const vendido = vacio ? null : habia - final;
+    const vendido = vacio ? null : habia - final;            // en vasos: los que realmente se usaron
+    const dif = esVaso(p) && !vacio ? final - stockEsperado(n, p) : null;   // vasos: contados − esperados
     if(vacio) faltan++;
-    if(vendido !== null && vendido < 0) negativos++;
-    filas.push({ p, vacio, habia, final, vendido, valor: (vendido || 0) * num(p.precio) });
+    if(!esVaso(p) && vendido !== null && vendido < 0) negativos++;
+    filas.push({ p, vacio, habia, final, vendido, dif, valor: esVaso(p) ? 0 : (vendido || 0) * num(p.precio) });
   }
   return { filas, faltan, negativos };
 }
@@ -582,14 +589,19 @@ function recalcularCierre(){
   let unid = 0, total = 0;
   for(const f of filas){
     const td = $('vend-' + f.p.id);
-    td.textContent = f.vendido === null ? '—' : cant(f.vendido);
-    td.classList.toggle('neg', f.vendido !== null && f.vendido < 0);
+    if(esVaso(f.p)){
+      td.textContent = f.dif === null ? '—' : f.dif === 0 ? '✓' : (f.dif > 0 ? '+' : '') + cant(f.dif);
+      td.classList.toggle('neg', !!f.dif);
+    } else {
+      td.textContent = f.vendido === null ? '—' : cant(f.vendido);
+      td.classList.toggle('neg', f.vendido !== null && f.vendido < 0);
+    }
     if(!f.p.talla) unid += f.vendido || 0; total += f.valor;
   }
   $('cie-unid').textContent = cant(unid);
   $('cie-total').textContent = plata(total);
   $('cie-gran-total').textContent = plata(total + totalesVentas().total);
-  $('cie-vasos').innerHTML = htmlVasos(compararVasos(id => { const f = filas.find(x => x.p.id === id); return f ? f.vendido : null; }));
+  $('cie-vasos').innerHTML = htmlVasos(compararVasos(filas));
   $('cie-alerta').innerHTML =
     (negativos ? `<div class="alerta">⚠️ ${negativos} producto(s) con más unidades de las que había. Revisa el conteo o registra la entrada que faltó.</div>` : '') +
     (faltan ? `<div class="aviso">Faltan ${faltan} producto(s) por contar.</div>` : '');
@@ -615,7 +627,7 @@ async function cerrarNoche(){
     const k = granizados.porProducto[i.prodId] ||= { nombre: i.nombre, presentacion: i.presentacion, cantidad: 0, valor: 0 };
     k.cantidad += i.cantidad; k.valor += i.subtotal;
   }));
-  granizados.vasos = compararVasos(id => filas.find(x => x.p.id === id)?.vendido ?? null);
+  granizados.vasos = compararVasos(filas);
   if(!confirm(`¿Cerrar la noche?\n\nVenta por inventario: ${plata(total)} (${cant(unidades)} unid.)\nGranizados: ${plata(g.total)}\nTOTAL: ${plata(total + g.total)}`)) return;
   $('btn-cerrar').disabled = true;
   try{
@@ -643,7 +655,7 @@ function verNoche(id, datos){
     html += `<div class="cat"><div class="fila"><div class="cat-titulo">${esc(cat)}</div><div class="precio" style="font-size:.85rem">${plata(subtotal)}</div></div>
       <div class="tabla-scroll"><table><thead><tr><th>Producto</th><th>Inicial</th><th>Entró</th><th>Quedó</th><th>Vendido</th><th>Valor</th></tr></thead><tbody>`;
     for(const d of items){
-      html += `<tr><td><span class="prod">${esc(d.nombre)}</span><span class="pres">${esc(d.presentacion)} · ${plata(d.precio)}</span></td>
+      html += `<tr><td><span class="prod">${esc(d.nombre)}</span><span class="pres">${esc(d.presentacion)}${d.precio ? ' · ' + plata(d.precio) : ''}</span></td>
         <td>${cant(d.inicial)}</td><td>${d.entradas ? '+' + cant(d.entradas) : '—'}</td><td>${cant(d.final)}</td>
         <td class="vendido${d.vendido < 0 ? ' neg' : ''}">${cant(d.vendido)}</td><td>${plata(d.valor)}</td></tr>`;
     }
@@ -712,7 +724,7 @@ function escucharVentas(){
   if(!id){ pintarGranizados(); return; }
   escuchaVentas = VENTAS(id).orderBy('t', 'desc').onSnapshot(s => {
     ventas = s.docs.map(d => ({ id: d.id, ...d.data() }));
-    pintarGranizados();
+    pintarGranizados(); pintarInventario();
   }, e => console.error('ventas', e));
 }
 
@@ -732,22 +744,23 @@ function granizadosPorTalla(){
   return r;
 }
 // Compara vasos usados (inventario) contra granizados vendidos
-function compararVasos(vendidoDe){
-  const porTalla = granizadosPorTalla(), out = {};
-  for(const t of TALLAS){
-    const vaso = productos.find(p => p.talla === t && !esGranizado(p) && p.activo !== false);
-    if(!vaso) continue;
-    const usados = vendidoDe(vaso.id);
-    out[t] = { vasos: usados, granizados: porTalla[t] || 0 };
+function compararVasos(filas){
+  const out = {};
+  for(const f of filas){
+    if(!esVaso(f.p)) continue;
+    out[f.p.talla] = { inicial: f.habia, granizados: vasosVendidos(f.p), esperado: f.habia - vasosVendidos(f.p), contado: f.vacio ? null : f.final };
   }
   return out;
 }
 function htmlVasos(cmp){
-  const filas = Object.entries(cmp);
+  const filas = TALLAS.filter(t => cmp[t] && cmp[t].esperado !== undefined).map(t => [t, cmp[t]]);
   if(!filas.length) return '';
-  const malos = filas.filter(([, x]) => x.vasos !== null && x.vasos !== x.granizados);
+  const malos = filas.filter(([, x]) => x.contado !== null && x.contado !== x.esperado);
   return `<div class="${malos.length ? 'alerta' : 'aviso'}" style="${malos.length ? '' : 'background:var(--verde-bg);border-color:rgba(166,255,0,.35);color:var(--txt)'}">
-    🥤 <b>Vasos vs granizados</b><br>${filas.map(([t, x]) => `${t}: ${x.vasos === null ? '—' : cant(x.vasos)} vasos · ${cant(x.granizados)} vendidos${x.vasos !== null && x.vasos !== x.granizados ? ` <b>(dif. ${cant(x.vasos - x.granizados)})</b>` : ' ✓'}`).join('<br>')}</div>`;
+    🥤 <b>Vasos vs granizados vendidos</b><br>${filas.map(([t, x]) => {
+      const d = x.contado === null ? null : x.contado - x.esperado;
+      return `<b>${t}</b>: ${cant(x.inicial)} − ${cant(x.granizados)} vendidos = deben quedar <b>${cant(x.esperado)}</b> · contados ${x.contado === null ? '—' : cant(x.contado)}${d === null ? '' : d === 0 ? ' ✓' : ` <b>(${d < 0 ? 'faltan ' + cant(-d) : 'sobran ' + cant(d)})</b>`}`;
+    }).join('<br>')}</div>`;
 }
 
 function pintarGranizados(){
@@ -852,7 +865,7 @@ function pintarProductos(){
       html += `<div class="prod-row${p.activo === false ? ' inactivo' : ''}">
         <div><span class="prod">${esc(p.nombre)}</span><span class="pres">${esc(p.presentacion || '')}${esGranizado(p) ? ' · 🧊 venta manual' : ''}${p.activo === false ? ' · inactivo' : ''}</span></div>
         <div style="display:flex;align-items:center;gap:8px">
-          <span class="precio">${plata(p.precio)}</span>
+          <span class="precio">${esVaso(p) ? '<span class="pres">solo unidades</span>' : plata(p.precio)}</span>
           <button class="btn btn-ghost btn-sm" onclick="editarProducto('${p.id}')">✏️</button>
           <button class="btn btn-ghost btn-sm" title="${p.activo === false ? 'Activar' : 'Desactivar'}" onclick="toggleProducto('${p.id}')">${p.activo === false ? '▶️' : '⏸️'}</button>
         </div></div>`;
@@ -871,6 +884,7 @@ function cambioTipoProducto(){
 function limpiarFormProducto(){
   editandoId = null;
   $('pf-tipo').value = 'inventario'; $('pf-unid').value = 1; cambioTipoProducto();
+  $('pf-precio').parentElement.classList.remove('oculto');
   ['pf-nombre', 'pf-pres', 'pf-cat', 'pf-precio'].forEach(id => $(id).value = '');
   $('pf-titulo').textContent = '➕ Nuevo producto';
   $('pf-guardar').textContent = 'Guardar producto';
@@ -882,6 +896,7 @@ function editarProducto(id){
   const p = productos.find(x => x.id === id); if(!p) return;
   editandoId = id;
   $('pf-nombre').value = p.nombre || ''; $('pf-pres').value = p.presentacion || '';
+  $('pf-precio').parentElement.classList.toggle('oculto', esVaso(p));
   $('pf-tipo').value = esGranizado(p) ? 'granizado' : 'inventario'; $('pf-unid').value = p.unidades || 1; cambioTipoProducto();
   $('pf-cat').value = p.categoria || ''; $('pf-precio').value = p.precio ? Number(p.precio).toLocaleString('es-CO') : '';
   $('pf-titulo').textContent = '✏️ Editar producto';
