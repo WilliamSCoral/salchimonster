@@ -408,16 +408,22 @@ function pintarInventario(){
   const n = nocheAbierta;
   $('punto').classList.toggle('on', !!n);
   if(n){
-    $('estado-txt').textContent = 'Noche abierta';
-    $('estado-sub').textContent = `${fechaLarga(n.fecha)} · abrió ${n.abiertaPor || ''} a las ${horaDe(n.abiertaEn)}`;
+    $('estado-txt').textContent = 'Venta abierta';
+    $('estado-sub').innerHTML = `${esc(fechaLarga(n.fecha))} · abrió ${esc(n.abiertaPor || '')} a las ${horaDe(n.abiertaEn)}<br>💰 Base de caja: <b>${plata(n.baseCaja)}</b>${esAdmin() ? ` <button class="btn btn-ghost btn-sm" style="padding:2px 8px" onclick="editarBase()">✏️</button>` : ''}`;
     $('acciones-noche').innerHTML = `
       <button class="btn btn-ghost btn-sm" onclick="modalEntrada()">➕ Entrada de mercancía</button>
-      <button class="btn btn-sm" onclick="modalCierre()">🔒 Cerrar noche</button>`;
+      <button class="btn btn-sm" onclick="modalCierre()">🔒 Cerrar venta</button>`;
   } else {
-    $('estado-txt').textContent = 'Sin noche abierta';
+    $('estado-txt').textContent = 'Venta cerrada';
     $('estado-sub').textContent = ultimaCerrada ? `Último cierre: ${fechaLarga(ultimaCerrada.fecha)}` : 'Aún no se ha cerrado ninguna noche.';
-    $('acciones-noche').innerHTML = `<button class="btn btn-sm" onclick="modalApertura()">🌙 Abrir noche</button>`;
+    $('acciones-noche').innerHTML = esAdmin()
+      ? `<button class="btn btn-sm" onclick="modalApertura()">🌙 Abrir venta</button>`
+      : `<span class="sub">Esperando que un admin abra la venta.</span>`;
   }
+  // El módulo de venta solo se habilita con la venta abierta
+  $('nav-granizados').disabled = !n;
+  $('nav-granizados').textContent = n ? '🧊 Granizados' : '🔒 Granizados';
+  if(!n && !$('vista-granizados').classList.contains('oculto')) irA('inventario');
 
   const lista = activos();
   if(!lista.length){
@@ -479,15 +485,21 @@ function tablaConteo(idPrefix, valores, extraCols){
 
 // ── Abrir noche ──
 function modalApertura(){
+  if(!esAdmin()){ alert('⛔ Solo un admin puede abrir la venta.'); return; }
   if(!activos().length){ alert('Primero crea los productos.'); return; }
   abrirModal(`
-    <h3>🌙 Abrir noche — conteo inicial</h3>
-    <div class="sub">Cuenta lo que hay en este momento. Viene lleno con lo que quedó en el último cierre; corrige si algo no coincide.</div>
+    <h3>🌙 Abrir venta</h3>
+    <div class="lbl" style="margin-top:4px">💰 Base de caja (efectivo con que se inicia)</div>
+    <input id="ini-base" inputmode="numeric" placeholder="$ 0" oninput="formatoPlata(this)"/>
+    <div class="sub" style="margin:14px 0 0"><b>Conteo inicial:</b> cuenta lo que hay. Viene lleno con lo que quedó en el último cierre; corrige si algo no coincide.</div>
     ${tablaConteo('ini', p => stockGuardado(p.id))}
-    <div class="acciones"><button class="btn" id="btn-abrir" onclick="abrirNoche()">Abrir noche</button><button class="btn btn-ghost" onclick="cerrarModal()">Cancelar</button></div>`);
+    <div class="acciones"><button class="btn" id="btn-abrir" onclick="abrirNoche()">Abrir venta</button><button class="btn btn-ghost" onclick="cerrarModal()">Cancelar</button></div>`);
 }
 
 async function abrirNoche(){
+  if(!esAdmin()) return;
+  const baseCaja = valorPlata('ini-base');
+  if(!baseCaja && !confirm('La base de caja está en $0. ¿Abrir la venta así?')) return;
   const conteo = {}, diferencias = [];
   for(const p of activos()){
     const el = $('ini-' + p.id);
@@ -498,18 +510,29 @@ async function abrirNoche(){
     if(ultimaCerrada && v !== stockGuardado(p.id)) diferencias.push({ id: p.id, nombre: `${p.nombre} ${p.presentacion || ''}`.trim(), esperado: stockGuardado(p.id), contado: v });
   }
   if(diferencias.length && !confirm(`⚠️ ${diferencias.length} producto(s) no coinciden con el último cierre:\n\n` +
-      diferencias.map(d => `• ${d.nombre}: quedó ${cant(d.esperado)}, ahora hay ${cant(d.contado)}`).join('\n') + '\n\n¿Abrir la noche igual?')) return;
+      diferencias.map(d => `• ${d.nombre}: quedó ${cant(d.esperado)}, ahora hay ${cant(d.contado)}`).join('\n') + '\n\n¿Abrir la venta igual?')) return;
   $('btn-abrir').disabled = true;
   try{
     const ya = await NOCHES().where('estado', '==', 'abierta').limit(1).get();
-    if(!ya.empty){ alert('Ya hay una noche abierta.'); cerrarModal(); return; }
+    if(!ya.empty){ alert('Ya hay una venta abierta.'); cerrarModal(); return; }
     await NOCHES().add({
       fecha: hoy(), estado: 'abierta', abiertaEn: TS(), abiertaPor: usuarioNombre, abiertaPorUid: usuario.uid,
-      conteoInicial: conteo, entradas: {}, movimientos: [], diferenciasApertura: diferencias
+      baseCaja, conteoInicial: conteo, entradas: {}, movimientos: [], diferenciasApertura: diferencias
     });
-    logAudit('abrir_noche', 'Abrió la noche de licorera', { diferencias: diferencias.length });
-    cerrarModal(); toast('🌙 Noche abierta');
+    logAudit('abrir_noche', `Abrió la venta con base ${plata(baseCaja)}`, { baseCaja, diferencias: diferencias.length });
+    cerrarModal(); toast('🌙 Venta abierta');
   } catch(e){ alert('No se pudo abrir: ' + e.message); $('btn-abrir').disabled = false; }
+}
+
+// ── Editar base de caja (solo admin) ──
+async function editarBase(){
+  if(!esAdmin() || !nocheAbierta) return;
+  const txt = prompt('Nueva base de caja:', String(nocheAbierta.baseCaja || 0));
+  if(txt === null) return;
+  const nueva = parseInt(txt.replace(/\D/g, ''), 10) || 0;
+  await NOCHES().doc(nocheAbierta.id).update({ baseCaja: nueva });
+  logAudit('editar_base', `Base de caja: ${plata(nocheAbierta.baseCaja)} → ${plata(nueva)}`, { antes: nocheAbierta.baseCaja || 0, despues: nueva });
+  toast('💰 Base actualizada');
 }
 
 // ── Entrada de mercancía durante la noche ──
@@ -549,7 +572,7 @@ async function guardarEntrada(){
 function modalCierre(){
   const n = nocheAbierta;
   abrirModal(`
-    <h3>🔒 Cerrar noche — conteo final</h3>
+    <h3>🔒 Cerrar venta — conteo final</h3>
     <div class="sub">Cuenta lo que queda. Vendido = inicial + entradas − lo que queda.</div>
     ${tablaConteo('fin', () => '', {
       head: '<th>Había</th><th>Vendido</th>',
@@ -565,7 +588,7 @@ function modalCierre(){
     </div>
     <div id="cie-vasos"></div>
     <div id="cie-alerta"></div>
-    <div class="acciones"><button class="btn" id="btn-cerrar" onclick="cerrarNoche()">Cerrar noche y guardar</button><button class="btn btn-ghost" onclick="cerrarModal()">Seguir abierta</button></div>`);
+    <div class="acciones"><button class="btn" id="btn-cerrar" onclick="cerrarNoche()">Cerrar venta y guardar</button><button class="btn btn-ghost" onclick="cerrarModal()">Seguir abierta</button></div>`);
 }
 
 function calcularCierre(){
@@ -622,24 +645,25 @@ async function cerrarNoche(){
     if(!f.p.talla) unidades += f.vendido; total += f.valor;
   }
   const g = totalesVentas();
+  const base = num(nocheAbierta.baseCaja), fechaNoche = nocheAbierta.fecha || hoy();
   const granizados = { total: g.total, efectivo: g.efectivo, transferencia: g.transferencia, cantidad: g.granizados, ventas: g.ventas, porProducto: {} };
   ventas.forEach(v => v.items.forEach(i => {
     const k = granizados.porProducto[i.prodId] ||= { nombre: i.nombre, presentacion: i.presentacion, cantidad: 0, valor: 0 };
     k.cantidad += i.cantidad; k.valor += i.subtotal;
   }));
   granizados.vasos = compararVasos(filas);
-  if(!confirm(`¿Cerrar la noche?\n\nVenta por inventario: ${plata(total)} (${cant(unidades)} unid.)\nGranizados: ${plata(g.total)}\nTOTAL: ${plata(total + g.total)}`)) return;
+  if(!confirm(`¿Cerrar la venta?\n\nVenta por inventario: ${plata(total)} (${cant(unidades)} unid.)\nGranizados: ${plata(g.total)}\nTOTAL: ${plata(total + g.total)}`)) return;
   $('btn-cerrar').disabled = true;
   try{
     const id = nocheAbierta.id;
     await NOCHES().doc(id).update({
       estado: 'cerrada', cerradaEn: TS(), cerradaPor: usuarioNombre, cerradaPorUid: usuario.uid,
-      conteoFinal, detalle, granizados, resumen: { unidades, total, granizados: g.total, totalNoche: total + g.total }
+      conteoFinal, detalle, granizados, resumen: { unidades, total, granizados: g.total, totalNoche: total + g.total, baseCaja: base, efectivoCaja: base + g.efectivo }
     });
     logAudit('cerrar_noche', `Cerró la noche: ${cant(unidades)} unidades, ${plata(total)}`, { unidades, total });
-    cerrarModal(); toast('🔒 Noche cerrada');
-    verNoche(id, { fecha: nocheAbierta?.fecha || hoy(), detalle, granizados, resumen: { unidades, total, granizados: g.total, totalNoche: total + g.total } });
-  } catch(e){ alert('No se pudo cerrar: ' + e.message); $('btn-cerrar').disabled = false; }
+    cerrarModal(); toast('🔒 Venta cerrada');
+    verNoche(id, { fecha: fechaNoche, detalle, granizados, resumen: { unidades, total, granizados: g.total, totalNoche: total + g.total, baseCaja: base, efectivoCaja: base + g.efectivo } });
+  } catch(e){ alert('No se pudo cerrar: ' + e.message); if($('btn-cerrar')) $('btn-cerrar').disabled = false; }
 }
 
 // ── Detalle de una noche cerrada ──
@@ -673,6 +697,8 @@ function verNoche(id, datos){
       <div class="tot"><div class="k">Venta por inventario</div><div class="v">${plata(h.resumen?.total)}</div></div>
       <div class="tot"><div class="k">🧊 Granizados</div><div class="v">${plata(h.resumen?.granizados)}</div></div>
       <div class="tot"><div class="k">Total noche</div><div class="v neon">${plata(h.resumen?.totalNoche ?? h.resumen?.total)}</div></div>
+      ${h.resumen?.baseCaja !== undefined ? `<div class="tot"><div class="k">💰 Base de caja</div><div class="v">${plata(h.resumen.baseCaja)}</div></div>
+      <div class="tot"><div class="k">💵 Efectivo granizados + base</div><div class="v">${plata(h.resumen.efectivoCaja)}</div></div>` : ''}
     </div>
     <div class="acciones"><button class="btn btn-ghost btn-full" onclick="cerrarModal()">Cerrar</button></div>`;
   abrirModal(html);
@@ -766,7 +792,7 @@ function htmlVasos(cmp){
 function pintarGranizados(){
   if(!$('gran-cuerpo')) return;
   if(!nocheAbierta){
-    $('gran-cuerpo').innerHTML = `<div class="card vacio">🌙 No hay noche abierta.<br>Ábrela en <b>Inventario</b> para empezar a vender.<br><br>
+    $('gran-cuerpo').innerHTML = `<div class="card vacio">🔒 La venta está cerrada.<br>Un admin debe abrirla en <b>Inventario</b>.<br><br>
       <button class="btn btn-sm" onclick="irA('inventario')">Ir a Inventario</button></div>`;
     return;
   }
@@ -807,6 +833,8 @@ function pintarGranizados(){
       <div class="tot"><div class="k">💵 Efectivo</div><div class="v">${plata(t.efectivo)}</div></div>
       <div class="tot"><div class="k">🏦 Transferencia</div><div class="v">${plata(t.transferencia)}</div></div>
       <div class="tot"><div class="k">Granizados</div><div class="v">${cant(t.granizados)}</div></div>
+      <div class="tot"><div class="k">💰 Base de caja</div><div class="v">${plata(nocheAbierta.baseCaja)}</div></div>
+      <div class="tot"><div class="k">💵 Efectivo en caja</div><div class="v">${plata(num(nocheAbierta.baseCaja) + t.efectivo)}</div></div>
     </div>
     <div style="margin-top:10px">${ventas.length ? ventas.map(v => `
       <div class="venta-row"><div>
@@ -936,7 +964,7 @@ async function guardarProducto(){
 
 async function toggleProducto(id){
   const p = productos.find(x => x.id === id); if(!p || !esAdmin()) return;
-  if(nocheAbierta && p.activo !== false && !esGranizado(p) && !confirm('Hay una noche abierta. Si lo desactivas no aparecerá en el conteo de cierre. ¿Desactivar?')) return;
+  if(nocheAbierta && p.activo !== false && !esGranizado(p) && !confirm('Hay una venta abierta. Si lo desactivas no aparecerá en el conteo de cierre. ¿Desactivar?')) return;
   await PRODUCTOS().doc(id).update({ activo: p.activo === false, actualizadoEn: TS() });
 }
 </script>
