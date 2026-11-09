@@ -1,0 +1,687 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+<meta name="theme-color" content="#07090a"/>
+<title>🍾 Licorera — Salchimonster</title>
+<style>
+  :root{
+    --bg:#07090a; --bg2:#0e1311; --card:#121915; --card2:#18211c; --line:#233029;
+    --txt:#e9f5ec; --muted:#8aa294; --verde:#a6ff00; --verde2:#7ed400; --verde-bg:rgba(166,255,0,.10);
+    --rojo:#ff4d6d; --rojo-bg:rgba(255,77,109,.12); --amarillo:#ffd23f; --amarillo-bg:rgba(255,210,63,.12);
+    --radio:14px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{background:var(--bg);color:var(--txt);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font-size:15px;-webkit-tap-highlight-color:transparent}
+  button{font:inherit;cursor:pointer;border:0}
+  input,select{font:inherit;color:var(--txt);background:var(--bg2);border:1px solid var(--line);border-radius:10px;padding:10px 12px;width:100%;outline:none}
+  input:focus,select:focus{border-color:var(--verde);box-shadow:0 0 0 3px var(--verde-bg)}
+  .oculto{display:none!important}
+  .neon{color:var(--verde);text-shadow:0 0 12px rgba(166,255,0,.45)}
+
+  /* ── Login ── */
+  #login{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;
+    background:radial-gradient(circle at 50% 0%,rgba(166,255,0,.14),transparent 60%)}
+  .login-logo{font-size:3.2rem}
+  .login-title{font-size:2rem;font-weight:800;letter-spacing:.5px;margin-top:6px}
+  .login-sub{color:var(--muted);margin-bottom:22px}
+  .login-box{width:100%;max-width:360px;background:var(--card);border:1px solid var(--line);border-radius:var(--radio);padding:22px;display:flex;flex-direction:column;gap:14px}
+  .lbl{font-size:.78rem;color:var(--muted);margin-bottom:5px;text-transform:uppercase;letter-spacing:.5px}
+  .err{color:var(--rojo);font-size:.85rem;min-height:1.1em;text-align:center}
+
+  /* ── Botones ── */
+  .btn{background:var(--verde);color:#071000;font-weight:700;border-radius:12px;padding:12px 16px;transition:transform .08s, box-shadow .15s}
+  .btn:hover{box-shadow:0 0 18px rgba(166,255,0,.35)}
+  .btn:active{transform:scale(.97)}
+  .btn:disabled{opacity:.5;cursor:not-allowed}
+  .btn-ghost{background:transparent;color:var(--txt);border:1px solid var(--line);font-weight:600}
+  .btn-ghost:hover{border-color:var(--verde);box-shadow:none}
+  .btn-danger{background:var(--rojo);color:#fff}
+  .btn-sm{padding:7px 11px;font-size:.85rem;border-radius:9px}
+  .btn-full{width:100%}
+
+  /* ── Header ── */
+  header{position:sticky;top:0;z-index:10;background:rgba(7,9,10,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+  .h-top{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;gap:10px;max-width:960px;margin:0 auto}
+  .h-logo{font-weight:800;font-size:1.15rem}
+  .h-user{font-size:.8rem;color:var(--muted);margin-top:2px}
+  .badge{display:inline-block;font-size:.68rem;padding:2px 7px;border-radius:99px;margin-left:6px;background:var(--card2);color:var(--muted);border:1px solid var(--line);vertical-align:middle}
+  .badge.admin{color:var(--verde);border-color:rgba(166,255,0,.4);background:var(--verde-bg)}
+  nav{display:flex;gap:6px;padding:0 12px 10px;max-width:960px;margin:0 auto;overflow-x:auto}
+  nav button{background:var(--card);color:var(--muted);border:1px solid var(--line);border-radius:99px;padding:8px 14px;font-weight:600;white-space:nowrap}
+  nav button.activo{background:var(--verde);color:#071000;border-color:var(--verde)}
+  nav button:disabled{opacity:.45;cursor:not-allowed}
+
+  main{max-width:960px;margin:0 auto;padding:16px 14px 90px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radio);padding:16px;margin-bottom:14px}
+  .card h2{font-size:1.05rem;margin-bottom:4px}
+  .card .sub{color:var(--muted);font-size:.85rem}
+  .fila{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+  .acciones{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+  .vacio{color:var(--muted);text-align:center;padding:24px 8px}
+
+  /* ── Estado de la noche ── */
+  .estado{display:flex;align-items:center;gap:8px;font-weight:700}
+  .punto{width:10px;height:10px;border-radius:50%;background:var(--muted)}
+  .punto.on{background:var(--verde);box-shadow:0 0 10px var(--verde);animation:latido 1.6s infinite}
+  @keyframes latido{50%{opacity:.4}}
+
+  /* ── Tablas de inventario ── */
+  .cat{margin-top:14px}
+  .cat-titulo{font-size:.75rem;text-transform:uppercase;letter-spacing:1px;color:var(--verde);margin:0 2px 6px;font-weight:700}
+  .tabla-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  table{width:100%;border-collapse:collapse}
+  .modal td,.modal th{padding-left:4px;padding-right:4px}
+  .modal td{font-size:.9rem}
+  th{font-size:.7rem;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);font-weight:600;text-align:right;padding:6px 6px;border-bottom:1px solid var(--line)}
+  th:first-child,td:first-child{text-align:left}
+  td{padding:9px 6px;border-bottom:1px solid var(--line);text-align:right;font-variant-numeric:tabular-nums}
+  tr:last-child td{border-bottom:0}
+  .prod{font-weight:600}
+  .pres{display:block;font-size:.75rem;color:var(--muted);font-weight:400}
+  td input{width:76px;text-align:center;padding:7px 6px}
+  .vendido{font-weight:800;color:var(--verde)}
+  .neg{color:var(--rojo)!important}
+  .alerta{background:var(--rojo-bg);border:1px solid rgba(255,77,109,.4);color:#ffb3c1;border-radius:10px;padding:10px 12px;font-size:.85rem;margin-top:12px}
+  .aviso{background:var(--amarillo-bg);border:1px solid rgba(255,210,63,.35);color:#ffe8a3;border-radius:10px;padding:10px 12px;font-size:.85rem;margin-top:12px}
+
+  /* ── Totales ── */
+  .totales{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-top:14px}
+  .tot{background:var(--bg2);border:1px solid var(--line);border-radius:12px;padding:12px}
+  .tot .k{font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
+  .tot .v{font-size:1.35rem;font-weight:800;margin-top:3px}
+
+  /* ── Historial ── */
+  .hist-item{display:flex;justify-content:space-between;align-items:center;padding:12px 4px;border-bottom:1px solid var(--line);cursor:pointer}
+  .hist-item:last-child{border-bottom:0}
+  .hist-item:hover .hist-fecha{color:var(--verde)}
+  .hist-fecha{font-weight:600;text-transform:capitalize}
+  .hist-meta{font-size:.78rem;color:var(--muted)}
+
+  /* ── Productos ── */
+  .form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin-top:12px}
+  .prod-row{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 4px;border-bottom:1px solid var(--line)}
+  .prod-row:last-child{border-bottom:0}
+  .prod-row.inactivo{opacity:.45}
+  .precio{color:var(--verde);font-weight:700;font-variant-numeric:tabular-nums}
+
+  /* ── Modal ── */
+  .modal-fondo{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:50;display:flex;align-items:flex-end;justify-content:center;padding:0}
+  .modal{background:var(--card);border:1px solid var(--line);border-radius:18px 18px 0 0;width:100%;max-width:640px;max-height:92vh;overflow:auto;padding:18px}
+  @media (min-width:700px){ .modal-fondo{align-items:center;padding:20px} .modal{border-radius:18px} }
+  .modal h3{font-size:1.1rem;margin-bottom:12px}
+
+  .toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:var(--card2);border:1px solid var(--verde);color:var(--txt);padding:10px 16px;border-radius:12px;z-index:60;box-shadow:0 0 20px rgba(166,255,0,.25);font-size:.9rem}
+</style>
+</head>
+<body>
+
+<!-- ═══════════ LOGIN ═══════════ -->
+<section id="login">
+  <div class="login-logo">🍾</div>
+  <div class="login-title neon">Licorera</div>
+  <div class="login-sub">Salchimonster</div>
+  <div class="login-box">
+    <div><div class="lbl">Usuario</div><input id="l-user" type="text" placeholder="Tu usuario" autocomplete="username" autocapitalize="none"/></div>
+    <div><div class="lbl">Contraseña</div><input id="l-pass" type="password" placeholder="••••••••" autocomplete="current-password"/></div>
+    <button class="btn btn-full" id="btn-login" onclick="doLogin()">Ingresar</button>
+    <div class="err" id="l-err"></div>
+  </div>
+</section>
+
+<!-- ═══════════ APP ═══════════ -->
+<section id="app" class="oculto">
+  <header>
+    <div class="h-top">
+      <div>
+        <div class="h-logo">🍾 <span class="neon">Licorera</span></div>
+        <div class="h-user" id="h-user"></div>
+      </div>
+      <button class="btn btn-ghost btn-sm" onclick="doLogout()">Salir</button>
+    </div>
+    <nav>
+      <button id="nav-inventario" class="activo" onclick="irA('inventario')">📦 Inventario</button>
+      <button id="nav-productos" class="solo-admin" onclick="irA('productos')">🍾 Productos</button>
+      <button disabled title="Próximo módulo">🧊 Granizados · pronto</button>
+    </nav>
+  </header>
+
+  <main>
+    <!-- ── INVENTARIO ── -->
+    <div id="vista-inventario">
+      <div class="card">
+        <div class="fila">
+          <div>
+            <div class="estado"><span class="punto" id="punto"></span><span id="estado-txt">Cargando…</span></div>
+            <div class="sub" id="estado-sub"></div>
+          </div>
+          <div class="acciones" style="margin-top:0" id="acciones-noche"></div>
+        </div>
+      </div>
+      <div id="inv-cuerpo"></div>
+
+      <div class="card">
+        <h2>📅 Noches anteriores</h2>
+        <div class="sub">Toca una noche para ver el detalle de lo vendido.</div>
+        <div id="historial" style="margin-top:8px"></div>
+      </div>
+    </div>
+
+    <!-- ── PRODUCTOS (admin) ── -->
+    <div id="vista-productos" class="oculto">
+      <div class="card">
+        <h2 id="pf-titulo">➕ Nuevo producto</h2>
+        <div class="sub">Cada presentación es un producto distinto (ej. Aguardiente media / botella).</div>
+        <div class="form-grid">
+          <div><div class="lbl">Nombre</div><input id="pf-nombre" placeholder="Aguardiente Antioqueño"/></div>
+          <div><div class="lbl">Presentación</div><input id="pf-pres" placeholder="Media, botella, lata…" list="lista-pres"/></div>
+          <div><div class="lbl">Categoría</div><input id="pf-cat" placeholder="Aguardiente" list="lista-cat"/></div>
+          <div><div class="lbl">Precio de venta</div><input id="pf-precio" inputmode="numeric" placeholder="$ 0" oninput="formatoPlata(this)"/></div>
+        </div>
+        <datalist id="lista-pres"><option>Media</option><option>Botella</option><option>Garrafa</option><option>Lata</option><option>Botella 330 ml</option><option>Litro</option><option>Unidad</option></datalist>
+        <datalist id="lista-cat"></datalist>
+        <div class="acciones">
+          <button class="btn" id="pf-guardar" onclick="guardarProducto()">Guardar producto</button>
+          <button class="btn btn-ghost oculto" id="pf-cancelar" onclick="limpiarFormProducto()">Cancelar edición</button>
+        </div>
+        <div class="err" id="pf-err" style="text-align:left;margin-top:8px"></div>
+      </div>
+      <div class="card">
+        <h2>Lista de productos</h2>
+        <div id="lista-productos"></div>
+      </div>
+    </div>
+  </main>
+</section>
+
+<div id="modal-raiz"></div>
+
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+<script>
+'use strict';
+
+// ══════════════════════════════════════
+//   FIREBASE (mismo proyecto y usuarios que Salchimonster)
+// ══════════════════════════════════════
+firebase.initializeApp({
+  apiKey: "AIzaSyD0oZ1f7JpoaTrJDzby5W5XlHh1Q-hSGfk",
+  authDomain: "facturas-salchimonster.firebaseapp.com",
+  projectId: "facturas-salchimonster",
+  storageBucket: "facturas-salchimonster.appspot.com",
+  messagingSenderId: "862583552527",
+  appId: "1:862583552527:web:salchimonster"
+});
+const auth = firebase.auth();
+const db   = firebase.firestore();
+const TS   = () => firebase.firestore.FieldValue.serverTimestamp();
+const INC  = n  => firebase.firestore.FieldValue.increment(n);
+
+// Colecciones propias de la licorera (no tocan nada de granizados ni facturas)
+const PRODUCTOS = () => db.collection('licorera_productos');
+const NOCHES    = () => db.collection('licorera_noches');
+const AUDIT_LOG = () => db.collection('audit_log');
+
+// ══════════════════════════════════════
+//   UTILIDADES
+// ══════════════════════════════════════
+const $   = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const plata = n => (n < 0 ? '−$' : '$') + Math.round(Math.abs(n || 0)).toLocaleString('es-CO');
+const cant  = n => (Math.round((n || 0) * 100) / 100).toLocaleString('es-CO');
+const hoy   = () => new Date().toLocaleDateString('en-CA');           // YYYY-MM-DD en hora local
+const fechaLarga = f => new Date(f + 'T00:00').toLocaleDateString('es-CO', {weekday:'long', day:'numeric', month:'long'});
+const horaDe = ts => ts?.toDate ? ts.toDate().toLocaleTimeString('es-CO', {hour:'2-digit', minute:'2-digit'}) : '';
+const num = v => { const n = parseFloat(String(v ?? '').replace(',', '.')); return isFinite(n) ? n : 0; };
+const valorPlata = id => parseInt(($(id).value || '').replace(/\D/g, ''), 10) || 0;
+function formatoPlata(el){
+  const raw = el.value.replace(/\D/g, '');
+  el.value = raw ? parseInt(raw, 10).toLocaleString('es-CO') : '';
+}
+function toast(msg){
+  document.querySelectorAll('.toast').forEach(x => x.remove());
+  const t = document.createElement('div'); t.className = 'toast'; t.textContent = msg;
+  document.body.appendChild(t); setTimeout(() => t.remove(), 2600);
+}
+function logAudit(accion, detalle, datos){
+  AUDIT_LOG().add({
+    ts: TS(), fecha: hoy(), hora: new Date().toTimeString().slice(0, 8),
+    uid: usuario?.uid || '', usuario: usuarioNombre, accion, modulo: 'licorera-inventario', detalle, datos: datos || {}
+  }).catch(() => {});
+}
+
+// ══════════════════════════════════════
+//   ESTADO
+// ══════════════════════════════════════
+let usuario = null, usuarioNombre = '', usuarioRol = 'mesero';
+let productos = [];          // todos los productos (activos e inactivos)
+let nocheAbierta = null;     // { id, ...datos } o null
+let ultimaCerrada = null;    // última noche cerrada (su conteo final = stock actual)
+let historial = [];
+let editandoId = null;
+let escuchas = [];
+const esAdmin = () => usuarioRol === 'admin';
+
+// ══════════════════════════════════════
+//   SESIÓN
+// ══════════════════════════════════════
+auth.onAuthStateChanged(async u => {
+  if(!u){
+    escuchas.forEach(f => f()); escuchas = [];
+    $('app').classList.add('oculto'); $('login').classList.remove('oculto');
+    return;
+  }
+  try{
+    const perfil = await db.collection('usuarios').doc(u.uid).get();
+    if(!perfil.exists){ await auth.signOut(); $('l-err').textContent = 'Tu usuario no tiene perfil en el sistema.'; return; }
+    usuarioRol    = perfil.data().role || 'mesero';
+    usuarioNombre = perfil.data().nombre || u.email.split('@')[0];
+  } catch(e){
+    console.error('perfil', e);
+    usuarioRol = 'mesero'; usuarioNombre = u.email.split('@')[0];
+  }
+  usuario = u;
+  $('h-user').innerHTML = `${esc(usuarioNombre)}<span class="badge${esAdmin() ? ' admin' : ''}">${esAdmin() ? '👑 Admin' : esc(usuarioRol)}</span>`;
+  document.querySelectorAll('.solo-admin').forEach(el => el.classList.toggle('oculto', !esAdmin()));
+  $('login').classList.add('oculto'); $('app').classList.remove('oculto');
+  irA('inventario');
+  escuchar();
+});
+
+async function doLogin(){
+  let user = $('l-user').value.trim();
+  if(user && !user.includes('@')) user += '@salchimonster.app';     // mismo formato de usuario que Salchimonster
+  $('l-err').textContent = ''; $('btn-login').disabled = true;
+  try{
+    await auth.signInWithEmailAndPassword(user, $('l-pass').value);
+    logAudit('login', `Inició sesión en licorera: ${user}`);
+  } catch(e){ $('l-err').textContent = 'Usuario o contraseña incorrectos.'; }
+  $('btn-login').disabled = false;
+}
+$('l-pass').addEventListener('keydown', e => { if(e.key === 'Enter') doLogin(); });
+function doLogout(){ auth.signOut(); }
+
+function irA(vista){
+  ['inventario', 'productos'].forEach(v => {
+    $('vista-' + v).classList.toggle('oculto', v !== vista);
+    $('nav-' + v).classList.toggle('activo', v === vista);
+  });
+}
+
+// ══════════════════════════════════════
+//   ESCUCHAS EN TIEMPO REAL
+// ══════════════════════════════════════
+function errorFirestore(donde){
+  return e => {
+    console.error(donde, e);
+    const msg = e.code === 'permission-denied'
+      ? 'Firebase no da permiso para leer/escribir la licorera. Hay que agregar las colecciones licorera_* a las reglas de Firestore.'
+      : 'Error de conexión: ' + (e.message || e);
+    $('inv-cuerpo').innerHTML = `<div class="alerta">⚠️ ${esc(msg)}</div>`;
+  };
+}
+
+function escuchar(){
+  escuchas.forEach(f => f()); escuchas = [];
+  escuchas.push(PRODUCTOS().onSnapshot(s => {
+    productos = s.docs.map(d => ({ id: d.id, ...d.data() }))
+      .sort((a, b) => (a.categoria || '').localeCompare(b.categoria || '') || (a.nombre || '').localeCompare(b.nombre || '') || (a.presentacion || '').localeCompare(b.presentacion || ''));
+    pintarProductos(); pintarInventario();
+  }, errorFirestore('productos')));
+
+  escuchas.push(NOCHES().where('estado', '==', 'abierta').limit(1).onSnapshot(s => {
+    nocheAbierta = s.empty ? null : { id: s.docs[0].id, ...s.docs[0].data() };
+    pintarInventario();
+  }, errorFirestore('noche abierta')));
+
+  escuchas.push(NOCHES().orderBy('cerradaEn', 'desc').limit(30).onSnapshot(s => {
+    historial = s.docs.map(d => ({ id: d.id, ...d.data() }));
+    ultimaCerrada = historial[0] || null;
+    pintarInventario(); pintarHistorial();
+  }, errorFirestore('historial')));
+}
+
+// ══════════════════════════════════════
+//   CÁLCULOS
+// ══════════════════════════════════════
+const activos = () => productos.filter(p => p.activo !== false);
+// Stock con el que quedó la última noche cerrada (si el producto es nuevo, 0)
+const stockGuardado = id => num(ultimaCerrada?.conteoFinal?.[id]);
+// Durante la noche: lo contado al abrir + lo que entró
+const stockEnNoche = (n, id) => num(n.conteoInicial?.[id]) + num(n.entradas?.[id]);
+
+function agrupar(lista){
+  const g = {};
+  lista.forEach(p => (g[p.categoria || 'Otros'] ||= []).push(p));
+  return Object.entries(g);
+}
+
+// ══════════════════════════════════════
+//   VISTA INVENTARIO
+// ══════════════════════════════════════
+function pintarInventario(){
+  const n = nocheAbierta;
+  $('punto').classList.toggle('on', !!n);
+  if(n){
+    $('estado-txt').textContent = 'Noche abierta';
+    $('estado-sub').textContent = `${fechaLarga(n.fecha)} · abrió ${n.abiertaPor || ''} a las ${horaDe(n.abiertaEn)}`;
+    $('acciones-noche').innerHTML = `
+      <button class="btn btn-ghost btn-sm" onclick="modalEntrada()">➕ Entrada de mercancía</button>
+      <button class="btn btn-sm" onclick="modalCierre()">🔒 Cerrar noche</button>`;
+  } else {
+    $('estado-txt').textContent = 'Sin noche abierta';
+    $('estado-sub').textContent = ultimaCerrada ? `Último cierre: ${fechaLarga(ultimaCerrada.fecha)}` : 'Aún no se ha cerrado ninguna noche.';
+    $('acciones-noche').innerHTML = `<button class="btn btn-sm" onclick="modalApertura()">🌙 Abrir noche</button>`;
+  }
+
+  const lista = activos();
+  if(!lista.length){
+    $('inv-cuerpo').innerHTML = `<div class="card vacio">No hay productos todavía.${esAdmin() ? '<br><br><button class="btn btn-sm" onclick="irA(\'productos\')">➕ Crear productos</button>' : '<br>Pídele a un admin que los cree.'}</div>`;
+    return;
+  }
+
+  let html = `<div class="card"><h2>${n ? '📦 Stock de esta noche' : '📦 Stock actual'}</h2>
+    <div class="sub">${n ? 'Lo contado al abrir más las entradas. Al cerrar se cuenta lo que queda y el sistema calcula la venta.' : 'Lo que quedó en el último cierre. Se confirma al abrir la noche.'}</div>`;
+  for(const [cat, prods] of agrupar(lista)){
+    html += `<div class="cat"><div class="cat-titulo">${esc(cat)}</div><div class="tabla-scroll"><table>
+      <thead><tr><th>Producto</th>${n ? '<th>Inicial</th><th>Entradas</th>' : ''}<th>Stock</th></tr></thead><tbody>`;
+    for(const p of prods){
+      const st = n ? stockEnNoche(n, p.id) : stockGuardado(p.id);
+      html += `<tr><td><span class="prod">${esc(p.nombre)}</span><span class="pres">${esc(p.presentacion || '')}</span></td>
+        ${n ? `<td>${cant(n.conteoInicial?.[p.id])}</td><td>${num(n.entradas?.[p.id]) ? '+' + cant(n.entradas[p.id]) : '—'}</td>` : ''}
+        <td><b>${cant(st)}</b></td></tr>`;
+    }
+    html += `</tbody></table></div></div>`;
+  }
+  html += `</div>`;
+  $('inv-cuerpo').innerHTML = html;
+}
+
+function pintarHistorial(){
+  if(!historial.length){ $('historial').innerHTML = `<div class="vacio">Todavía no hay noches cerradas.</div>`; return; }
+  $('historial').innerHTML = historial.map(h => `
+    <div class="hist-item" onclick="verNoche('${h.id}')">
+      <div><div class="hist-fecha">${esc(fechaLarga(h.fecha))}</div>
+        <div class="hist-meta">${cant(h.resumen?.unidades)} unidades · cerró ${esc(h.cerradaPor || '')} ${horaDe(h.cerradaEn)}</div></div>
+      <div class="precio">${plata(h.resumen?.total)}</div>
+    </div>`).join('');
+}
+
+// ══════════════════════════════════════
+//   MODALES
+// ══════════════════════════════════════
+function abrirModal(html){
+  $('modal-raiz').innerHTML = `<div class="modal-fondo" onclick="if(event.target===this)cerrarModal()"><div class="modal">${html}</div></div>`;
+}
+function cerrarModal(){ $('modal-raiz').innerHTML = ''; }
+
+// Tabla de conteo con un input por producto
+function tablaConteo(idPrefix, valores, extraCols){
+  let html = '';
+  for(const [cat, prods] of agrupar(activos())){
+    html += `<div class="cat"><div class="cat-titulo">${esc(cat)}</div><div class="tabla-scroll"><table><thead><tr><th>Producto</th>${extraCols ? extraCols.head : ''}<th>Cuenta</th></tr></thead><tbody>`;
+    for(const p of prods){
+      const v = valores(p);
+      html += `<tr><td><span class="prod">${esc(p.nombre)}</span><span class="pres">${esc(p.presentacion || '')}</span></td>
+        ${extraCols ? extraCols.fila(p) : ''}
+        <td><input id="${idPrefix}-${p.id}" type="number" inputmode="decimal" min="0" step="any" value="${v === '' ? '' : v}" ${extraCols?.oninput ? `oninput="${extraCols.oninput}"` : ''}/></td></tr>`;
+    }
+    html += `</tbody></table></div></div>`;
+  }
+  return html;
+}
+
+// ── Abrir noche ──
+function modalApertura(){
+  if(!activos().length){ alert('Primero crea los productos.'); return; }
+  abrirModal(`
+    <h3>🌙 Abrir noche — conteo inicial</h3>
+    <div class="sub">Cuenta lo que hay en este momento. Viene lleno con lo que quedó en el último cierre; corrige si algo no coincide.</div>
+    ${tablaConteo('ini', p => stockGuardado(p.id))}
+    <div class="acciones"><button class="btn" id="btn-abrir" onclick="abrirNoche()">Abrir noche</button><button class="btn btn-ghost" onclick="cerrarModal()">Cancelar</button></div>`);
+}
+
+async function abrirNoche(){
+  const conteo = {}, diferencias = [];
+  for(const p of activos()){
+    const el = $('ini-' + p.id);
+    if(el.value.trim() === ''){ el.focus(); alert(`Falta contar: ${p.nombre} ${p.presentacion || ''}`); return; }
+    const v = num(el.value);
+    if(v < 0){ el.focus(); alert('No puede haber cantidades negativas.'); return; }
+    conteo[p.id] = v;
+    if(ultimaCerrada && v !== stockGuardado(p.id)) diferencias.push({ id: p.id, nombre: `${p.nombre} ${p.presentacion || ''}`.trim(), esperado: stockGuardado(p.id), contado: v });
+  }
+  if(diferencias.length && !confirm(`⚠️ ${diferencias.length} producto(s) no coinciden con el último cierre:\n\n` +
+      diferencias.map(d => `• ${d.nombre}: quedó ${cant(d.esperado)}, ahora hay ${cant(d.contado)}`).join('\n') + '\n\n¿Abrir la noche igual?')) return;
+  $('btn-abrir').disabled = true;
+  try{
+    const ya = await NOCHES().where('estado', '==', 'abierta').limit(1).get();
+    if(!ya.empty){ alert('Ya hay una noche abierta.'); cerrarModal(); return; }
+    await NOCHES().add({
+      fecha: hoy(), estado: 'abierta', abiertaEn: TS(), abiertaPor: usuarioNombre, abiertaPorUid: usuario.uid,
+      conteoInicial: conteo, entradas: {}, movimientos: [], diferenciasApertura: diferencias
+    });
+    logAudit('abrir_noche', 'Abrió la noche de licorera', { diferencias: diferencias.length });
+    cerrarModal(); toast('🌙 Noche abierta');
+  } catch(e){ alert('No se pudo abrir: ' + e.message); $('btn-abrir').disabled = false; }
+}
+
+// ── Entrada de mercancía durante la noche ──
+function modalEntrada(){
+  const opciones = activos().map(p => `<option value="${p.id}">${esc(p.categoria || '')} · ${esc(p.nombre)} ${esc(p.presentacion || '')}</option>`).join('');
+  abrirModal(`
+    <h3>➕ Entrada de mercancía</h3>
+    <div class="sub">Lo que llega durante la noche (pedido, traslado, etc.) se suma al stock para que la venta no salga inflada.</div>
+    <div class="form-grid">
+      <div style="grid-column:1/-1"><div class="lbl">Producto</div><select id="ent-prod">${opciones}</select></div>
+      <div><div class="lbl">Cantidad</div><input id="ent-cant" type="number" inputmode="decimal" min="0" step="any" placeholder="0"/></div>
+      <div><div class="lbl">Nota (opcional)</div><input id="ent-nota" placeholder="Proveedor, traslado…"/></div>
+    </div>
+    <div class="acciones"><button class="btn" id="btn-ent" onclick="guardarEntrada()">Registrar entrada</button><button class="btn btn-ghost" onclick="cerrarModal()">Cancelar</button></div>`);
+  $('ent-cant').focus();
+}
+
+async function guardarEntrada(){
+  const id = $('ent-prod').value, c = num($('ent-cant').value);
+  if(c <= 0){ alert('Escribe una cantidad mayor a 0.'); return; }
+  const p = productos.find(x => x.id === id);
+  $('btn-ent').disabled = true;
+  try{
+    await NOCHES().doc(nocheAbierta.id).update({
+      [`entradas.${id}`]: INC(c),
+      movimientos: firebase.firestore.FieldValue.arrayUnion({
+        tipo: 'entrada', prodId: id, cantidad: c, nota: $('ent-nota').value.trim(),
+        por: usuarioNombre, hora: new Date().toLocaleTimeString('es-CO', {hour:'2-digit', minute:'2-digit'}), t: Date.now()
+      })
+    });
+    logAudit('entrada', `Entrada: ${cant(c)} × ${p?.nombre} ${p?.presentacion || ''}`, { prodId: id, cantidad: c });
+    cerrarModal(); toast(`➕ ${cant(c)} × ${p?.nombre}`);
+  } catch(e){ alert('No se pudo registrar: ' + e.message); $('btn-ent').disabled = false; }
+}
+
+// ── Cerrar noche: conteo final y cálculo de venta ──
+function modalCierre(){
+  const n = nocheAbierta;
+  abrirModal(`
+    <h3>🔒 Cerrar noche — conteo final</h3>
+    <div class="sub">Cuenta lo que queda. Vendido = inicial + entradas − lo que queda.</div>
+    ${tablaConteo('fin', () => '', {
+      head: '<th>Había</th><th>Vendido</th>',
+      fila: p => `<td>${cant(stockEnNoche(n, p.id))}</td><td class="vendido" id="vend-${p.id}">—</td>`,
+      oninput: 'recalcularCierre()'
+    })}
+    <div class="totales">
+      <div class="tot"><div class="k">Unidades vendidas</div><div class="v" id="cie-unid">0</div></div>
+      <div class="tot"><div class="k">Venta por inventario</div><div class="v neon" id="cie-total">$0</div></div>
+    </div>
+    <div id="cie-alerta"></div>
+    <div class="acciones"><button class="btn" id="btn-cerrar" onclick="cerrarNoche()">Cerrar noche y guardar</button><button class="btn btn-ghost" onclick="cerrarModal()">Seguir abierta</button></div>`);
+}
+
+function calcularCierre(){
+  const n = nocheAbierta, filas = [];
+  let faltan = 0, negativos = 0;
+  for(const p of activos()){
+    const el = $('fin-' + p.id); if(!el) continue;
+    const vacio = el.value.trim() === '';
+    const habia = stockEnNoche(n, p.id), final = num(el.value);
+    const vendido = vacio ? null : habia - final;
+    if(vacio) faltan++;
+    if(vendido !== null && vendido < 0) negativos++;
+    filas.push({ p, vacio, habia, final, vendido, valor: (vendido || 0) * num(p.precio) });
+  }
+  return { filas, faltan, negativos };
+}
+
+function recalcularCierre(){
+  const { filas, faltan, negativos } = calcularCierre();
+  let unid = 0, total = 0;
+  for(const f of filas){
+    const td = $('vend-' + f.p.id);
+    td.textContent = f.vendido === null ? '—' : cant(f.vendido);
+    td.classList.toggle('neg', f.vendido !== null && f.vendido < 0);
+    unid += f.vendido || 0; total += f.valor;
+  }
+  $('cie-unid').textContent = cant(unid);
+  $('cie-total').textContent = plata(total);
+  $('cie-alerta').innerHTML =
+    (negativos ? `<div class="alerta">⚠️ ${negativos} producto(s) con más unidades de las que había. Revisa el conteo o registra la entrada que faltó.</div>` : '') +
+    (faltan ? `<div class="aviso">Faltan ${faltan} producto(s) por contar.</div>` : '');
+}
+
+async function cerrarNoche(){
+  const { filas, faltan, negativos } = calcularCierre();
+  if(faltan){ alert(`Faltan ${faltan} producto(s) por contar.`); return; }
+  if(negativos && !confirm(`⚠️ Hay ${negativos} producto(s) con venta negativa (quedó más de lo que había).\n¿Cerrar igual?`)) return;
+  const conteoFinal = {}, detalle = [];
+  let unidades = 0, total = 0;
+  for(const f of filas){
+    conteoFinal[f.p.id] = f.final;
+    // Se guarda una copia del nombre y precio para que el historial no cambie si luego se edita el producto
+    detalle.push({ prodId: f.p.id, nombre: f.p.nombre, presentacion: f.p.presentacion || '', categoria: f.p.categoria || 'Otros',
+      precio: num(f.p.precio), inicial: num(nocheAbierta.conteoInicial?.[f.p.id]), entradas: num(nocheAbierta.entradas?.[f.p.id]),
+      final: f.final, vendido: f.vendido, valor: f.valor });
+    unidades += f.vendido; total += f.valor;
+  }
+  if(!confirm(`¿Cerrar la noche?\n\nUnidades vendidas: ${cant(unidades)}\nVenta por inventario: ${plata(total)}`)) return;
+  $('btn-cerrar').disabled = true;
+  try{
+    const id = nocheAbierta.id;
+    await NOCHES().doc(id).update({
+      estado: 'cerrada', cerradaEn: TS(), cerradaPor: usuarioNombre, cerradaPorUid: usuario.uid,
+      conteoFinal, detalle, resumen: { unidades, total }
+    });
+    logAudit('cerrar_noche', `Cerró la noche: ${cant(unidades)} unidades, ${plata(total)}`, { unidades, total });
+    cerrarModal(); toast('🔒 Noche cerrada');
+    verNoche(id, { unidades, total, detalle, fecha: nocheAbierta?.fecha || hoy() });
+  } catch(e){ alert('No se pudo cerrar: ' + e.message); $('btn-cerrar').disabled = false; }
+}
+
+// ── Detalle de una noche cerrada ──
+function verNoche(id, datos){
+  const h = datos ? { fecha: datos.fecha, detalle: datos.detalle, resumen: { unidades: datos.unidades, total: datos.total } } : historial.find(x => x.id === id);
+  if(!h) return;
+  const det = (h.detalle || []).slice().sort((a, b) => a.categoria.localeCompare(b.categoria) || a.nombre.localeCompare(b.nombre));
+  const g = {};
+  det.forEach(d => (g[d.categoria] ||= []).push(d));
+  let html = `<h3>📊 ${esc(fechaLarga(h.fecha))}</h3>`;
+  for(const [cat, items] of Object.entries(g)){
+    const subtotal = items.reduce((s, d) => s + d.valor, 0);
+    html += `<div class="cat"><div class="fila"><div class="cat-titulo">${esc(cat)}</div><div class="precio" style="font-size:.85rem">${plata(subtotal)}</div></div>
+      <div class="tabla-scroll"><table><thead><tr><th>Producto</th><th>Inicial</th><th>Entró</th><th>Quedó</th><th>Vendido</th><th>Valor</th></tr></thead><tbody>`;
+    for(const d of items){
+      html += `<tr><td><span class="prod">${esc(d.nombre)}</span><span class="pres">${esc(d.presentacion)} · ${plata(d.precio)}</span></td>
+        <td>${cant(d.inicial)}</td><td>${d.entradas ? '+' + cant(d.entradas) : '—'}</td><td>${cant(d.final)}</td>
+        <td class="vendido${d.vendido < 0 ? ' neg' : ''}">${cant(d.vendido)}</td><td>${plata(d.valor)}</td></tr>`;
+    }
+    html += `</tbody></table></div></div>`;
+  }
+  html += `<div class="totales">
+      <div class="tot"><div class="k">Unidades vendidas</div><div class="v">${cant(h.resumen?.unidades)}</div></div>
+      <div class="tot"><div class="k">Venta por inventario</div><div class="v neon">${plata(h.resumen?.total)}</div></div>
+    </div>
+    <div class="acciones"><button class="btn btn-ghost btn-full" onclick="cerrarModal()">Cerrar</button></div>`;
+  abrirModal(html);
+}
+
+// ══════════════════════════════════════
+//   PRODUCTOS (solo admin)
+// ══════════════════════════════════════
+function pintarProductos(){
+  const cats = [...new Set(['Aguardiente', 'Ron', 'Whisky', 'Tequila', 'Vodka', 'Cerveza', 'Gaseosa', 'Agua', 'Energizante', 'Cigarrillos', 'Otros', ...productos.map(p => p.categoria).filter(Boolean)])];
+  $('lista-cat').innerHTML = cats.map(c => `<option>${esc(c)}</option>`).join('');
+  if(!productos.length){ $('lista-productos').innerHTML = `<div class="vacio">Aún no hay productos. Crea el primero arriba.</div>`; return; }
+  let html = '';
+  for(const [cat, prods] of agrupar(productos)){
+    html += `<div class="cat"><div class="cat-titulo">${esc(cat)}</div>`;
+    for(const p of prods){
+      html += `<div class="prod-row${p.activo === false ? ' inactivo' : ''}">
+        <div><span class="prod">${esc(p.nombre)}</span><span class="pres">${esc(p.presentacion || '')}${p.activo === false ? ' · inactivo' : ''}</span></div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span class="precio">${plata(p.precio)}</span>
+          <button class="btn btn-ghost btn-sm" onclick="editarProducto('${p.id}')">✏️</button>
+          <button class="btn btn-ghost btn-sm" title="${p.activo === false ? 'Activar' : 'Desactivar'}" onclick="toggleProducto('${p.id}')">${p.activo === false ? '▶️' : '⏸️'}</button>
+        </div></div>`;
+    }
+    html += `</div>`;
+  }
+  $('lista-productos').innerHTML = html;
+}
+
+function limpiarFormProducto(){
+  editandoId = null;
+  ['pf-nombre', 'pf-pres', 'pf-cat', 'pf-precio'].forEach(id => $(id).value = '');
+  $('pf-titulo').textContent = '➕ Nuevo producto';
+  $('pf-guardar').textContent = 'Guardar producto';
+  $('pf-cancelar').classList.add('oculto');
+  $('pf-err').textContent = '';
+}
+
+function editarProducto(id){
+  const p = productos.find(x => x.id === id); if(!p) return;
+  editandoId = id;
+  $('pf-nombre').value = p.nombre || ''; $('pf-pres').value = p.presentacion || '';
+  $('pf-cat').value = p.categoria || ''; $('pf-precio').value = p.precio ? Number(p.precio).toLocaleString('es-CO') : '';
+  $('pf-titulo').textContent = '✏️ Editar producto';
+  $('pf-guardar').textContent = 'Guardar cambios';
+  $('pf-cancelar').classList.remove('oculto');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+async function guardarProducto(){
+  if(!esAdmin()) return;
+  const datos = {
+    nombre: $('pf-nombre').value.trim(), presentacion: $('pf-pres').value.trim(),
+    categoria: $('pf-cat').value.trim() || 'Otros', precio: valorPlata('pf-precio')
+  };
+  if(!datos.nombre){ $('pf-err').textContent = 'Escribe el nombre.'; return; }
+  if(!datos.presentacion){ $('pf-err').textContent = 'Escribe la presentación (media, botella, lata…).'; return; }
+  const dup = productos.find(p => p.id !== editandoId && p.nombre.toLowerCase() === datos.nombre.toLowerCase() && (p.presentacion || '').toLowerCase() === datos.presentacion.toLowerCase());
+  if(dup){ $('pf-err').textContent = 'Ya existe ese producto con esa presentación.'; return; }
+  $('pf-guardar').disabled = true;
+  try{
+    if(editandoId){
+      await PRODUCTOS().doc(editandoId).update({ ...datos, actualizadoEn: TS() });
+      logAudit('editar_producto', `Editó ${datos.nombre} ${datos.presentacion}`, datos);
+      toast('✅ Producto actualizado');
+    } else {
+      await PRODUCTOS().add({ ...datos, activo: true, creadoEn: TS() });
+      logAudit('crear_producto', `Creó ${datos.nombre} ${datos.presentacion}`, datos);
+      toast('✅ Producto creado');
+    }
+    limpiarFormProducto();
+    $('pf-nombre').focus();
+  } catch(e){ $('pf-err').textContent = 'No se pudo guardar: ' + e.message; }
+  $('pf-guardar').disabled = false;
+}
+
+async function toggleProducto(id){
+  const p = productos.find(x => x.id === id); if(!p || !esAdmin()) return;
+  if(nocheAbierta && p.activo !== false && !confirm('Hay una noche abierta. Si lo desactivas no aparecerá en el conteo de cierre. ¿Desactivar?')) return;
+  await PRODUCTOS().doc(id).update({ activo: p.activo === false, actualizadoEn: TS() });
+}
+</script>
+</body>
+</html>
