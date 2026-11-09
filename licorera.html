@@ -362,7 +362,7 @@ function escuchar(){
   if(escuchaVentas){ escuchaVentas(); escuchaVentas = null; ventasDeNoche = null; }
   escuchas.push(PRODUCTOS().onSnapshot(s => {
     productos = s.docs.map(d => ({ id: d.id, ...d.data() }))
-      .sort((a, b) => (a.categoria || '').localeCompare(b.categoria || '') || (a.nombre || '').localeCompare(b.nombre || '') || (a.presentacion || '').localeCompare(b.presentacion || ''));
+      .sort((a, b) => (a.categoria || '').localeCompare(b.categoria || '') || (a.orden ?? 99) - (b.orden ?? 99) || (a.nombre || '').localeCompare(b.nombre || '') || (a.presentacion || '').localeCompare(b.presentacion || ''));
     pintarProductos(); pintarInventario(); pintarGranizados();
   }, errorFirestore('productos')));
 
@@ -557,6 +557,7 @@ function modalCierre(){
       <div class="tot"><div class="k">🧊 Granizados</div><div class="v">${plata(totalesVentas().total)}</div></div>
       <div class="tot"><div class="k">Total noche</div><div class="v neon" id="cie-gran-total">$0</div></div>
     </div>
+    <div id="cie-vasos"></div>
     <div id="cie-alerta"></div>
     <div class="acciones"><button class="btn" id="btn-cerrar" onclick="cerrarNoche()">Cerrar noche y guardar</button><button class="btn btn-ghost" onclick="cerrarModal()">Seguir abierta</button></div>`);
 }
@@ -583,11 +584,12 @@ function recalcularCierre(){
     const td = $('vend-' + f.p.id);
     td.textContent = f.vendido === null ? '—' : cant(f.vendido);
     td.classList.toggle('neg', f.vendido !== null && f.vendido < 0);
-    unid += f.vendido || 0; total += f.valor;
+    if(!f.p.talla) unid += f.vendido || 0; total += f.valor;
   }
   $('cie-unid').textContent = cant(unid);
   $('cie-total').textContent = plata(total);
   $('cie-gran-total').textContent = plata(total + totalesVentas().total);
+  $('cie-vasos').innerHTML = htmlVasos(compararVasos(id => { const f = filas.find(x => x.p.id === id); return f ? f.vendido : null; }));
   $('cie-alerta').innerHTML =
     (negativos ? `<div class="alerta">⚠️ ${negativos} producto(s) con más unidades de las que había. Revisa el conteo o registra la entrada que faltó.</div>` : '') +
     (faltan ? `<div class="aviso">Faltan ${faltan} producto(s) por contar.</div>` : '');
@@ -605,7 +607,7 @@ async function cerrarNoche(){
     detalle.push({ prodId: f.p.id, nombre: f.p.nombre, presentacion: f.p.presentacion || '', categoria: f.p.categoria || 'Otros',
       precio: num(f.p.precio), inicial: num(nocheAbierta.conteoInicial?.[f.p.id]), entradas: num(nocheAbierta.entradas?.[f.p.id]),
       final: f.final, vendido: f.vendido, valor: f.valor });
-    unidades += f.vendido; total += f.valor;
+    if(!f.p.talla) unidades += f.vendido; total += f.valor;
   }
   const g = totalesVentas();
   const granizados = { total: g.total, efectivo: g.efectivo, transferencia: g.transferencia, cantidad: g.granizados, ventas: g.ventas, porProducto: {} };
@@ -613,6 +615,7 @@ async function cerrarNoche(){
     const k = granizados.porProducto[i.prodId] ||= { nombre: i.nombre, presentacion: i.presentacion, cantidad: 0, valor: 0 };
     k.cantidad += i.cantidad; k.valor += i.subtotal;
   }));
+  granizados.vasos = compararVasos(id => filas.find(x => x.p.id === id)?.vendido ?? null);
   if(!confirm(`¿Cerrar la noche?\n\nVenta por inventario: ${plata(total)} (${cant(unidades)} unid.)\nGranizados: ${plata(g.total)}\nTOTAL: ${plata(total + g.total)}`)) return;
   $('btn-cerrar').disabled = true;
   try{
@@ -652,7 +655,7 @@ function verNoche(id, datos){
       <div class="tabla-scroll"><table><thead><tr><th>Producto</th><th>Vendidos</th><th>Valor</th></tr></thead><tbody>
       ${Object.values(gz.porProducto || {}).map(x => `<tr><td><span class="prod">${esc(x.nombre)}</span><span class="pres">${esc(x.presentacion)}</span></td><td class="vendido">${cant(x.cantidad)}</td><td>${plata(x.valor)}</td></tr>`).join('')}
       </tbody></table></div>
-      <div class="sub" style="margin-top:6px">💵 ${plata(gz.efectivo)} · 🏦 ${plata(gz.transferencia)} · ${cant(gz.cantidad)} granizados</div></div>`;
+      <div class="sub" style="margin-top:6px">💵 ${plata(gz.efectivo)} · 🏦 ${plata(gz.transferencia)} · ${cant(gz.cantidad)} granizados</div>${gz.vasos ? htmlVasos(gz.vasos) : ''}</div>`;
   }
   html += `<div class="totales">
       <div class="tot"><div class="k">Venta por inventario</div><div class="v">${plata(h.resumen?.total)}</div></div>
@@ -670,20 +673,33 @@ const VENTAS = id => NOCHES().doc(id).collection('ventas');
 
 // Los 6 granizados base. Se crean una sola vez (si ya existen no se tocan, así respetan lo editado).
 const GRANIZADOS_BASE = [
-  { id: 'granizado-m',        nombre: 'Granizado M',        presentacion: 'Unidad',  precio: 7000,  unidades: 1, orden: 1 },
-  { id: 'granizado-m-combo',  nombre: 'Combo M',            presentacion: '2 × M',   precio: 10000, unidades: 2, orden: 2 },
-  { id: 'granizado-l',        nombre: 'Granizado L',        presentacion: 'Unidad',  precio: 9000,  unidades: 1, orden: 3 },
-  { id: 'granizado-l-combo',  nombre: 'Combo L',            presentacion: '2 × L',   precio: 15000, unidades: 2, orden: 4 },
-  { id: 'granizado-xl',       nombre: 'Granizado XL',       presentacion: 'Unidad',  precio: 12000, unidades: 1, orden: 5 },
-  { id: 'granizado-xl-combo', nombre: 'Combo XL',           presentacion: '2 × XL',  precio: 20000, unidades: 2, orden: 6 },
+  { id: 'granizado-m',        talla: 'M',        nombre: 'Granizado M',        presentacion: 'Unidad',  precio: 7000,  unidades: 1, orden: 1 },
+  { id: 'granizado-m-combo',  talla: 'M',  nombre: 'Combo M',            presentacion: '2 × M',   precio: 10000, unidades: 2, orden: 2 },
+  { id: 'granizado-l',        talla: 'L',        nombre: 'Granizado L',        presentacion: 'Unidad',  precio: 9000,  unidades: 1, orden: 3 },
+  { id: 'granizado-l-combo',  talla: 'L',  nombre: 'Combo L',            presentacion: '2 × L',   precio: 15000, unidades: 2, orden: 4 },
+  { id: 'granizado-xl',       talla: 'XL',       nombre: 'Granizado XL',       presentacion: 'Unidad',  precio: 12000, unidades: 1, orden: 5 },
+  { id: 'granizado-xl-combo', talla: 'XL', nombre: 'Combo XL',           presentacion: '2 × XL',  precio: 20000, unidades: 2, orden: 6 },
 ];
+// Vasos: se cuentan en inventario como un licor; al cierre se comparan con los granizados vendidos de cada talla
+const VASOS_BASE = [
+  { id: 'vaso-m',  nombre: 'Vaso M',  talla: 'M',  orden: 1 },
+  { id: 'vaso-l',  nombre: 'Vaso L',  talla: 'L',  orden: 2 },
+  { id: 'vaso-xl', nombre: 'Vaso XL', talla: 'XL', orden: 3 },
+];
+const TALLAS = ['M', 'L', 'XL'];
 async function sembrarGranizados(){
   try{
     for(const g of GRANIZADOS_BASE){
-      const ref = PRODUCTOS().doc(g.id);
-      if((await ref.get()).exists) continue;
+      const ref = PRODUCTOS().doc(g.id), doc = await ref.get();
       const { id, ...datos } = g;
+      if(doc.exists){ if(!doc.data().talla) await ref.update({ talla: g.talla }); continue; }
       await ref.set({ ...datos, tipo: 'granizado', categoria: 'Granizados', activo: true, creadoEn: TS() });
+    }
+    for(const v of VASOS_BASE){
+      const ref = PRODUCTOS().doc(v.id);
+      if((await ref.get()).exists) continue;
+      const { id, ...datos } = v;
+      await ref.set({ ...datos, presentacion: 'Unidad', categoria: 'Vasos granizado', tipo: 'inventario', precio: 0, activo: true, creadoEn: TS() });
     }
   } catch(e){ console.error('sembrar granizados', e); }
 }
@@ -704,6 +720,34 @@ function totalesVentas(lista = ventas){
   const r = { total: 0, efectivo: 0, transferencia: 0, granizados: 0, ventas: lista.length };
   lista.forEach(v => { r.total += v.total; r[v.pago] = (r[v.pago] || 0) + v.total; r.granizados += v.granizados || 0; });
   return r;
+}
+
+// Granizados vendidos por talla (un combo cuenta 2)
+function granizadosPorTalla(){
+  const r = {};
+  ventas.forEach(v => v.items.forEach(i => {
+    const t = i.talla || productos.find(p => p.id === i.prodId)?.talla;
+    if(t) r[t] = (r[t] || 0) + i.cantidad * (i.unidades || 1);
+  }));
+  return r;
+}
+// Compara vasos usados (inventario) contra granizados vendidos
+function compararVasos(vendidoDe){
+  const porTalla = granizadosPorTalla(), out = {};
+  for(const t of TALLAS){
+    const vaso = productos.find(p => p.talla === t && !esGranizado(p) && p.activo !== false);
+    if(!vaso) continue;
+    const usados = vendidoDe(vaso.id);
+    out[t] = { vasos: usados, granizados: porTalla[t] || 0 };
+  }
+  return out;
+}
+function htmlVasos(cmp){
+  const filas = Object.entries(cmp);
+  if(!filas.length) return '';
+  const malos = filas.filter(([, x]) => x.vasos !== null && x.vasos !== x.granizados);
+  return `<div class="${malos.length ? 'alerta' : 'aviso'}" style="${malos.length ? '' : 'background:var(--verde-bg);border-color:rgba(166,255,0,.35);color:var(--txt)'}">
+    🥤 <b>Vasos vs granizados</b><br>${filas.map(([t, x]) => `${t}: ${x.vasos === null ? '—' : cant(x.vasos)} vasos · ${cant(x.granizados)} vendidos${x.vasos !== null && x.vasos !== x.granizados ? ` <b>(dif. ${cant(x.vasos - x.granizados)})</b>` : ' ✓'}`).join('<br>')}</div>`;
 }
 
 function pintarGranizados(){
@@ -769,7 +813,7 @@ async function registrarVenta(){
   if(!nocheAbierta) return;
   const items = Object.entries(carrito).filter(([, c]) => c > 0).map(([id, c]) => {
     const p = productos.find(x => x.id === id);
-    return { prodId: id, nombre: p.nombre, presentacion: p.presentacion || '', precio: num(p.precio), unidades: num(p.unidades) || 1, cantidad: c, subtotal: c * num(p.precio) };
+    return { prodId: id, nombre: p.nombre, presentacion: p.presentacion || '', talla: p.talla || '', precio: num(p.precio), unidades: num(p.unidades) || 1, cantidad: c, subtotal: c * num(p.precio) };
   });
   if(!items.length) return;
   const total = items.reduce((s, i) => s + i.subtotal, 0);
@@ -853,7 +897,7 @@ async function guardarProducto(){
     categoria: $('pf-cat').value.trim() || 'Otros', precio: valorPlata('pf-precio'), tipo: $('pf-tipo').value
   };
   if(datos.tipo === 'granizado'){ datos.categoria = 'Granizados'; datos.unidades = Math.max(1, parseInt($('pf-unid').value, 10) || 1); }
-  if(!datos.precio){ $('pf-err').textContent = 'Escribe el precio.'; return; }
+  if(!datos.precio && !productos.find(p => p.id === editandoId)?.talla){ $('pf-err').textContent = 'Escribe el precio.'; return; }
   if(!datos.nombre){ $('pf-err').textContent = 'Escribe el nombre.'; return; }
   if(!datos.presentacion){ $('pf-err').textContent = 'Escribe la presentación (media, botella, lata…).'; return; }
   const dup = productos.find(p => p.id !== editandoId && p.nombre.toLowerCase() === datos.nombre.toLowerCase() && (p.presentacion || '').toLowerCase() === datos.presentacion.toLowerCase());
