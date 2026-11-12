@@ -3,25 +3,36 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
-<meta name="theme-color" content="#07090a"/>
+<meta name="theme-color" content="#ffffff"/>
+<script>document.documentElement.dataset.theme = localStorage.getItem('licorera-tema') || 'light';</script>
 <title>🍾 Licorera — Salchimonster</title>
 <style>
+  /* Tema claro (por defecto) */
   :root{
+    --bg:#f3f6f2; --bg2:#f7faf6; --card:#ffffff; --card2:#eef3ec; --line:#dbe4d8;
+    --txt:#14201a; --muted:#5f7066; --verde:#a6ff00; --verde-txt:#3b8700; --verde-bg:rgba(110,190,0,.12);
+    --rojo:#d93654; --rojo-bg:rgba(217,54,84,.10); --rojo-txt:#a3243c; --amarillo:#b88a00; --amarillo-bg:rgba(255,200,0,.16); --amarillo-txt:#7a5b00;
+    --header-bg:rgba(255,255,255,.92); --sombra:0 1px 3px rgba(20,32,26,.06); --glow:none;
+    --radio:14px; color-scheme:light;
+  }
+  /* Tema oscuro */
+  [data-theme="dark"]{
     --bg:#07090a; --bg2:#0e1311; --card:#121915; --card2:#18211c; --line:#233029;
-    --txt:#e9f5ec; --muted:#8aa294; --verde:#a6ff00; --verde2:#7ed400; --verde-bg:rgba(166,255,0,.10);
-    --rojo:#ff4d6d; --rojo-bg:rgba(255,77,109,.12); --amarillo:#ffd23f; --amarillo-bg:rgba(255,210,63,.12);
-    --radio:14px;
+    --txt:#e9f5ec; --muted:#8aa294; --verde:#a6ff00; --verde-txt:#a6ff00; --verde-bg:rgba(166,255,0,.10);
+    --rojo:#ff4d6d; --rojo-bg:rgba(255,77,109,.12); --rojo-txt:#ffb3c1; --amarillo:#ffd23f; --amarillo-bg:rgba(255,210,63,.12); --amarillo-txt:#ffe8a3;
+    --header-bg:rgba(7,9,10,.92); --sombra:none; --glow:0 0 12px rgba(166,255,0,.45);
+    color-scheme:dark;
   }
   *{box-sizing:border-box;margin:0;padding:0}
   html,body{background:var(--bg);color:var(--txt);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font-size:15px;-webkit-tap-highlight-color:transparent}
   button{font:inherit;cursor:pointer;border:0}
   input,select{font:inherit;color:var(--txt);background:var(--bg2);border:1px solid var(--line);border-radius:10px;padding:10px 12px;width:100%;outline:none}
-  input:focus,select:focus{border-color:var(--verde);box-shadow:0 0 0 3px var(--verde-bg)}
+  input:focus,select:focus{border-color:var(--verde-txt);box-shadow:0 0 0 3px var(--verde-bg)}
   .oculto{display:none!important}
-  .neon{color:var(--verde);text-shadow:0 0 12px rgba(166,255,0,.45)}
+  .neon{color:var(--verde-txt);text-shadow:var(--glow)}
 
   /* ── Login ── */
-  #login{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;
+  #login{position:relative;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;
     background:radial-gradient(circle at 50% 0%,rgba(166,255,0,.14),transparent 60%)}
   .login-logo{font-size:3.2rem}
   .login-title{font-size:2rem;font-weight:800;letter-spacing:.5px;margin-top:6px}
@@ -32,31 +43,31 @@
 
   /* ── Botones ── */
   .btn{background:var(--verde);color:#071000;font-weight:700;border-radius:12px;padding:12px 16px;transition:transform .08s, box-shadow .15s}
-  .btn:hover{box-shadow:0 0 18px rgba(166,255,0,.35)}
+  .btn:hover{box-shadow:0 0 0 3px var(--verde-bg)}
   .btn:active{transform:scale(.97)}
   .btn:disabled{opacity:.5;cursor:not-allowed}
   .btn-ghost{background:transparent;color:var(--txt);border:1px solid var(--line);font-weight:600}
-  .btn-ghost:hover{border-color:var(--verde);box-shadow:none}
+  .btn-ghost:hover{border-color:var(--verde-txt);box-shadow:none}
   .btn-danger{background:var(--rojo);color:#fff}
   .btn-sm{padding:7px 11px;font-size:.85rem;border-radius:9px}
   .btn-full{width:100%}
 
   /* ── Header ── */
-  header{position:sticky;top:0;z-index:10;background:rgba(7,9,10,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+  header{position:sticky;top:0;z-index:10;background:var(--header-bg);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
   .h-top{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;gap:10px;max-width:960px;margin:0 auto}
   .h-logo{font-weight:800;font-size:1.15rem}
   .h-user{font-size:.8rem;color:var(--muted);margin-top:2px}
   .badge{display:inline-block;font-size:.68rem;padding:2px 7px;border-radius:99px;margin-left:6px;background:var(--card2);color:var(--muted);border:1px solid var(--line);vertical-align:middle}
-  .badge.admin{color:var(--verde);border-color:rgba(166,255,0,.4);background:var(--verde-bg)}
+  .badge.admin{color:var(--verde-txt);border-color:var(--verde-txt);background:var(--verde-bg)}
   nav{display:flex;gap:6px;padding:0 12px 10px;max-width:960px;margin:0 auto;overflow-x:auto}
   nav button{background:var(--card);color:var(--muted);border:1px solid var(--line);border-radius:99px;padding:8px 14px;font-weight:600;white-space:nowrap}
-  nav button.activo{background:var(--verde);color:#071000;border-color:var(--verde)}
+  nav button.activo{background:var(--verde);color:#071000;border-color:var(--verde-txt)}
   nav button:disabled{opacity:.45;cursor:not-allowed}
 
   main{max-width:960px;margin:0 auto;padding:16px 14px 90px}
-  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radio);padding:16px;margin-bottom:14px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radio);padding:16px;margin-bottom:14px;box-shadow:var(--sombra)}
   .card h2{font-size:1.05rem;margin-bottom:4px}
-  .card .sub{color:var(--muted);font-size:.85rem}
+  .sub{color:var(--muted);font-size:.85rem}
   .fila{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
   .acciones{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
   .vacio{color:var(--muted);text-align:center;padding:24px 8px}
@@ -64,12 +75,12 @@
   /* ── Estado de la noche ── */
   .estado{display:flex;align-items:center;gap:8px;font-weight:700}
   .punto{width:10px;height:10px;border-radius:50%;background:var(--muted)}
-  .punto.on{background:var(--verde);box-shadow:0 0 10px var(--verde);animation:latido 1.6s infinite}
+  .punto.on{background:var(--verde-txt);box-shadow:0 0 10px var(--verde);animation:latido 1.6s infinite}
   @keyframes latido{50%{opacity:.4}}
 
   /* ── Tablas de inventario ── */
   .cat{margin-top:14px}
-  .cat-titulo{font-size:.75rem;text-transform:uppercase;letter-spacing:1px;color:var(--verde);margin:0 2px 6px;font-weight:700}
+  .cat-titulo{font-size:.75rem;text-transform:uppercase;letter-spacing:1px;color:var(--verde-txt);margin:0 2px 6px;font-weight:700}
   .tabla-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
   table{width:100%;border-collapse:collapse}
   .modal td,.modal th{padding-left:4px;padding-right:4px}
@@ -81,10 +92,10 @@
   .prod{font-weight:600}
   .pres{display:block;font-size:.75rem;color:var(--muted);font-weight:400}
   td input{width:76px;text-align:center;padding:7px 6px}
-  .vendido{font-weight:800;color:var(--verde)}
+  .vendido{font-weight:800;color:var(--verde-txt)}
   .neg{color:var(--rojo)!important}
-  .alerta{background:var(--rojo-bg);border:1px solid rgba(255,77,109,.4);color:#ffb3c1;border-radius:10px;padding:10px 12px;font-size:.85rem;margin-top:12px}
-  .aviso{background:var(--amarillo-bg);border:1px solid rgba(255,210,63,.35);color:#ffe8a3;border-radius:10px;padding:10px 12px;font-size:.85rem;margin-top:12px}
+  .alerta{background:var(--rojo-bg);border:1px solid rgba(255,77,109,.4);color:var(--rojo-txt);border-radius:10px;padding:10px 12px;font-size:.85rem;margin-top:12px}
+  .aviso{background:var(--amarillo-bg);border:1px solid rgba(255,210,63,.35);color:var(--amarillo-txt);border-radius:10px;padding:10px 12px;font-size:.85rem;margin-top:12px}
 
   /* ── Totales ── */
   .totales{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-top:14px}
@@ -95,7 +106,7 @@
   /* ── Historial ── */
   .hist-item{display:flex;justify-content:space-between;align-items:center;padding:12px 4px;border-bottom:1px solid var(--line);cursor:pointer}
   .hist-item:last-child{border-bottom:0}
-  .hist-item:hover .hist-fecha{color:var(--verde)}
+  .hist-item:hover .hist-fecha{color:var(--verde-txt)}
   .hist-fecha{font-weight:600;text-transform:capitalize}
   .hist-meta{font-size:.78rem;color:var(--muted)}
 
@@ -104,10 +115,10 @@
   .prod-row{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 4px;border-bottom:1px solid var(--line)}
   .prod-row:last-child{border-bottom:0}
   .prod-row.inactivo{opacity:.45}
-  .precio{color:var(--verde);font-weight:700;font-variant-numeric:tabular-nums}
+  .precio{color:var(--verde-txt);font-weight:700;font-variant-numeric:tabular-nums}
 
   /* ── Modal ── */
-  .modal-fondo{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:50;display:flex;align-items:flex-end;justify-content:center;padding:0}
+  .modal-fondo{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:50;display:flex;align-items:flex-end;justify-content:center;padding:0}
   .modal{background:var(--card);border:1px solid var(--line);border-radius:18px 18px 0 0;width:100%;max-width:640px;max-height:92vh;overflow:auto;padding:18px}
   @media (min-width:700px){ .modal-fondo{align-items:center;padding:20px} .modal{border-radius:18px} }
   .modal h3{font-size:1.1rem;margin-bottom:12px}
@@ -117,31 +128,37 @@
   @media (min-width:640px){ .gran-grid{grid-template-columns:repeat(3,1fr)} }
   .gran-btn{background:var(--bg2);border:1px solid var(--line);border-radius:14px;padding:14px 10px;color:var(--txt);text-align:center;position:relative;transition:transform .08s,border-color .15s}
   .gran-btn:active{transform:scale(.96)}
-  .gran-btn.combo{border-color:rgba(166,255,0,.35)}
+  .gran-btn.combo{border-color:var(--verde-txt)}
   .gran-btn .g-nom{font-weight:700}
-  .gran-btn .g-pre{color:var(--verde);font-weight:800;font-size:1.15rem;margin-top:4px}
+  .gran-btn .g-pre{color:var(--verde-txt);font-weight:800;font-size:1.15rem;margin-top:4px}
   .gran-btn .g-cnt{position:absolute;top:-8px;right:-8px;background:var(--verde);color:#071000;font-weight:800;border-radius:99px;min-width:26px;height:26px;display:flex;align-items:center;justify-content:center;font-size:.85rem}
   .carrito-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--line);gap:8px}
   .stepper{display:flex;align-items:center;gap:8px}
   .stepper button{width:30px;height:30px;border-radius:8px;background:var(--card2);color:var(--txt);border:1px solid var(--line);font-weight:800}
   .pago{display:flex;gap:8px;margin-top:12px}
   .pago button{flex:1;background:var(--bg2);color:var(--muted);border:1px solid var(--line);border-radius:10px;padding:10px;font-weight:700}
-  .pago button.activo{background:var(--verde-bg);color:var(--verde);border-color:var(--verde)}
+  .pago button.activo{background:var(--verde-bg);color:var(--verde-txt);border-color:var(--verde-txt)}
   .venta-row{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:10px 2px;border-bottom:1px solid var(--line)}
   .venta-row:last-child{border-bottom:0}
   .tag{font-size:.7rem;padding:2px 7px;border-radius:99px;border:1px solid var(--line);color:var(--muted);margin-left:6px}
+
+  .barra-cobro{position:fixed;left:0;right:0;bottom:0;z-index:20;padding:10px 14px calc(10px + env(safe-area-inset-bottom));background:var(--header-bg);backdrop-filter:blur(8px);border-top:1px solid var(--line)}
+  .barra-cobro .in{max-width:960px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:10px}
+  .g-stock{font-size:.72rem;color:var(--muted);margin-top:2px}
+  .g-stock.bajo{color:var(--rojo)}
 
   .buscador{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
   .buscador input{flex:1 1 100%}
   .buscador select{flex:1 1 0;width:auto;min-width:0}
 
-  .toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:var(--card2);border:1px solid var(--verde);color:var(--txt);padding:10px 16px;border-radius:12px;z-index:60;box-shadow:0 0 20px rgba(166,255,0,.25);font-size:.9rem}
+  .toast{position:fixed;left:50%;bottom:96px;transform:translateX(-50%);background:var(--card2);border:1px solid var(--verde);color:var(--txt);padding:10px 16px;border-radius:12px;z-index:60;box-shadow:0 4px 20px rgba(0,0,0,.18);font-size:.9rem}
 </style>
 </head>
 <body>
 
 <!-- ═══════════ LOGIN ═══════════ -->
 <section id="login">
+  <button class="btn btn-ghost btn-sm btn-tema" style="position:absolute;top:14px;right:14px" onclick="cambiarTema()" title="Cambiar modo claro/oscuro"></button>
   <div class="login-logo">🍾</div>
   <div class="login-title neon">Licorera</div>
   <div class="login-sub">Salchimonster</div>
@@ -161,12 +178,15 @@
         <div class="h-logo">🍾 <span class="neon">Licorera</span></div>
         <div class="h-user" id="h-user"></div>
       </div>
-      <button class="btn btn-ghost btn-sm" onclick="doLogout()">Salir</button>
+      <div style="display:flex;gap:6px">
+        <button class="btn btn-ghost btn-sm btn-tema" onclick="cambiarTema()" title="Cambiar modo claro/oscuro"></button>
+        <button class="btn btn-ghost btn-sm" onclick="doLogout()">Salir</button>
+      </div>
     </div>
     <nav>
       <button id="nav-inventario" class="activo" onclick="irA('inventario')">📦 Inventario</button>
       <button id="nav-productos" class="solo-admin" onclick="irA('productos')">🍾 Productos</button>
-      <button id="nav-granizados" onclick="irA('granizados')">🧊 Granizados</button>
+      <button id="nav-granizados" onclick="irA('granizados')" disabled>🔒 Ventas</button>
       <button id="nav-fiados" onclick="irA('fiados')">🧾 Fiados</button>
     </nav>
   </header>
@@ -199,7 +219,13 @@
 
     <!-- ── GRANIZADOS ── -->
     <div id="vista-granizados" class="oculto">
+      <div class="buscador">
+        <input id="ven-q" placeholder="🔎 Buscar producto" oninput="pintarGranizados()"/>
+        <select id="ven-cat" onchange="pintarGranizados()"><option value="">Todas las categorías</option></select>
+        <button class="btn btn-ghost btn-sm" onclick="limpiarBusqueda('ven')">✕ Limpiar</button>
+      </div>
       <div id="gran-cuerpo"></div>
+      <div id="barra-cobro" class="barra-cobro oculto"></div>
     </div>
 
     <!-- ── FIADOS ── -->
@@ -386,11 +412,26 @@ async function doLogin(){
 $('l-pass').addEventListener('keydown', e => { if(e.key === 'Enter') doLogin(); });
 function doLogout(){ auth.signOut(); }
 
+// ── Modo claro / oscuro (se recuerda en este dispositivo) ──
+function pintarBotonTema(){
+  const oscuro = document.documentElement.dataset.theme === 'dark';
+  document.querySelectorAll('.btn-tema').forEach(b => b.textContent = oscuro ? '☀️' : '🌙');
+  document.querySelector('meta[name="theme-color"]').content = oscuro ? '#07090a' : '#ffffff';
+}
+function cambiarTema(){
+  const nuevo = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+  document.documentElement.dataset.theme = nuevo;
+  localStorage.setItem('licorera-tema', nuevo);
+  pintarBotonTema();
+}
+pintarBotonTema();
+
 function irA(vista){
   ['inventario', 'granizados', 'fiados', 'productos'].forEach(v => {
     $('vista-' + v).classList.toggle('oculto', v !== vista);
     $('nav-' + v).classList.toggle('activo', v === vista);
   });
+  pintarBarraCobro();
 }
 
 // ══════════════════════════════════════
@@ -447,9 +488,17 @@ const stockGuardado = id => num(ultimaCerrada?.conteoFinal?.[id]);
 // Durante la noche: lo contado al abrir + lo que entró
 const stockEnNoche = (n, id) => num(n.conteoInicial?.[id]) + num(n.entradas?.[id]);
 const esVaso = p => !!p.talla && !esGranizado(p);
-// Vasos: lo que debería quedar = inicial + entradas − granizados vendidos de esa talla (combo = 2)
-const vasosVendidos = p => esVaso(p) ? (granizadosPorTalla()[p.talla] || 0) : 0;
-const stockEsperado = (n, p) => stockEnNoche(n, p.id) - vasosVendidos(p);
+// Unidades que salieron por ventas registradas. Vasos: los granizados vendidos de su talla (combo = 2)
+function vendidosEnVentas(p){
+  if(esVaso(p)) return granizadosPorTalla()[p.talla] || 0;
+  let n = 0;
+  ventas.forEach(v => v.items.forEach(i => { if(i.prodId === p.id) n += i.cantidad; }));
+  return n;
+}
+// Lo que debe haber ahora = inicial + entradas − vendido
+const stockEsperado = (n, p) => stockEnNoche(n, p.id) - vendidosEnVentas(p);
+// Productos que se venden en el panel de ventas (licores y demás; los vasos no se venden solos)
+const vendibles = () => activos().filter(p => !esVaso(p));
 
 // Búsqueda por texto (nombre, presentación o categoría) y por categoría
 function filtrar(lista, pref){
@@ -465,7 +514,7 @@ function llenarCategorias(pref, lista){
 }
 function limpiarBusqueda(pref){
   $(pref + '-q').value = ''; $(pref + '-cat').value = '';
-  pref === 'inv' ? pintarInventario() : pintarProductos();
+  ({ inv: pintarInventario, pro: pintarProductos, ven: pintarGranizados })[pref]();
   $(pref + '-q').focus();
 }
 const sinResultados = `<div class="vacio">No hay productos con esa búsqueda.</div>`;
@@ -497,7 +546,7 @@ function pintarInventario(){
   }
   // El módulo de venta solo se habilita con la venta abierta
   $('nav-granizados').disabled = !n;
-  $('nav-granizados').textContent = n ? '🧊 Granizados' : '🔒 Granizados';
+  $('nav-granizados').textContent = n ? '💰 Ventas' : '🔒 Ventas';
   if(!n && !$('vista-granizados').classList.contains('oculto')) irA('inventario');
 
   const todos = activos();
@@ -509,16 +558,16 @@ function pintarInventario(){
   }
 
   let html = `<div class="card"><h2>${n ? '📦 Stock de esta noche' : '📦 Stock actual'}</h2>
-    <div class="sub">${n ? 'Lo contado al abrir más las entradas. Al cerrar se cuenta lo que queda y el sistema calcula la venta.' : 'Lo que quedó en el último cierre. Se confirma al abrir la noche.'}</div>`;
+    <div class="sub">${n ? 'Inicial + entradas − lo vendido en el panel de ventas.' : 'Lo que quedó en el último cierre. Se revisa al abrir la venta.'}</div>`;
   for(const [cat, prods] of agrupar(lista)){
     html += `<div class="cat"><div class="cat-titulo">${esc(cat)}</div><div class="tabla-scroll"><table>
-      <thead><tr><th>Producto</th>${n ? '<th>Inicial</th><th>Entradas</th>' : ''}<th>Stock</th></tr></thead><tbody>`;
+      <thead><tr><th>Producto</th>${n ? '<th>Inicial</th><th>Entradas</th><th>Vendido</th>' : ''}<th>Stock</th></tr></thead><tbody>`;
     for(const p of prods){
       const st = n ? stockEsperado(n, p) : stockGuardado(p.id);
-      const vv = n ? vasosVendidos(p) : 0;
-      html += `<tr><td><span class="prod">${esc(p.nombre)}</span><span class="pres">${esc(p.presentacion || '')}${vv ? ` · <span class="neon">−${cant(vv)} en granizados</span>` : ''}</span></td>
-        ${n ? `<td>${cant(n.conteoInicial?.[p.id])}</td><td>${num(n.entradas?.[p.id]) ? '+' + cant(n.entradas[p.id]) : '—'}</td>` : ''}
-        <td><b>${cant(st)}</b></td></tr>`;
+      const vv = n ? vendidosEnVentas(p) : 0;
+      html += `<tr><td><span class="prod">${esc(p.nombre)}</span><span class="pres">${esc(p.presentacion || '')}${esVaso(p) ? ' · sale con los granizados' : ''}</span></td>
+        ${n ? `<td>${cant(n.conteoInicial?.[p.id])}</td><td>${num(n.entradas?.[p.id]) ? '+' + cant(n.entradas[p.id]) : '—'}</td><td class="vendido">${vv ? '−' + cant(vv) : '—'}</td>` : ''}
+        <td><b class="${st < 0 ? 'neg' : ''}">${cant(st)}</b></td></tr>`;
     }
     html += `</tbody></table></div></div>`;
   }
@@ -532,7 +581,7 @@ function pintarHistorial(){
   $('historial').innerHTML = historial.map(h => `
     <div class="hist-item" onclick="verNoche('${h.id}')">
       <div><div class="hist-fecha">${esc(fechaLarga(h.fecha))}</div>
-        <div class="hist-meta">${cant(h.resumen?.unidades)} unidades · cerró ${esc(h.cerradaPor || '')} ${horaDe(h.cerradaEn)}</div></div>
+        <div class="hist-meta">${cant(h.resumen?.ventas)} ventas · cerró ${esc(h.cerradaPor || '')} ${horaDe(h.cerradaEn)}${h.revisionInventario ? ` · inventario ${h.revisionInventario === 'corregido' ? '✏️' : '✅'}` : ''}</div></div>
       <div class="precio">${plata(h.resumen?.totalNoche ?? h.resumen?.total)}</div>
     </div>`).join('');
 }
@@ -562,43 +611,81 @@ function tablaConteo(idPrefix, valores, extraCols){
   return html;
 }
 
-// ── Abrir noche ──
-function modalApertura(){
+// ── Abrir venta: base de caja + revisión del inventario inicial ──
+let aperturaBase = '';
+// Revisiones de inventario hechas esta semana (lunes a domingo)
+function revisionesSemana(){
+  const d = new Date(); const lunes = new Date(d); lunes.setDate(d.getDate() - ((d.getDay() + 6) % 7));
+  const desde = lunes.toLocaleDateString('en-CA');
+  return [...historial, ...(nocheAbierta ? [nocheAbierta] : [])].filter(h => h.fecha >= desde && h.revisionInventario).length;
+}
+function modalApertura(modo){
   if(!esAdmin()){ alert('⛔ Solo un admin puede abrir la venta.'); return; }
   if(!activos().length){ alert('Primero crea los productos.'); return; }
+  if($('ini-base')) aperturaBase = $('ini-base').value;
+  if(!modo) aperturaBase = '';
+  // La primera vez no hay inventario anterior: hay que contarlo
+  if(!ultimaCerrada) modo = 'corregir';
+  const rev = revisionesSemana();
+  const revTxt = `Se recomienda revisar el inventario <b>mínimo 3 veces por semana</b>. Esta semana: <b>${rev}</b> de 3.`;
+  let cuerpo;
+  if(modo === 'corregir'){
+    cuerpo = `<div class="cat-titulo" style="margin-top:16px">✏️ Corregir inventario inicial</div>
+      <div class="sub">${ultimaCerrada ? 'Viene lleno con lo que debe haber; cambia lo que no coincida.' : 'Primera apertura: cuenta lo que hay de cada producto.'}</div>
+      ${tablaConteo('ini', p => stockGuardado(p.id))}
+      <div class="acciones"><button class="btn" style="flex:1" id="btn-abrir" onclick="abrirNoche('corregido')">Abrir venta</button>
+        ${ultimaCerrada ? `<button class="btn btn-ghost" onclick="modalApertura('revisar')">← Volver</button>` : `<button class="btn btn-ghost" onclick="cerrarModal()">Cancelar</button>`}</div>`;
+  } else {
+    let tabla = '';
+    for(const [cat, prods] of agrupar(activos())){
+      tabla += `<div class="cat"><div class="cat-titulo">${esc(cat)}</div><div class="tabla-scroll"><table><thead><tr><th>Producto</th><th>Debe haber</th></tr></thead><tbody>
+        ${prods.map(p => `<tr><td><span class="prod">${esc(p.nombre)}</span><span class="pres">${esc(p.presentacion || '')}</span></td><td><b>${cant(stockGuardado(p.id))}</b></td></tr>`).join('')}
+        </tbody></table></div></div>`;
+    }
+    cuerpo = `<div class="aviso">📋 <b>Revisa el inventario inicial</b> antes de empezar.<br>${revTxt}</div>
+      ${tabla}
+      <div class="acciones">
+        <button class="btn" style="flex:1" id="btn-abrir" onclick="abrirNoche('confirmado')">✅ Confirmar</button>
+        <button class="btn btn-ghost" style="flex:1" onclick="modalApertura('corregir')">✏️ Corregir</button>
+      </div>
+      <div class="sub" style="margin-top:6px">✅ Confirmar si el inventario está correcto · ✏️ Corregir si tiene cambios</div>`;
+  }
   abrirModal(`
-    <h3>🌙 Abrir venta</h3>
-    <div class="lbl" style="margin-top:4px">💰 Base de caja (efectivo con que se inicia)</div>
-    <input id="ini-base" inputmode="numeric" placeholder="$ 0" oninput="formatoPlata(this)"/>
-    <div class="sub" style="margin:14px 0 0"><b>Conteo inicial:</b> cuenta lo que hay. Viene lleno con lo que quedó en el último cierre; corrige si algo no coincide.</div>
-    ${tablaConteo('ini', p => stockGuardado(p.id))}
-    <div class="acciones"><button class="btn" id="btn-abrir" onclick="abrirNoche()">Abrir venta</button><button class="btn btn-ghost" onclick="cerrarModal()">Cancelar</button></div>`);
+    <div class="fila"><h3 style="margin:0">🌙 Abrir venta</h3><button class="btn btn-ghost btn-sm" onclick="cerrarModal()">✕</button></div>
+    <div class="lbl" style="margin-top:12px">💰 Base de caja (efectivo con que se inicia)</div>
+    <input id="ini-base" inputmode="numeric" placeholder="$ 0" value="${esc(aperturaBase)}" oninput="formatoPlata(this)"/>
+    ${cuerpo}`);
 }
 
-async function abrirNoche(){
+async function abrirNoche(revision){
   if(!esAdmin()) return;
   const baseCaja = valorPlata('ini-base');
   if(!baseCaja && !confirm('La base de caja está en $0. ¿Abrir la venta así?')) return;
   const conteo = {}, diferencias = [];
   for(const p of activos()){
-    const el = $('ini-' + p.id);
-    if(el.value.trim() === ''){ el.focus(); alert(`Falta contar: ${p.nombre} ${p.presentacion || ''}`); return; }
-    const v = num(el.value);
-    if(v < 0){ el.focus(); alert('No puede haber cantidades negativas.'); return; }
+    let v;
+    if(revision === 'confirmado') v = stockGuardado(p.id);
+    else {
+      const el = $('ini-' + p.id);
+      if(el.value.trim() === ''){ el.focus(); alert(`Falta contar: ${p.nombre} ${p.presentacion || ''}`); return; }
+      v = num(el.value);
+      if(v < 0){ el.focus(); alert('No puede haber cantidades negativas.'); return; }
+    }
     conteo[p.id] = v;
     if(ultimaCerrada && v !== stockGuardado(p.id)) diferencias.push({ id: p.id, nombre: `${p.nombre} ${p.presentacion || ''}`.trim(), esperado: stockGuardado(p.id), contado: v });
   }
-  if(diferencias.length && !confirm(`⚠️ ${diferencias.length} producto(s) no coinciden con el último cierre:\n\n` +
-      diferencias.map(d => `• ${d.nombre}: quedó ${cant(d.esperado)}, ahora hay ${cant(d.contado)}`).join('\n') + '\n\n¿Abrir la venta igual?')) return;
+  if(diferencias.length && !confirm(`Vas a corregir ${diferencias.length} producto(s):\n\n` +
+      diferencias.map(d => `• ${d.nombre}: debía haber ${cant(d.esperado)}, hay ${cant(d.contado)}`).join('\n') + '\n\n¿Abrir la venta con estos cambios?')) return;
   $('btn-abrir').disabled = true;
   try{
     const ya = await NOCHES().where('estado', '==', 'abierta').limit(1).get();
     if(!ya.empty){ alert('Ya hay una venta abierta.'); cerrarModal(); return; }
     await NOCHES().add({
       fecha: hoy(), estado: 'abierta', abiertaEn: TS(), abiertaPor: usuarioNombre, abiertaPorUid: usuario.uid,
-      baseCaja, conteoInicial: conteo, entradas: {}, movimientos: [], diferenciasApertura: diferencias
+      baseCaja, revisionInventario: revision, conteoInicial: conteo, entradas: {}, movimientos: [], diferenciasApertura: diferencias
     });
-    logAudit('abrir_noche', `Abrió la venta con base ${plata(baseCaja)}`, { baseCaja, diferencias: diferencias.length });
+    logAudit('abrir_noche', `Abrió la venta con base ${plata(baseCaja)} · inventario ${revision}`, { baseCaja, revision, diferencias });
+    aperturaBase = '';
     cerrarModal(); toast('🌙 Venta abierta');
   } catch(e){ alert('No se pudo abrir: ' + e.message); $('btn-abrir').disabled = false; }
 }
@@ -647,150 +734,101 @@ async function guardarEntrada(){
   } catch(e){ alert('No se pudo registrar: ' + e.message); $('btn-ent').disabled = false; }
 }
 
-// ── Cerrar venta: paso 1 conteo final, paso 2 resumen, paso 3 guardar ──
-let cierreConteo = {};     // lo digitado en el conteo final (se conserva al volver del resumen)
-let cierreCalc = null;     // cálculo con el que se muestra el resumen y se guarda
-let cierreNocheId = null;
+// ── Cerrar venta (solo admin): resumen de lo vendido y de la caja ──
+function calcularCierre(){
+  const n = nocheAbierta, g = totalesVentas(), ab = totalesAbonos(), base = num(n.baseCaja);
+  // Vendido por producto (todas las ventas de la noche)
+  const porProducto = {};
+  let unidades = 0, valorGranizados = 0, valorOtros = 0, cantGranizados = 0;
+  ventas.forEach(v => v.items.forEach(i => {
+    const p = productos.find(x => x.id === i.prodId);
+    const gran = i.tipo ? i.tipo === 'granizado' : (p ? esGranizado(p) : false);
+    const k = porProducto[i.prodId] ||= { nombre: i.nombre, presentacion: i.presentacion || '', categoria: i.categoria || p?.categoria || (gran ? 'Granizados' : 'Otros'), granizado: gran, cantidad: 0, valor: 0 };
+    k.cantidad += i.cantidad; k.valor += i.subtotal;
+    if(gran){ valorGranizados += i.subtotal; cantGranizados += i.cantidad * (i.unidades || 1); }
+    else { valorOtros += i.subtotal; unidades += i.cantidad; }
+  }));
+  // Inventario: lo que debe quedar queda como inicial de la próxima venta
+  const conteoFinal = {}, detalle = [];
+  for(const p of activos()){
+    const fin = stockEsperado(n, p);
+    conteoFinal[p.id] = fin;
+    detalle.push({ prodId: p.id, nombre: p.nombre, presentacion: p.presentacion || '', categoria: p.categoria || 'Otros',
+      inicial: num(n.conteoInicial?.[p.id]), entradas: num(n.entradas?.[p.id]), vendido: vendidosEnVentas(p), final: fin });
+  }
+  const resumen = {
+    total: g.total, totalNoche: g.total, efectivo: g.efectivo, transferencia: g.transferencia, fiado: g.fiado, ventas: g.ventas,
+    unidades, granizados: valorGranizados, cantGranizados, otros: valorOtros, baseCaja: base,
+    abonos: { total: ab.total, efectivo: ab.efectivo, transferencia: ab.transferencia, cantidad: ab.cantidad },
+    efectivoCaja: base + g.efectivo + ab.efectivo, transferenciasTotal: g.transferencia + ab.transferencia
+  };
+  return { conteoFinal, detalle, porProducto, resumen };
+}
+
+// HTML del resumen (se usa al cerrar y en el historial)
+function htmlResumen(r, porProducto, detalle){
+  const prods = Object.values(porProducto || {}).sort((a, b) => (b.granizado - a.granizado) || a.categoria.localeCompare(b.categoria) || a.nombre.localeCompare(b.nombre));
+  const g = {};
+  prods.forEach(x => (g[x.categoria] ||= []).push(x));
+  const negativos = (detalle || []).filter(d => d.final < 0);
+  return `
+    <div class="tot" style="text-align:center;padding:18px;margin-top:4px">
+      <div class="k">Venta total</div>
+      <div class="v neon" style="font-size:2.1rem">${plata(r.total ?? r.totalNoche)}</div>
+      <div class="sub">${cant(r.ventas)} venta(s)</div>
+    </div>
+    <div class="cat"><div class="cat-titulo">💳 Por forma de pago</div>
+      <div class="totales" style="margin-top:4px">
+        <div class="tot"><div class="k">💵 Efectivo</div><div class="v">${plata(r.efectivo)}</div></div>
+        <div class="tot"><div class="k">🏦 Transferencia</div><div class="v">${plata(r.transferencia)}</div></div>
+        <div class="tot"><div class="k">🧾 Fiado</div><div class="v">${plata(r.fiado)}</div></div>
+      </div></div>
+    <div class="cat"><div class="cat-titulo">💰 Caja</div>
+      <div class="totales" style="margin-top:4px">
+        <div class="tot"><div class="k">Base de caja</div><div class="v">${plata(r.baseCaja)}</div></div>
+        <div class="tot"><div class="k">🧾 Abonos de fiados</div><div class="v">${plata(r.abonos?.total)}</div><div class="sub">💵 ${plata(r.abonos?.efectivo)} · 🏦 ${plata(r.abonos?.transferencia)}</div></div>
+        <div class="tot" style="border-color:var(--verde-txt)"><div class="k">💵 Efectivo que debe haber</div><div class="v neon">${plata(r.efectivoCaja)}</div><div class="sub">base + ventas + abonos en efectivo</div></div>
+        <div class="tot" style="border-color:var(--verde-txt)"><div class="k">🏦 Total transferencias</div><div class="v neon">${plata(r.transferenciasTotal)}</div><div class="sub">ventas + abonos</div></div>
+      </div></div>
+    <div class="cat"><div class="cat-titulo">🛒 Productos vendidos</div>
+      <div class="totales" style="margin-top:4px">
+        <div class="tot"><div class="k">🧊 Granizados</div><div class="v">${plata(r.granizados)}</div><div class="sub">${cant(r.cantGranizados)} granizados</div></div>
+        <div class="tot"><div class="k">🍾 Licores y más</div><div class="v">${plata(r.otros)}</div><div class="sub">${cant(r.unidades)} unidades</div></div>
+      </div>
+      ${prods.length ? Object.entries(g).map(([cat, items]) => `<div class="cat"><div class="fila"><div class="cat-titulo">${esc(cat)}</div><div class="precio" style="font-size:.85rem">${plata(items.reduce((s, x) => s + x.valor, 0))}</div></div>
+        <div class="tabla-scroll"><table><thead><tr><th>Producto</th><th>Cant.</th><th>Valor</th></tr></thead><tbody>
+        ${items.map(x => `<tr><td><span class="prod">${esc(x.nombre)}</span><span class="pres">${esc(x.presentacion)}</span></td><td class="vendido">${cant(x.cantidad)}</td><td>${plata(x.valor)}</td></tr>`).join('')}
+        </tbody></table></div></div>`).join('') : '<div class="vacio">No hubo ventas.</div>'}
+    </div>
+    ${negativos.length ? `<div class="alerta">⚠️ Se vendió más de lo que había en inventario: ${negativos.map(d => `${esc(d.nombre)} ${esc(d.presentacion)} (${cant(d.final)})`).join(', ')}. Corrige el inventario en la próxima apertura.</div>` : ''}`;
+}
 
 function modalCierre(){
   if(!esAdmin()){ alert('⛔ Solo un admin puede cerrar la venta.'); return; }
-  const n = nocheAbierta;
-  if(cierreNocheId !== n.id){ cierreConteo = {}; cierreNocheId = n.id; }
+  const c = calcularCierre();
   abrirModal(`
-    <h3>🔒 Cerrar venta — 1. Conteo final</h3>
-    <div class="sub">Cuenta lo que queda de cada producto. Sin el conteo completo no se puede cerrar.</div>
-    ${tablaConteo('fin', p => cierreConteo[p.id] ?? '', {
-      head: '<th>Había</th><th>Vendido</th>',
-      headVasos: '<th>Deben quedar</th><th>Dif.</th>',
-      fila: p => `<td>${cant(stockEsperado(n, p))}</td><td class="vendido" id="vend-${p.id}">—</td>`,
-      oninput: 'recalcularCierre()'
-    })}
-    <div id="cie-vasos"></div>
-    <div id="cie-alerta"></div>
-    <div class="acciones"><button class="btn" id="btn-resumen" onclick="verResumenCierre()">Ver resumen →</button><button class="btn btn-ghost" onclick="cerrarModal()">Seguir abierta</button></div>`);
-  recalcularCierre();
-}
-
-function calcularCierre(){
-  const n = nocheAbierta, filas = [];
-  let faltan = 0, negativos = 0;
-  for(const p of activos()){
-    const el = $('fin-' + p.id); if(!el) continue;
-    const vacio = el.value.trim() === '';
-    const habia = stockEnNoche(n, p.id), final = num(el.value);
-    const vendido = vacio ? null : habia - final;            // en vasos: los que realmente se usaron
-    const dif = esVaso(p) && !vacio ? final - stockEsperado(n, p) : null;   // vasos: contados − esperados
-    if(vacio) faltan++;
-    if(!esVaso(p) && vendido !== null && vendido < 0) negativos++;
-    filas.push({ p, vacio, habia, final, vendido, dif, valor: esVaso(p) ? 0 : (vendido || 0) * num(p.precio) });
-  }
-  return { filas, faltan, negativos };
-}
-
-function recalcularCierre(){
-  const { filas, faltan, negativos } = calcularCierre();
-  for(const f of filas){
-    const td = $('vend-' + f.p.id);
-    if(esVaso(f.p)){
-      td.textContent = f.dif === null ? '—' : f.dif === 0 ? '✓' : (f.dif > 0 ? '+' : '') + cant(f.dif);
-      td.classList.toggle('neg', !!f.dif);
-    } else {
-      td.textContent = f.vendido === null ? '—' : cant(f.vendido);
-      td.classList.toggle('neg', f.vendido !== null && f.vendido < 0);
-    }
-  }
-  $('cie-vasos').innerHTML = faltan ? '' : htmlVasos(compararVasos(filas));
-  $('cie-alerta').innerHTML =
-    (negativos ? `<div class="alerta">⚠️ ${negativos} producto(s) con más unidades de las que había. Revisa el conteo o registra la entrada que faltó.</div>` : '') +
-    (faltan ? `<div class="aviso">Faltan ${faltan} producto(s) por contar.</div>` : '');
-  $('btn-resumen').disabled = faltan > 0;
-}
-
-function verResumenCierre(){
-  const calc = calcularCierre();
-  if(calc.faltan){ alert(`Faltan ${calc.faltan} producto(s) por contar.`); return; }
-  if(calc.negativos && !confirm(`⚠️ Hay ${calc.negativos} producto(s) con venta negativa (quedó más de lo que había).\n¿Continuar igual?`)) return;
-  cierreConteo = {}; calc.filas.forEach(f => cierreConteo[f.p.id] = f.final);
-  cierreCalc = calc;
-  const licor = calc.filas.filter(f => !esVaso(f.p));
-  const totalLicor = licor.reduce((s, f) => s + f.valor, 0);
-  const unidLicor = licor.reduce((s, f) => s + f.vendido, 0);
-  const g = totalesVentas(), base = num(nocheAbierta.baseCaja), ab = totalesAbonos();
-  const vendidos = licor.filter(f => f.vendido);
-  abrirModal(`
-    <h3>📊 Cerrar venta — 2. Resumen</h3>
-    <div class="tot" style="text-align:center;padding:18px;margin-top:4px">
-      <div class="k">Venta total de la noche</div>
-      <div class="v neon" style="font-size:2.1rem">${plata(totalLicor + g.total)}</div>
-    </div>
-    <div class="totales">
-      <div class="tot"><div class="k">🍾 Licor (inventario)</div><div class="v">${plata(totalLicor)}</div><div class="sub">${cant(unidLicor)} unidades</div></div>
-      <div class="tot"><div class="k">🧊 Granizados</div><div class="v">${plata(g.total)}</div><div class="sub">${cant(g.granizados)} granizados</div></div>
-    </div>
-
-    <div class="cat"><div class="cat-titulo">🍾 Licor vendido</div>
-      ${vendidos.length ? `<div class="tabla-scroll"><table><thead><tr><th>Producto</th><th>Vendido</th><th>Valor</th></tr></thead><tbody>
-      ${vendidos.map(f => `<tr><td><span class="prod">${esc(f.p.nombre)}</span><span class="pres">${esc(f.p.presentacion || '')}</span></td>
-        <td class="vendido${f.vendido < 0 ? ' neg' : ''}">${cant(f.vendido)}</td><td>${plata(f.valor)}</td></tr>`).join('')}
-      </tbody></table></div>` : '<div class="vacio">No se vendió licor.</div>'}</div>
-
-    <div class="cat"><div class="cat-titulo">🧊 Granizados por forma de pago</div>
-      <div class="totales" style="margin-top:4px">
-        <div class="tot"><div class="k">💵 Efectivo</div><div class="v">${plata(g.efectivo)}</div></div>
-        <div class="tot"><div class="k">🏦 Transferencia</div><div class="v">${plata(g.transferencia)}</div></div>
-        <div class="tot"><div class="k">🧾 Fiado</div><div class="v">${plata(g.fiado)}</div></div>
-      </div></div>
-
-    <div class="cat"><div class="cat-titulo">💰 Caja</div>
-      <div class="totales" style="margin-top:4px">
-        <div class="tot"><div class="k">Base de caja</div><div class="v">${plata(base)}</div></div>
-        <div class="tot"><div class="k">🧾 Abonos de fiados</div><div class="v">${plata(ab.total)}</div><div class="sub">💵 ${plata(ab.efectivo)} · 🏦 ${plata(ab.transferencia)}</div></div>
-        <div class="tot"><div class="k">💵 Efectivo en caja</div><div class="v">${plata(base + g.efectivo + ab.efectivo)}</div><div class="sub">base + efectivo granizados + abonos</div></div>
-      </div></div>
-    ${htmlVasos(compararVasos(calc.filas))}
+    <div class="fila"><h3 style="margin:0">🔒 Cerrar venta — Resumen</h3><button class="btn btn-ghost btn-sm" onclick="cerrarModal()">✕</button></div>
+    <div class="sub" style="margin-top:4px">${esc(fechaLarga(nocheAbierta.fecha))} · abrió ${esc(nocheAbierta.abiertaPor || '')} ${horaDe(nocheAbierta.abiertaEn)}</div>
+    ${htmlResumen(c.resumen, c.porProducto, c.detalle)}
     <div class="acciones">
       <button class="btn" style="flex:1" id="btn-cerrar" onclick="cerrarNoche()">✅ Cerrar venta</button>
-      <button class="btn btn-ghost" onclick="modalCierre()">← Volver al conteo</button>
+      <button class="btn btn-ghost" onclick="cerrarModal()">Seguir abierta</button>
     </div>`);
 }
 
 async function cerrarNoche(){
-  if(!esAdmin() || !cierreCalc || !nocheAbierta) return;
-  const { filas } = cierreCalc;
-  const conteoFinal = {}, detalle = [];
-  let unidades = 0, total = 0;
-  for(const f of filas){
-    conteoFinal[f.p.id] = f.final;
-    // Se guarda una copia del nombre y precio para que el historial no cambie si luego se edita el producto
-    detalle.push({ prodId: f.p.id, nombre: f.p.nombre, presentacion: f.p.presentacion || '', categoria: f.p.categoria || 'Otros',
-      precio: esVaso(f.p) ? 0 : num(f.p.precio), inicial: num(nocheAbierta.conteoInicial?.[f.p.id]), entradas: num(nocheAbierta.entradas?.[f.p.id]),
-      final: f.final, vendido: f.vendido, valor: f.valor });
-    if(!esVaso(f.p)) unidades += f.vendido;
-    total += f.valor;
-  }
-  const g = totalesVentas();
-  const base = num(nocheAbierta.baseCaja), fechaNoche = nocheAbierta.fecha || hoy();
-  const granizados = { total: g.total, efectivo: g.efectivo, transferencia: g.transferencia, fiado: g.fiado, cantidad: g.granizados, ventas: g.ventas, porProducto: {} };
-  ventas.forEach(v => v.items.forEach(i => {
-    const k = granizados.porProducto[i.prodId] ||= { nombre: i.nombre, presentacion: i.presentacion, cantidad: 0, valor: 0 };
-    k.cantidad += i.cantidad; k.valor += i.subtotal;
-  }));
-  granizados.vasos = compararVasos(filas);
-  const ab = totalesAbonos();
-  const resumen = { unidades, total, granizados: g.total, totalNoche: total + g.total, baseCaja: base,
-    abonos: { total: ab.total, efectivo: ab.efectivo, transferencia: ab.transferencia, cantidad: ab.cantidad },
-    efectivoCaja: base + g.efectivo + ab.efectivo };
+  if(!esAdmin() || !nocheAbierta) return;
+  const c = calcularCierre();
+  const id = nocheAbierta.id, fecha = nocheAbierta.fecha || hoy();
   $('btn-cerrar').disabled = true;
   try{
-    const id = nocheAbierta.id;
     await NOCHES().doc(id).update({
       estado: 'cerrada', cerradaEn: TS(), cerradaPor: usuarioNombre, cerradaPorUid: usuario.uid,
-      conteoFinal, detalle, granizados, resumen
+      conteoFinal: c.conteoFinal, detalle: c.detalle, porProducto: c.porProducto, resumen: c.resumen
     });
-    logAudit('cerrar_noche', `Cerró la venta: ${plata(resumen.totalNoche)}`, resumen);
-    cierreConteo = {}; cierreCalc = null;
+    logAudit('cerrar_noche', `Cerró la venta: ${plata(c.resumen.total)}`, c.resumen);
     cerrarModal(); toast('🔒 Venta cerrada');
-    verNoche(id, { fecha: fechaNoche, detalle, granizados, resumen });
+    verNoche(id, { fecha, ...c });
   } catch(e){ alert('No se pudo cerrar: ' + e.message); if($('btn-cerrar')) $('btn-cerrar').disabled = false; }
 }
 
@@ -798,39 +836,26 @@ async function cerrarNoche(){
 function verNoche(id, datos){
   const h = datos || historial.find(x => x.id === id);
   if(!h) return;
-  const det = (h.detalle || []).slice().sort((a, b) => a.categoria.localeCompare(b.categoria) || a.nombre.localeCompare(b.nombre));
-  const g = {};
-  det.forEach(d => (g[d.categoria] ||= []).push(d));
-  let html = `<h3>📊 ${esc(fechaLarga(h.fecha))}</h3>`;
-  for(const [cat, items] of Object.entries(g)){
-    const subtotal = items.reduce((s, d) => s + d.valor, 0);
-    html += `<div class="cat"><div class="fila"><div class="cat-titulo">${esc(cat)}</div><div class="precio" style="font-size:.85rem">${plata(subtotal)}</div></div>
-      <div class="tabla-scroll"><table><thead><tr><th>Producto</th><th>Inicial</th><th>Entró</th><th>Quedó</th><th>Vendido</th><th>Valor</th></tr></thead><tbody>`;
-    for(const d of items){
-      html += `<tr><td><span class="prod">${esc(d.nombre)}</span><span class="pres">${esc(d.presentacion)}${d.precio ? ' · ' + plata(d.precio) : ''}</span></td>
-        <td>${cant(d.inicial)}</td><td>${d.entradas ? '+' + cant(d.entradas) : '—'}</td><td>${cant(d.final)}</td>
-        <td class="vendido${d.vendido < 0 ? ' neg' : ''}">${cant(d.vendido)}</td><td>${plata(d.valor)}</td></tr>`;
-    }
-    html += `</tbody></table></div></div>`;
+  const r = h.resumen || {};
+  const porProducto = h.porProducto || h.granizados?.porProducto || {};
+  let inv = '';
+  const det = (h.detalle || []).slice().sort((a, b) => (a.categoria || '').localeCompare(b.categoria || '') || a.nombre.localeCompare(b.nombre));
+  if(det.length){
+    const g = {};
+    det.forEach(d => (g[d.categoria || 'Otros'] ||= []).push(d));
+    inv = `<div class="cat"><div class="cat-titulo">📦 Inventario de la noche</div>${Object.entries(g).map(([cat, items]) => `
+      <div class="cat"><div class="cat-titulo" style="color:var(--muted)">${esc(cat)}</div><div class="tabla-scroll"><table>
+      <thead><tr><th>Producto</th><th>Inicial</th><th>Entró</th><th>Vendido</th><th>Quedó</th></tr></thead><tbody>
+      ${items.map(d => `<tr><td><span class="prod">${esc(d.nombre)}</span><span class="pres">${esc(d.presentacion || '')}</span></td>
+        <td>${cant(d.inicial)}</td><td>${d.entradas ? '+' + cant(d.entradas) : '—'}</td><td class="vendido">${cant(d.vendido)}</td><td class="${d.final < 0 ? 'neg' : ''}">${cant(d.final)}</td></tr>`).join('')}
+      </tbody></table></div></div>`).join('')}</div>`;
   }
-  const gz = h.granizados;
-  if(gz && gz.ventas){
-    html += `<div class="cat"><div class="fila"><div class="cat-titulo">🧊 Granizados</div><div class="precio" style="font-size:.85rem">${plata(gz.total)}</div></div>
-      <div class="tabla-scroll"><table><thead><tr><th>Producto</th><th>Vendidos</th><th>Valor</th></tr></thead><tbody>
-      ${Object.values(gz.porProducto || {}).map(x => `<tr><td><span class="prod">${esc(x.nombre)}</span><span class="pres">${esc(x.presentacion)}</span></td><td class="vendido">${cant(x.cantidad)}</td><td>${plata(x.valor)}</td></tr>`).join('')}
-      </tbody></table></div>
-      <div class="sub" style="margin-top:6px">💵 ${plata(gz.efectivo)} · 🏦 ${plata(gz.transferencia)}${gz.fiado ? ` · 🧾 ${plata(gz.fiado)}` : ''} · ${cant(gz.cantidad)} granizados</div>${gz.vasos ? htmlVasos(gz.vasos) : ''}</div>`;
-  }
-  html += `<div class="totales">
-      <div class="tot"><div class="k">Venta por inventario</div><div class="v">${plata(h.resumen?.total)}</div></div>
-      <div class="tot"><div class="k">🧊 Granizados</div><div class="v">${plata(h.resumen?.granizados)}</div></div>
-      <div class="tot"><div class="k">Total noche</div><div class="v neon">${plata(h.resumen?.totalNoche ?? h.resumen?.total)}</div></div>
-      ${h.resumen?.baseCaja !== undefined ? `<div class="tot"><div class="k">💰 Base de caja</div><div class="v">${plata(h.resumen.baseCaja)}</div></div>
-      ${h.resumen.abonos ? `<div class="tot"><div class="k">🧾 Abonos de fiados</div><div class="v">${plata(h.resumen.abonos.total)}</div></div>` : ''}
-      <div class="tot"><div class="k">💵 Efectivo en caja</div><div class="v">${plata(h.resumen.efectivoCaja)}</div></div>` : ''}
-    </div>
-    <div class="acciones"><button class="btn btn-ghost btn-full" onclick="cerrarModal()">Cerrar</button></div>`;
-  abrirModal(html);
+  abrirModal(`
+    <div class="fila"><h3 style="margin:0">📊 ${esc(fechaLarga(h.fecha))}</h3><button class="btn btn-ghost btn-sm" onclick="cerrarModal()">✕</button></div>
+    ${h.revisionInventario ? `<div class="sub" style="margin-top:4px">Inventario inicial: ${h.revisionInventario === 'corregido' ? '✏️ corregido' : '✅ confirmado'}</div>` : ''}
+    ${htmlResumen(r, porProducto, det)}
+    ${inv}
+    <div class="acciones"><button class="btn btn-ghost btn-full" onclick="cerrarModal()">Cerrar</button></div>`);
 }
 
 // ══════════════════════════════════════
@@ -910,112 +935,129 @@ function granizadosPorTalla(){
   }));
   return r;
 }
-// Compara vasos usados (inventario) contra granizados vendidos
-function compararVasos(filas){
-  const out = {};
-  for(const f of filas){
-    if(!esVaso(f.p)) continue;
-    out[f.p.talla] = { inicial: f.habia, granizados: vasosVendidos(f.p), esperado: f.habia - vasosVendidos(f.p), contado: f.vacio ? null : f.final };
-  }
-  return out;
-}
-function htmlVasos(cmp){
-  const filas = TALLAS.filter(t => cmp[t] && cmp[t].esperado !== undefined).map(t => [t, cmp[t]]);
-  if(!filas.length) return '';
-  const malos = filas.filter(([, x]) => x.contado !== null && x.contado !== x.esperado);
-  return `<div class="${malos.length ? 'alerta' : 'aviso'}" style="${malos.length ? '' : 'background:var(--verde-bg);border-color:rgba(166,255,0,.35);color:var(--txt)'}">
-    🥤 <b>Vasos vs granizados vendidos</b><br>${filas.map(([t, x]) => {
-      const d = x.contado === null ? null : x.contado - x.esperado;
-      return `<b>${t}</b>: ${cant(x.inicial)} − ${cant(x.granizados)} vendidos = deben quedar <b>${cant(x.esperado)}</b> · contados ${x.contado === null ? '—' : cant(x.contado)}${d === null ? '' : d === 0 ? ' ✓' : ` <b>(${d < 0 ? 'faltan ' + cant(-d) : 'sobran ' + cant(d)})</b>`}`;
-    }).join('<br>')}</div>`;
-}
-
 function pintarGranizados(){
   if(!$('gran-cuerpo')) return;
   if(!nocheAbierta){
     $('gran-cuerpo').innerHTML = `<div class="card vacio">🔒 La venta está cerrada.<br>Un admin debe abrirla en <b>Inventario</b>.<br><br>
       <button class="btn btn-sm" onclick="irA('inventario')">Ir a Inventario</button></div>`;
+    $('barra-cobro').classList.add('oculto');
     return;
   }
-  const lista = granizadosActivos();
-  const t = totalesVentas();
-  const enCarrito = Object.entries(carrito).filter(([id, c]) => c > 0 && lista.some(p => p.id === id));
-  const totalCarrito = enCarrito.reduce((s, [id, c]) => s + c * num(productos.find(p => p.id === id)?.precio), 0);
+  const n = nocheAbierta;
+  const todos = [...granizadosActivos(), ...vendibles()];
+  llenarCategorias('ven', todos);
+  const filtrados = filtrar(todos, 'ven');
+  const grans = filtrados.filter(esGranizado), otros = filtrados.filter(p => !esGranizado(p));
+  const t = totalesVentas(), ab = totalesAbonos();
+  const boton = p => {
+    const quedan = esGranizado(p) ? null : stockEsperado(n, p) - (carrito[p.id] || 0);
+    return `<button class="gran-btn${num(p.unidades) > 1 ? ' combo' : ''}" onclick="agregarCarrito('${p.id}')">
+      ${carrito[p.id] ? `<span class="g-cnt">${carrito[p.id]}</span>` : ''}
+      <div class="g-nom">${esc(p.nombre)}</div><div class="pres">${esc(p.presentacion || '')}</div>
+      <div class="g-pre">${plata(p.precio)}</div>
+      ${quedan === null ? '' : `<div class="g-stock${quedan <= 0 ? ' bajo' : ''}">Quedan ${cant(quedan)}</div>`}</button>`;
+  };
 
-  let html = `<div class="card"><h2>🧊 Vender</h2><div class="sub">Toca para agregar.</div>
-    ${lista.length ? `<div class="gran-grid">${lista.map(p => `
-      <button class="gran-btn${num(p.unidades) > 1 ? ' combo' : ''}" onclick="agregarCarrito('${p.id}')">
-        ${carrito[p.id] ? `<span class="g-cnt">${carrito[p.id]}</span>` : ''}
-        <div class="g-nom">${esc(p.nombre)}</div><div class="pres">${esc(p.presentacion || '')}</div>
-        <div class="g-pre">${plata(p.precio)}</div></button>`).join('')}</div>`
-      : `<div class="vacio">No hay granizados activos.</div>`}`;
+  let html = '';
+  if(grans.length) html += `<div class="card"><h2>🧊 Granizados</h2><div class="gran-grid">${grans.map(boton).join('')}</div></div>`;
+  if(otros.length){
+    html += `<div class="card"><h2>🍾 Licores y más</h2>`;
+    for(const [cat, prods] of agrupar(otros)) html += `<div class="cat"><div class="cat-titulo">${esc(cat)}</div><div class="gran-grid" style="margin-top:0">${prods.map(boton).join('')}</div></div>`;
+    html += `</div>`;
+  }
+  if(!filtrados.length) html += `<div class="card">${sinResultados}</div>`;
 
-  if(enCarrito.length){
-    html += `<div style="margin-top:14px">${enCarrito.map(([id, c]) => {
-      const p = productos.find(x => x.id === id);
-      return `<div class="carrito-row"><div><span class="prod">${esc(p.nombre)}</span><span class="pres">${plata(p.precio)} c/u</span></div>
-        <div class="stepper"><button onclick="cambiarCarrito('${id}',-1)">−</button><b>${c}</b><button onclick="cambiarCarrito('${id}',1)">+</button>
-        <span class="precio" style="min-width:80px;text-align:right">${plata(c * num(p.precio))}</span></div></div>`;
-    }).join('')}</div>
+  html += `<div class="card"><h2>📊 Ventas de la noche</h2>
+    <div class="totales">
+      <div class="tot"><div class="k">Total vendido</div><div class="v neon">${plata(t.total)}</div></div>
+      <div class="tot"><div class="k">💵 Efectivo</div><div class="v">${plata(t.efectivo)}</div></div>
+      <div class="tot"><div class="k">🏦 Transferencia</div><div class="v">${plata(t.transferencia)}</div></div>
+      <div class="tot"><div class="k">🧾 Fiado</div><div class="v">${plata(t.fiado)}</div></div>
+      <div class="tot"><div class="k">💰 Base de caja</div><div class="v">${plata(n.baseCaja)}</div></div>
+      <div class="tot"><div class="k">🧾 Abonos recibidos</div><div class="v">${plata(ab.total)}</div></div>
+      <div class="tot"><div class="k">💵 Efectivo en caja</div><div class="v">${plata(num(n.baseCaja) + t.efectivo + ab.efectivo)}</div></div>
+    </div>
+    <div style="margin-top:10px">${ventas.length ? ventas.map(v => `
+      <div class="venta-row"><div>
+        <div class="prod">${v.items.map(i => `${i.cantidad}× ${esc(i.nombre)}${i.tipo !== 'granizado' && i.presentacion ? ' ' + esc(i.presentacion) : ''}`).join(', ')}</div>
+        <div class="pres">${esc(v.hora)} · ${esc(v.por)}${tagPago(v)}</div></div>
+        <div style="display:flex;align-items:center;gap:8px"><span class="precio" style="white-space:nowrap">${plata(v.total)}</span>
+        ${esAdmin() ? `<button class="btn btn-ghost btn-sm" onclick="borrarVenta('${v.id}')">🗑️</button>` : ''}</div></div>`).join('')
+      : `<div class="vacio">Todavía no hay ventas.</div>`}</div></div>`;
+  $('gran-cuerpo').innerHTML = html;
+  pintarBarraCobro();
+}
+
+// ── Carrito y cobro ──
+const lineasCarrito = () => Object.entries(carrito).filter(([id, c]) => c > 0 && productos.some(p => p.id === id))
+  .map(([id, c]) => { const p = productos.find(x => x.id === id); return { p, c, sub: c * num(p.precio) }; });
+const totalCarrito = () => lineasCarrito().reduce((s, l) => s + l.sub, 0);
+
+function pintarBarraCobro(){
+  const lineas = lineasCarrito(), barra = $('barra-cobro');
+  const visible = lineas.length && nocheAbierta && !$('vista-granizados').classList.contains('oculto');
+  barra.classList.toggle('oculto', !visible);
+  $('vista-granizados').style.paddingBottom = visible ? '70px' : '';
+  if(!visible) return;
+  const unid = lineas.reduce((s, l) => s + l.c, 0);
+  barra.innerHTML = `<div class="in"><div><b>🛒 ${unid} producto${unid === 1 ? '' : 's'}</b><div class="precio" style="font-size:1.2rem">${plata(totalCarrito())}</div></div>
+    <div style="display:flex;gap:8px"><button class="btn btn-ghost btn-sm" onclick="vaciarCarrito()">Vaciar</button><button class="btn" onclick="modalCobro()">Cobrar →</button></div></div>`;
+}
+function vaciarCarrito(){ carrito = {}; pagoTipo = 'efectivo'; pagoMixtoEf = 0; pagoFiadoNombre = ''; pintarGranizados(); }
+
+function modalCobro(){
+  const lineas = lineasCarrito();
+  if(!lineas.length){ cerrarModal(); return; }
+  const total = totalCarrito();
+  abrirModal(`
+    <div class="fila"><h3 style="margin:0">🛒 Cobrar</h3><button class="btn btn-ghost btn-sm" onclick="cerrarModal()">✕</button></div>
+    <div style="margin-top:8px">${lineas.map(({ p, c, sub }) => `<div class="carrito-row">
+      <div><span class="prod">${esc(p.nombre)}</span><span class="pres">${esc(p.presentacion || '')} · ${plata(p.precio)} c/u</span></div>
+      <div class="stepper"><button onclick="cambiarCarrito('${p.id}',-1)">−</button><b>${c}</b><button onclick="cambiarCarrito('${p.id}',1)">+</button>
+      <span class="precio" style="min-width:80px;text-align:right">${plata(sub)}</span></div></div>`).join('')}</div>
+    <div class="fila" style="margin-top:12px"><b>Total</b><span class="neon" style="font-size:1.5rem;font-weight:800">${plata(total)}</span></div>
     <div class="pago" style="flex-wrap:wrap">
       ${[['efectivo', '💵 Efectivo'], ['transferencia', '🏦 Transferencia'], ['mixto', '🔀 Mixto'], ['fiado', '🧾 Fiado']].map(([k, t]) =>
         `<button style="flex:1 1 40%" class="${pagoTipo === k ? 'activo' : ''}" onclick="setPago('${k}')">${t}</button>`).join('')}
     </div>
     ${pagoTipo === 'mixto' ? `<div class="form-grid">
-      <div><div class="lbl">💵 Efectivo</div><input id="mix-ef" inputmode="numeric" placeholder="$ 0" value="${pagoMixtoEf ? pagoMixtoEf.toLocaleString('es-CO') : ''}" oninput="formatoPlata(this);pagoMixtoEf=valorPlata('mix-ef');$('mix-tr').textContent=plata(Math.max(0,${totalCarrito}-pagoMixtoEf))"/></div>
-      <div><div class="lbl">🏦 Transferencia</div><div class="v precio" style="padding:10px 0" id="mix-tr">${plata(Math.max(0, totalCarrito - pagoMixtoEf))}</div></div>
+      <div><div class="lbl">💵 Efectivo</div><input id="mix-ef" inputmode="numeric" placeholder="$ 0" value="${pagoMixtoEf ? pagoMixtoEf.toLocaleString('es-CO') : ''}" oninput="formatoPlata(this);pagoMixtoEf=valorPlata('mix-ef');$('mix-tr').textContent=plata(Math.max(0,${total}-pagoMixtoEf))"/></div>
+      <div><div class="lbl">🏦 Transferencia</div><div class="v precio" style="padding:10px 0" id="mix-tr">${plata(Math.max(0, total - pagoMixtoEf))}</div></div>
     </div>` : ''}
     ${pagoTipo === 'fiado' ? `<div style="margin-top:10px"><div class="lbl">🧾 ¿A quién se le fía?</div>
       <input id="fiado-nombre" list="lista-fiados" placeholder="Nombre de la persona" value="${esc(pagoFiadoNombre)}" oninput="pagoFiadoNombre=this.value"/>
       <datalist id="lista-fiados">${clientes.map(c => `<option>${esc(c.nombre)}</option>`).join('')}</datalist>
       <div class="sub" style="margin-top:4px">Si no existe, se crea como cliente nuevo.</div></div>` : ''}
-    <div class="acciones">
-      <button class="btn" style="flex:1" id="btn-venta" onclick="registrarVenta()">Registrar ${plata(totalCarrito)}</button>
-      <button class="btn btn-ghost" onclick="carrito={};pintarGranizados()">Vaciar</button>
-    </div>`;
-  }
-  html += `</div>`;
-
-  html += `<div class="card"><h2>📊 Ventas de la noche</h2>
-    <div class="totales">
-      <div class="tot"><div class="k">Total</div><div class="v neon">${plata(t.total)}</div></div>
-      <div class="tot"><div class="k">💵 Efectivo</div><div class="v">${plata(t.efectivo)}</div></div>
-      <div class="tot"><div class="k">🏦 Transferencia</div><div class="v">${plata(t.transferencia)}</div></div>
-      <div class="tot"><div class="k">🧾 Fiado</div><div class="v">${plata(t.fiado)}</div></div>
-      <div class="tot"><div class="k">Granizados</div><div class="v">${cant(t.granizados)}</div></div>
-      <div class="tot"><div class="k">💰 Base de caja</div><div class="v">${plata(nocheAbierta.baseCaja)}</div></div>
-      <div class="tot"><div class="k">🧾 Abonos recibidos</div><div class="v">${plata(totalesAbonos().total)}</div></div>
-      <div class="tot"><div class="k">💵 Efectivo en caja</div><div class="v">${plata(num(nocheAbierta.baseCaja) + t.efectivo + totalesAbonos().efectivo)}</div></div>
-    </div>
-    <div style="margin-top:10px">${ventas.length ? ventas.map(v => `
-      <div class="venta-row"><div>
-        <div class="prod">${v.items.map(i => `${i.cantidad}× ${esc(i.nombre)}`).join(', ')}</div>
-        <div class="pres">${esc(v.hora)} · ${esc(v.por)}${tagPago(v)}</div></div>
-        <div style="display:flex;align-items:center;gap:8px"><span class="precio">${plata(v.total)}</span>
-        ${esAdmin() ? `<button class="btn btn-ghost btn-sm" onclick="borrarVenta('${v.id}')">🗑️</button>` : ''}</div></div>`).join('')
-      : `<div class="vacio">Todavía no hay ventas.</div>`}</div></div>`;
-  $('gran-cuerpo').innerHTML = html;
+    <div class="acciones"><button class="btn btn-full" id="btn-venta" onclick="registrarVenta()">Registrar venta ${plata(total)}</button></div>`);
 }
 
 function tagPago(v){
   const m = montosVenta(v);
   if(v.pago === 'mixto') return `<span class="tag">🔀 Mixto · 💵 ${plata(m.efectivo)} + 🏦 ${plata(m.transferencia)}</span>`;
-  if(v.pago === 'fiado') return `<span class="tag" style="color:var(--amarillo);border-color:rgba(255,210,63,.4)">🧾 Fiado · ${esc(v.cliente || '')}</span>`;
+  if(v.pago === 'fiado') return `<span class="tag" style="color:var(--amarillo-txt);border-color:var(--amarillo)">🧾 Fiado · ${esc(v.cliente || '')}</span>`;
   return `<span class="tag">${v.pago === 'transferencia' ? '🏦 Transf.' : '💵 Efectivo'}</span>`;
 }
+const cobroAbierto = () => !!$('btn-venta');
 function agregarCarrito(id){ carrito[id] = (carrito[id] || 0) + 1; pintarGranizados(); }
-function cambiarCarrito(id, d){ carrito[id] = Math.max(0, (carrito[id] || 0) + d); if(!carrito[id]) delete carrito[id]; pintarGranizados(); }
-function setPago(t){ pagoTipo = t; pintarGranizados(); if(t === 'mixto') $('mix-ef')?.focus(); if(t === 'fiado') $('fiado-nombre')?.focus(); }
+function cambiarCarrito(id, d){
+  carrito[id] = Math.max(0, (carrito[id] || 0) + d); if(!carrito[id]) delete carrito[id];
+  pintarGranizados(); modalCobro();
+}
+function setPago(t){ pagoTipo = t; modalCobro(); if(t === 'mixto') $('mix-ef')?.focus(); if(t === 'fiado') $('fiado-nombre')?.focus(); }
 
 async function registrarVenta(){
   if(!nocheAbierta) return;
   const items = Object.entries(carrito).filter(([, c]) => c > 0).map(([id, c]) => {
     const p = productos.find(x => x.id === id);
-    return { prodId: id, nombre: p.nombre, presentacion: p.presentacion || '', talla: p.talla || '', precio: num(p.precio), unidades: num(p.unidades) || 1, cantidad: c, subtotal: c * num(p.precio) };
+    return { prodId: id, nombre: p.nombre, presentacion: p.presentacion || '', categoria: p.categoria || 'Otros', tipo: esGranizado(p) ? 'granizado' : 'inventario',
+      talla: p.talla || '', precio: num(p.precio), unidades: num(p.unidades) || 1, cantidad: c, subtotal: c * num(p.precio) };
   });
   if(!items.length) return;
   const total = items.reduce((s, i) => s + i.subtotal, 0);
-  const granizados = items.reduce((s, i) => s + i.cantidad * i.unidades, 0);
+  const granizados = items.filter(i => i.tipo === 'granizado').reduce((s, i) => s + i.cantidad * i.unidades, 0);
+  // Avisa si se vende más de lo que hay en inventario
+  const sinStock = items.filter(i => i.tipo !== 'granizado').map(i => ({ i, hay: stockEsperado(nocheAbierta, productos.find(p => p.id === i.prodId)) })).filter(x => x.i.cantidad > x.hay);
+  if(sinStock.length && !confirm(`⚠️ No alcanza el inventario:\n\n${sinStock.map(x => `• ${x.i.nombre} ${x.i.presentacion}: vendes ${cant(x.i.cantidad)}, hay ${cant(x.hay)}`).join('\n')}\n\n¿Vender igual?`)) return;
   const montos = { efectivo: 0, transferencia: 0, fiado: 0 };
   let cliente = '';
   if(pagoTipo === 'mixto'){
@@ -1051,9 +1093,10 @@ async function registrarVenta(){
     batch.set(ventaRef, venta);
     await batch.commit();
     carrito = {}; pagoTipo = 'efectivo'; pagoMixtoEf = 0; pagoFiadoNombre = '';
+    cerrarModal(); pintarGranizados();
     if(cliente) logAudit('fiado', `Fió ${plata(total)} a ${cliente}`, { cliente, total });
     toast(`✅ Venta ${plata(total)}`);
-  } catch(e){ alert('No se pudo registrar: ' + e.message); $('btn-venta').disabled = false; }
+  } catch(e){ alert('No se pudo registrar: ' + e.message); if($('btn-venta')) $('btn-venta').disabled = false; }
 }
 
 async function borrarVenta(id){
@@ -1067,7 +1110,7 @@ async function borrarVenta(id){
     batch.update(CLIENTES().doc(v.clienteId), { saldo: INC(-v.total), totalFiado: INC(-v.total), actualizadoEn: TS() });
   }
   await batch.commit();
-  logAudit('borrar_venta', `Eliminó venta de granizados ${plata(v.total)}`, { items: v.items, pago: v.pago });
+  logAudit('borrar_venta', `Eliminó venta ${plata(v.total)}`, { items: v.items, pago: v.pago });
 }
 
 // ══════════════════════════════════════
