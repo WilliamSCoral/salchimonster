@@ -1036,7 +1036,11 @@ function pintarGranizados(){
       ${quedan === null ? '' : `<div class="g-stock${quedan <= 0 ? ' bajo' : ''}">Quedan ${cant(quedan)}</div>`}</button>`;
   };
 
-  let html = '';
+  let html = `<div class="card"><div class="fila">
+      <div><div class="estado"><span class="punto on"></span>Venta abierta</div>
+        <div class="sub">${esc(fechaLarga(n.fecha))} · base ${plata(n.baseCaja)}</div></div>
+      ${esAdmin() ? `<button class="btn btn-sm" onclick="modalCierre()">🔒 Cerrar venta</button>` : ''}
+    </div></div>`;
   const destino = cuentas.find(c => c.id === mesaDestino);
   if(destino) html += `<div class="aviso" style="margin:0 0 14px">🪑 Agregando productos a <b>${esc(destino.nombre)}</b>. Toca los productos y luego <b>Agregar</b>.</div>`;
   html += `<div class="card"><div class="fila"><h2 style="margin:0">🪑 Mesas abiertas</h2><button class="btn btn-ghost btn-sm" onclick="modalNuevaMesa()">➕ Abrir mesa</button></div>
