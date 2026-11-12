@@ -347,6 +347,8 @@ const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt
 const plata = n => (n < 0 ? '−$' : '$') + Math.round(Math.abs(n || 0)).toLocaleString('es-CO');
 const cant  = n => (Math.round((n || 0) * 100) / 100).toLocaleString('es-CO');
 const hoy   = () => new Date().toLocaleDateString('en-CA');           // YYYY-MM-DD en hora local
+// Día de la jornada: si se abre antes de las 6 a. m. cuenta como venta del día anterior
+const diaJornada = () => { const d = new Date(); if(d.getHours() < 6) d.setDate(d.getDate() - 1); return d.toLocaleDateString('en-CA'); };
 const fechaLarga = f => new Date(f + 'T00:00').toLocaleDateString('es-CO', {weekday:'long', day:'numeric', month:'long'});
 const horaDe = ts => ts?.toDate ? ts.toDate().toLocaleTimeString('es-CO', {hour:'2-digit', minute:'2-digit'}) : '';
 const num = v => { const n = parseFloat(String(v ?? '').replace(',', '.')); return isFinite(n) ? n : 0; };
@@ -615,7 +617,7 @@ function cambioPeriodo(){
 function pintarHistorial(){
   if(!$('historial')) return;
   const [desde, hasta] = rangoPeriodo();
-  const dias = historial.filter(h => h.fecha >= desde && h.fecha <= hasta);
+  const dias = historial.filter(h => h.fecha >= desde && h.fecha <= hasta).sort((a, b) => b.fecha.localeCompare(a.fecha));
   const t = { total: 0, efectivo: 0, transferencia: 0, fiado: 0, ventas: 0, abonos: 0 };
   dias.forEach(h => { const r = h.resumen || {};
     t.total += r.total ?? r.totalNoche ?? 0; t.efectivo += r.efectivo || 0; t.transferencia += r.transferencia || 0;
@@ -733,7 +735,7 @@ async function abrirNoche(revision){
     const ya = await NOCHES().where('estado', '==', 'abierta').limit(1).get();
     if(!ya.empty){ alert('Ya hay una venta abierta.'); cerrarModal(); return; }
     await NOCHES().add({
-      fecha: hoy(), estado: 'abierta', abiertaEn: TS(), abiertaPor: usuarioNombre, abiertaPorUid: usuario.uid,
+      fecha: diaJornada(), estado: 'abierta', abiertaEn: TS(), abiertaPor: usuarioNombre, abiertaPorUid: usuario.uid,
       baseCaja, revisionInventario: revision, conteoInicial: conteo, entradas: {}, movimientos: [], diferenciasApertura: diferencias
     });
     logAudit('abrir_noche', `Abrió la venta con base ${plata(baseCaja)} · inventario ${revision}`, { baseCaja, revision, diferencias });
@@ -861,7 +863,13 @@ function modalCierre(){
   const c = calcularCierre();
   abrirModal(`
     <div class="fila"><h3 style="margin:0">🔒 Cerrar venta — Resumen</h3><button class="btn btn-ghost btn-sm" onclick="cerrarModal()">✕</button></div>
-    <div class="sub" style="margin-top:4px">${esc(fechaLarga(nocheAbierta.fecha))} · abrió ${esc(nocheAbierta.abiertaPor || '')} ${horaDe(nocheAbierta.abiertaEn)}</div>
+    <div class="sub" style="margin-top:4px">Abrió ${esc(nocheAbierta.abiertaPor || '')} el ${esc(nocheAbierta.abiertaEn?.toDate ? nocheAbierta.abiertaEn.toDate().toLocaleDateString('es-CO', {weekday:'long', day:'numeric', month:'long'}) : '')} a las ${horaDe(nocheAbierta.abiertaEn)}</div>
+    <div class="aviso" style="margin-top:12px">
+      <div class="lbl" style="color:inherit">📅 ¿De qué día es esta venta?</div>
+      <input id="cie-fecha" type="date" value="${esc(nocheAbierta.fecha || diaJornada())}" max="${hoy()}" oninput="$('cie-fecha-txt').textContent=this.value?fechaLarga(this.value):''"/>
+      <div style="margin-top:6px">Se guarda como: <b id="cie-fecha-txt" style="text-transform:capitalize">${esc(fechaLarga(nocheAbierta.fecha || diaJornada()))}</b></div>
+      <div class="sub" style="margin-top:4px">Si cierras después de medianoche, deja el día en que empezó la venta.</div>
+    </div>
     ${htmlResumen(c.resumen, c.porProducto, c.detalle)}
     <div class="acciones">
       <button class="btn" style="flex:1" id="btn-cerrar" onclick="cerrarNoche()">✅ Cerrar venta</button>
@@ -873,14 +881,17 @@ async function cerrarNoche(){
   if(!esAdmin() || !nocheAbierta) return;
   if(cuentas.length){ alert('Hay mesas abiertas sin cobrar.'); return; }
   const c = calcularCierre();
-  const id = nocheAbierta.id, fecha = nocheAbierta.fecha || hoy();
+  const id = nocheAbierta.id, fecha = $('cie-fecha')?.value || nocheAbierta.fecha || diaJornada();
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(fecha)){ alert('Escoge el día de la venta.'); return; }
+  if(fecha > hoy()){ alert('El día de la venta no puede ser en el futuro.'); return; }
+  if(!confirm(`¿Cerrar la venta y guardarla como ${fechaLarga(fecha)}?`)) return;
   $('btn-cerrar').disabled = true;
   try{
     await NOCHES().doc(id).update({
-      estado: 'cerrada', cerradaEn: TS(), cerradaPor: usuarioNombre, cerradaPorUid: usuario.uid,
+      estado: 'cerrada', fecha, cerradaEn: TS(), cerradaPor: usuarioNombre, cerradaPorUid: usuario.uid,
       conteoFinal: c.conteoFinal, detalle: c.detalle, porProducto: c.porProducto, resumen: c.resumen
     });
-    logAudit('cerrar_noche', `Cerró la venta: ${plata(c.resumen.total)}`, c.resumen);
+    logAudit('cerrar_noche', `Cerró la venta del ${fecha}: ${plata(c.resumen.total)}`, { fecha, ...c.resumen });
     cerrarModal(); toast('🔒 Venta cerrada · guardada en Historial');
     if(esAdmin()) irA('historial');
     verNoche(id, { fecha, ...c });
