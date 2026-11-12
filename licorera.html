@@ -188,6 +188,7 @@
       <button id="nav-inventario" onclick="irA('inventario')">📦 Inventario</button>
       <button id="nav-productos" class="solo-admin" onclick="irA('productos')">🍾 Productos</button>
       <button id="nav-fiados" onclick="irA('fiados')">🧾 Fiados</button>
+      <button id="nav-historial" class="solo-admin" onclick="irA('historial')">📅 Historial</button>
     </nav>
   </header>
 
@@ -209,12 +210,27 @@
         <button class="btn btn-ghost btn-sm" onclick="limpiarBusqueda('inv')">✕ Limpiar</button>
       </div>
       <div id="inv-cuerpo"></div>
+    </div>
 
+    <!-- ── HISTORIAL (admin) ── -->
+    <div id="vista-historial" class="oculto">
       <div class="card">
-        <h2>📅 Noches anteriores</h2>
-        <div class="sub">Toca una noche para ver el detalle de lo vendido.</div>
-        <div id="historial" style="margin-top:8px"></div>
+        <h2>📅 Historial de ventas</h2>
+        <div class="sub">Cada día queda guardado al tocar <b>Cerrar venta</b>. Toca un día para ver el detalle.</div>
+        <div class="buscador" style="margin:12px 0 0">
+          <select id="hi-periodo" onchange="cambioPeriodo()" style="flex:1 1 100%">
+            <option value="semana">Esta semana</option>
+            <option value="mes" selected>Este mes</option>
+            <option value="mes-ant">Mes anterior</option>
+            <option value="todo">Todo</option>
+            <option value="rango">Escoger fechas…</option>
+          </select>
+          <input id="hi-desde" type="date" class="oculto" onchange="pintarHistorial()" style="flex:1 1 0;min-width:0"/>
+          <input id="hi-hasta" type="date" class="oculto" onchange="pintarHistorial()" style="flex:1 1 0;min-width:0"/>
+        </div>
+        <div class="totales" id="hi-totales"></div>
       </div>
+      <div class="card"><div id="historial"></div></div>
     </div>
 
     <!-- ── GRANIZADOS ── -->
@@ -433,10 +449,11 @@ function cambiarTema(){
 pintarBotonTema();
 
 function irA(vista){
-  ['inventario', 'granizados', 'fiados', 'productos'].forEach(v => {
+  ['inventario', 'granizados', 'fiados', 'productos', 'historial'].forEach(v => {
     $('vista-' + v).classList.toggle('oculto', v !== vista);
     $('nav-' + v).classList.toggle('activo', v === vista);
   });
+  $('nav-' + vista).scrollIntoView?.({ inline: 'nearest', block: 'nearest' });
   pintarBarraCobro();
 }
 
@@ -476,7 +493,7 @@ function escuchar(){
     pintarInventario(); pintarGranizados();
   }, errorFirestore('noche abierta')));
 
-  escuchas.push(NOCHES().orderBy('cerradaEn', 'desc').limit(30).onSnapshot(s => {
+  escuchas.push(NOCHES().orderBy('cerradaEn', 'desc').limit(400).onSnapshot(s => {
     historial = s.docs.map(d => ({ id: d.id, ...d.data() }));
     ultimaCerrada = historial[0] || null;
     pintarInventario(); pintarHistorial();
@@ -580,14 +597,45 @@ function pintarInventario(){
   $('inv-cuerpo').innerHTML = html;
 }
 
+// ── Historial: días cerrados con filtro por periodo y totales ──
+function rangoPeriodo(){
+  const per = $('hi-periodo')?.value || 'mes', d = new Date(), f = x => x.toLocaleDateString('en-CA');
+  if(per === 'semana'){ const l = new Date(d); l.setDate(d.getDate() - ((d.getDay() + 6) % 7)); return [f(l), f(d)]; }
+  if(per === 'mes') return [f(new Date(d.getFullYear(), d.getMonth(), 1)), f(d)];
+  if(per === 'mes-ant') return [f(new Date(d.getFullYear(), d.getMonth() - 1, 1)), f(new Date(d.getFullYear(), d.getMonth(), 0))];
+  if(per === 'rango') return [$('hi-desde').value || '0000-00-00', $('hi-hasta').value || '9999-99-99'];
+  return ['0000-00-00', '9999-99-99'];
+}
+function cambioPeriodo(){
+  const rango = $('hi-periodo').value === 'rango';
+  ['hi-desde', 'hi-hasta'].forEach(id => $(id).classList.toggle('oculto', !rango));
+  if(rango && !$('hi-desde').value){ const [a, b] = [new Date(Date.now() - 6 * 864e5), new Date()].map(x => x.toLocaleDateString('en-CA')); $('hi-desde').value = a; $('hi-hasta').value = b; }
+  pintarHistorial();
+}
 function pintarHistorial(){
-  if(!historial.length){ $('historial').innerHTML = `<div class="vacio">Todavía no hay noches cerradas.</div>`; return; }
-  $('historial').innerHTML = historial.map(h => `
+  if(!$('historial')) return;
+  const [desde, hasta] = rangoPeriodo();
+  const dias = historial.filter(h => h.fecha >= desde && h.fecha <= hasta);
+  const t = { total: 0, efectivo: 0, transferencia: 0, fiado: 0, ventas: 0, abonos: 0 };
+  dias.forEach(h => { const r = h.resumen || {};
+    t.total += r.total ?? r.totalNoche ?? 0; t.efectivo += r.efectivo || 0; t.transferencia += r.transferencia || 0;
+    t.fiado += r.fiado || 0; t.ventas += r.ventas || 0; t.abonos += r.abonos?.total || 0; });
+  $('hi-totales').innerHTML = `
+    <div class="tot"><div class="k">Vendido en el periodo</div><div class="v neon">${plata(t.total)}</div><div class="sub">${dias.length} día(s) · ${cant(t.ventas)} ventas</div></div>
+    <div class="tot"><div class="k">Promedio por día</div><div class="v">${plata(dias.length ? t.total / dias.length : 0)}</div></div>
+    <div class="tot"><div class="k">💵 Efectivo</div><div class="v">${plata(t.efectivo)}</div></div>
+    <div class="tot"><div class="k">🏦 Transferencia</div><div class="v">${plata(t.transferencia)}</div></div>
+    <div class="tot"><div class="k">🧾 Fiado</div><div class="v">${plata(t.fiado)}</div></div>
+    <div class="tot"><div class="k">Abonos recibidos</div><div class="v">${plata(t.abonos)}</div></div>`;
+  if(!historial.length){ $('historial').innerHTML = `<div class="vacio">Todavía no hay días cerrados.<br>Se guardan al tocar <b>Cerrar venta</b>.</div>`; return; }
+  if(!dias.length){ $('historial').innerHTML = `<div class="vacio">No hay días cerrados en este periodo.</div>`; return; }
+  $('historial').innerHTML = dias.map(h => { const r = h.resumen || {}; return `
     <div class="hist-item" onclick="verNoche('${h.id}')">
       <div><div class="hist-fecha">${esc(fechaLarga(h.fecha))}</div>
-        <div class="hist-meta">${cant(h.resumen?.ventas)} ventas · cerró ${esc(h.cerradaPor || '')} ${horaDe(h.cerradaEn)}${h.revisionInventario ? ` · inventario ${h.revisionInventario === 'corregido' ? '✏️' : '✅'}` : ''}</div></div>
-      <div class="precio">${plata(h.resumen?.totalNoche ?? h.resumen?.total)}</div>
-    </div>`).join('');
+        <div class="hist-meta">${horaDe(h.abiertaEn)} – ${horaDe(h.cerradaEn)} · cerró ${esc(h.cerradaPor || '')} · ${cant(r.ventas)} ventas${h.revisionInventario ? ` · inventario ${h.revisionInventario === 'corregido' ? '✏️' : '✅'}` : ''}</div>
+        <div class="hist-meta">💵 ${plata(r.efectivo)} · 🏦 ${plata(r.transferencia)}${r.fiado ? ` · 🧾 ${plata(r.fiado)}` : ''}</div></div>
+      <div class="precio" style="white-space:nowrap">${plata(r.total ?? r.totalNoche)}</div>
+    </div>`; }).join('');
 }
 
 // ══════════════════════════════════════
@@ -833,7 +881,8 @@ async function cerrarNoche(){
       conteoFinal: c.conteoFinal, detalle: c.detalle, porProducto: c.porProducto, resumen: c.resumen
     });
     logAudit('cerrar_noche', `Cerró la venta: ${plata(c.resumen.total)}`, c.resumen);
-    cerrarModal(); toast('🔒 Venta cerrada');
+    cerrarModal(); toast('🔒 Venta cerrada · guardada en Historial');
+    if(esAdmin()) irA('historial');
     verNoche(id, { fecha, ...c });
   } catch(e){ alert('No se pudo cerrar: ' + e.message); if($('btn-cerrar')) $('btn-cerrar').disabled = false; }
 }
