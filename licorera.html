@@ -963,7 +963,8 @@ function verNoche(id, datos){
     <div class="cat"><div class="cat-titulo">🧾 Ventas del día</div><div id="vn-ventas"><div class="vacio">Cargando ventas…</div></div></div>
     <div class="cat"><div class="cat-titulo">💵 Abonos de fiados</div><div id="vn-abonos"><div class="vacio">Cargando…</div></div></div>
     ${inv}
-    <div class="acciones"><button class="btn btn-ghost btn-full" onclick="cerrarModal()">Cerrar</button></div>`);
+    <div class="acciones"><button class="btn btn-ghost btn-full" onclick="cerrarModal()">Cerrar</button></div>
+    ${esAdmin() && id ? `<div class="acciones"><button class="btn btn-danger btn-full" id="btn-eliminar-dia" onclick="eliminarDia('${id}')">🗑️ Eliminar este día</button></div>` : ''}`);
   if(id) cargarVentasDia(id);
 }
 
@@ -981,6 +982,35 @@ async function cargarVentasDia(id){
     $('vn-ventas').innerHTML = lv.length ? lv.map(v => filaVenta(v)).join('') : '<div class="vacio">Sin ventas.</div>';
     $('vn-abonos').innerHTML = la.length ? la.map(a => `<div class="venta-row"><div><div class="prod">${esc(a.cliente)}</div><div class="pres">${esc(a.hora || '')} · ${esc(a.por || '')}${tagPago(a)}</div></div><span class="precio">${plata(a.monto)}</span></div>`).join('') : '<div class="vacio">Sin abonos.</div>';
   } catch(e){ if($('vn-ventas')) $('vn-ventas').innerHTML = `<div class="alerta">No se pudieron cargar las ventas: ${esc(e.message)}</div>`; }
+}
+
+// ── Eliminar un día guardado (solo admin) ──
+async function eliminarDia(id){
+  if(!esAdmin()) return;
+  const h = historial.find(x => x.id === id); if(!h) return;
+  try{
+    const [sv, sa, sc] = await Promise.all([VENTAS(id).get(), ABONOS_NOCHE(id).get(), CUENTAS(id).get()]);
+    const lv = sv.docs.map(d => ({ id: d.id, ...d.data() })), fiadas = lv.filter(v => v.clienteId);
+    const esUltimo = ultimaCerrada?.id === id;
+    if(!confirm(`⚠️ ¿Eliminar el día ${fechaLarga(h.fecha)}?\n\n` +
+      `• ${lv.length} venta(s) por ${plata(totalDia(h))}\n` +
+      (fiadas.length ? `• ${fiadas.length} fiado(s): se le restan a los clientes (${[...new Set(fiadas.map(v => v.cliente))].join(', ')})\n` : '') +
+      (sa.size ? `• ${sa.size} abono(s): siguen en la cuenta del cliente, solo dejan de contar en la caja de ese día\n` : '') +
+      (esUltimo ? `• Es el último día cerrado: el inventario vuelve a como quedó el cierre anterior\n` : '') +
+      `\nNo se puede deshacer.`)) return;
+    if((prompt('Para confirmar escribe ELIMINAR') || '').trim().toUpperCase() !== 'ELIMINAR'){ alert('Cancelado.'); return; }
+    if($('btn-eliminar-dia')) $('btn-eliminar-dia').disabled = true;
+    const batch = db.batch();
+    fiadas.forEach(v => quitarFiadoEnLote(batch, { clienteId: v.clienteId, movId: v.movId, total: v.total }));
+    // Los abonos quedan en el cliente pero ya no apuntan a una caja que no existe
+    for(const a of sa.docs){ const x = a.data(); if(x.clienteId && x.movId) batch.update(MOVS(x.clienteId).doc(x.movId), { nocheId: null, abonoNocheId: null }); batch.delete(a.ref || ABONOS_NOCHE(id).doc(a.id)); }
+    sv.docs.forEach(d => batch.delete(VENTAS(id).doc(d.id)));
+    sc.docs.forEach(d => batch.delete(CUENTAS(id).doc(d.id)));
+    batch.delete(NOCHES().doc(id));
+    await batch.commit();
+    logAudit('eliminar_dia', `Eliminó el día ${h.fecha} (${plata(totalDia(h))})`, { nocheId: id, fecha: h.fecha, resumen: h.resumen || {}, ventas: lv.length, fiados: fiadas.length });
+    cerrarModal(); toast('🗑️ Día eliminado');
+  } catch(e){ alert('No se pudo eliminar: ' + e.message); if($('btn-eliminar-dia')) $('btn-eliminar-dia').disabled = false; }
 }
 
 // ══════════════════════════════════════
