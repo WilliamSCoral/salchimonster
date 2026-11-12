@@ -184,9 +184,9 @@
       </div>
     </div>
     <nav>
-      <button id="nav-inventario" class="activo" onclick="irA('inventario')">📦 Inventario</button>
+      <button id="nav-granizados" class="activo" onclick="irA('granizados')">💰 Ventas</button>
+      <button id="nav-inventario" onclick="irA('inventario')">📦 Inventario</button>
       <button id="nav-productos" class="solo-admin" onclick="irA('productos')">🍾 Productos</button>
-      <button id="nav-granizados" onclick="irA('granizados')" disabled>🔒 Ventas</button>
       <button id="nav-fiados" onclick="irA('fiados')">🧾 Fiados</button>
     </nav>
   </header>
@@ -320,7 +320,8 @@ const NOCHES    = () => db.collection('licorera_noches');
 const AUDIT_LOG = () => db.collection('audit_log');
 const CLIENTES  = () => db.collection('licorera_clientes');
 const MOVS      = id => CLIENTES().doc(id).collection('movimientos');     // fiados y abonos del cliente
-const ABONOS_NOCHE = id => NOCHES().doc(id).collection('abonos');       // abonos recibidos durante una venta (para la caja)
+const ABONOS_NOCHE = id => NOCHES().doc(id).collection('abonos');
+const CUENTAS = id => NOCHES().doc(id).collection('cuentas');               // mesas abiertas (se cobran al final)       // abonos recibidos durante una venta (para la caja)
 
 // ══════════════════════════════════════
 //   UTILIDADES
@@ -368,6 +369,10 @@ let clientes = [];           // licorera_clientes
 let abonosNoche = [], escuchaAbonos = null;
 let clienteAbierto = null, escuchaMovs = null, movsCliente = [];
 let abonoTipo = 'efectivo';
+let cuentas = [], escuchaCuentas = null;   // mesas abiertas de la noche
+let mesaDestino = null;                     // mesa a la que se están agregando productos
+let cobroMesa = null;                       // mesa que se está cobrando (null = venta directa)
+let mesaVista = null;                       // mesa abierta en el modal de detalle
 const esAdmin = () => usuarioRol === 'admin';
 
 // ══════════════════════════════════════
@@ -378,6 +383,7 @@ auth.onAuthStateChanged(async u => {
     escuchas.forEach(f => f()); escuchas = [];
     if(escuchaVentas){ escuchaVentas(); escuchaVentas = null; ventasDeNoche = null; }
   if(escuchaAbonos){ escuchaAbonos(); escuchaAbonos = null; }
+    if(escuchaCuentas){ escuchaCuentas(); escuchaCuentas = null; }
     $('app').classList.add('oculto'); $('login').classList.remove('oculto');
     return;
   }
@@ -394,7 +400,7 @@ auth.onAuthStateChanged(async u => {
   $('h-user').innerHTML = `${esc(usuarioNombre)}<span class="badge${esAdmin() ? ' admin' : ''}">${esAdmin() ? '👑 Admin' : esc(usuarioRol)}</span>`;
   document.querySelectorAll('.solo-admin').forEach(el => el.classList.toggle('oculto', !esAdmin()));
   $('login').classList.add('oculto'); $('app').classList.remove('oculto');
-  irA('inventario');
+  irA('granizados');
   escuchar();
   if(esAdmin()) sembrarGranizados();
 });
@@ -451,6 +457,7 @@ function escuchar(){
   escuchas.forEach(f => f()); escuchas = [];
   if(escuchaVentas){ escuchaVentas(); escuchaVentas = null; ventasDeNoche = null; }
   if(escuchaAbonos){ escuchaAbonos(); escuchaAbonos = null; }
+  if(escuchaCuentas){ escuchaCuentas(); escuchaCuentas = null; }
   escuchas.push(PRODUCTOS().onSnapshot(s => {
     productos = s.docs.map(d => ({ id: d.id, ...d.data() }))
       .sort((a, b) => (a.categoria || '').localeCompare(b.categoria || '') || (a.orden ?? 99) - (b.orden ?? 99) || (a.nombre || '').localeCompare(b.nombre || '') || (a.presentacion || '').localeCompare(b.presentacion || ''));
@@ -492,7 +499,7 @@ const esVaso = p => !!p.talla && !esGranizado(p);
 function vendidosEnVentas(p){
   if(esVaso(p)) return granizadosPorTalla()[p.talla] || 0;
   let n = 0;
-  ventas.forEach(v => v.items.forEach(i => { if(i.prodId === p.id) n += i.cantidad; }));
+  todasLasLineas().forEach(i => { if(i.prodId === p.id) n += i.cantidad; });
   return n;
 }
 // Lo que debe haber ahora = inicial + entradas − vendido
@@ -544,10 +551,7 @@ function pintarInventario(){
       ? `<button class="btn btn-sm" onclick="modalApertura()">🌙 Abrir venta</button>`
       : `<span class="sub">Esperando que un admin abra la venta.</span>`;
   }
-  // El módulo de venta solo se habilita con la venta abierta
-  $('nav-granizados').disabled = !n;
   $('nav-granizados').textContent = n ? '💰 Ventas' : '🔒 Ventas';
-  if(!n && !$('vista-granizados').classList.contains('oculto')) irA('inventario');
 
   const todos = activos();
   llenarCategorias('inv', todos);
@@ -593,7 +597,7 @@ function abrirModal(html){
   if(escuchaMovs){ escuchaMovs(); escuchaMovs = null; } clienteAbierto = null;
   $('modal-raiz').innerHTML = `<div class="modal-fondo" onclick="if(event.target===this)cerrarModal()"><div class="modal">${html}</div></div>`;
 }
-function cerrarModal(){ if(escuchaMovs){ escuchaMovs(); escuchaMovs = null; } clienteAbierto = null; $('modal-raiz').innerHTML = ''; }
+function cerrarModal(){ if(escuchaMovs){ escuchaMovs(); escuchaMovs = null; } clienteAbierto = null; mesaVista = null; cobroMesa = null; $('modal-raiz').innerHTML = ''; }
 
 // Tabla de conteo con un input por producto
 function tablaConteo(idPrefix, valores, extraCols){
@@ -805,6 +809,7 @@ function htmlResumen(r, porProducto, detalle){
 
 function modalCierre(){
   if(!esAdmin()){ alert('⛔ Solo un admin puede cerrar la venta.'); return; }
+  if(cuentas.length){ alert(`Hay ${cuentas.length} mesa(s) abierta(s): ${cuentas.map(c => c.nombre).join(', ')}.\nCóbralas antes de cerrar la venta.`); irA('granizados'); return; }
   const c = calcularCierre();
   abrirModal(`
     <div class="fila"><h3 style="margin:0">🔒 Cerrar venta — Resumen</h3><button class="btn btn-ghost btn-sm" onclick="cerrarModal()">✕</button></div>
@@ -818,6 +823,7 @@ function modalCierre(){
 
 async function cerrarNoche(){
   if(!esAdmin() || !nocheAbierta) return;
+  if(cuentas.length){ alert('Hay mesas abiertas sin cobrar.'); return; }
   const c = calcularCierre();
   const id = nocheAbierta.id, fecha = nocheAbierta.fecha || hoy();
   $('btn-cerrar').disabled = true;
@@ -901,8 +907,16 @@ function escucharVentas(){
   if(id === ventasDeNoche) return;
   if(escuchaVentas){ escuchaVentas(); escuchaVentas = null; }
   if(escuchaAbonos){ escuchaAbonos(); escuchaAbonos = null; }
-  ventasDeNoche = id; ventas = []; abonosNoche = [];
+  if(escuchaCuentas){ escuchaCuentas(); escuchaCuentas = null; }
+  ventasDeNoche = id; ventas = []; abonosNoche = []; cuentas = []; mesaDestino = null;
   if(!id){ pintarGranizados(); return; }
+  escuchaCuentas = CUENTAS(id).onSnapshot(s => {
+    cuentas = s.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => (a.t || 0) - (b.t || 0));
+    if(mesaDestino && !cuentas.some(c => c.id === mesaDestino)) mesaDestino = null;
+    pintarGranizados(); pintarInventario();
+    if(mesaVista) pintarMesa();
+    else if(cobroMesa && $('btn-venta')) modalCobro();
+  }, e => console.error('cuentas', e));
   escuchaVentas = VENTAS(id).orderBy('t', 'desc').onSnapshot(s => {
     ventas = s.docs.map(d => ({ id: d.id, ...d.data() }));
     pintarGranizados(); pintarInventario();
@@ -927,19 +941,23 @@ function totalesVentas(lista = ventas){
 }
 
 // Granizados vendidos por talla (un combo cuenta 2)
+// Todo lo que ya salió: ventas cobradas + lo servido en mesas abiertas
+const itemsMesa = c => Object.values(c.items || {}).filter(i => i.cantidad > 0);
+const totalMesa = c => itemsMesa(c).reduce((s, i) => s + i.cantidad * i.precio, 0);
+const todasLasLineas = () => [...ventas.flatMap(v => v.items), ...cuentas.flatMap(itemsMesa)];
 function granizadosPorTalla(){
   const r = {};
-  ventas.forEach(v => v.items.forEach(i => {
+  todasLasLineas().forEach(i => {
     const t = i.talla || productos.find(p => p.id === i.prodId)?.talla;
     if(t) r[t] = (r[t] || 0) + i.cantidad * (i.unidades || 1);
-  }));
+  });
   return r;
 }
 function pintarGranizados(){
   if(!$('gran-cuerpo')) return;
   if(!nocheAbierta){
-    $('gran-cuerpo').innerHTML = `<div class="card vacio">🔒 La venta está cerrada.<br>Un admin debe abrirla en <b>Inventario</b>.<br><br>
-      <button class="btn btn-sm" onclick="irA('inventario')">Ir a Inventario</button></div>`;
+    $('gran-cuerpo').innerHTML = `<div class="card vacio">🔒 La venta está cerrada.<br><br>
+      ${esAdmin() ? `<button class="btn" onclick="modalApertura()">🌙 Abrir venta</button>` : 'Un admin debe abrir la venta.'}</div>`;
     $('barra-cobro').classList.add('oculto');
     return;
   }
@@ -959,6 +977,15 @@ function pintarGranizados(){
   };
 
   let html = '';
+  const destino = cuentas.find(c => c.id === mesaDestino);
+  if(destino) html += `<div class="aviso" style="margin:0 0 14px">🪑 Agregando productos a <b>${esc(destino.nombre)}</b>. Toca los productos y luego <b>Agregar</b>.</div>`;
+  html += `<div class="card"><div class="fila"><h2 style="margin:0">🪑 Mesas abiertas</h2><button class="btn btn-ghost btn-sm" onclick="modalNuevaMesa()">➕ Abrir mesa</button></div>
+    ${cuentas.length ? `<div class="gran-grid">${cuentas.map(c => `
+      <button class="gran-btn" style="text-align:left" onclick="verMesa('${c.id}')">
+        <div class="g-nom">🪑 ${esc(c.nombre)}</div>
+        <div class="pres">${cant(itemsMesa(c).reduce((s, i) => s + i.cantidad, 0))} productos · desde ${esc(c.hora || '')}</div>
+        <div class="g-pre">${plata(totalMesa(c))}</div></button>`).join('')}</div>`
+      : `<div class="sub" style="margin-top:6px">No hay mesas abiertas. Para dejar una cuenta abierta, agrega productos y toca <b>🪑 A mesa</b>.</div>`}</div>`;
   if(grans.length) html += `<div class="card"><h2>🧊 Granizados</h2><div class="gran-grid">${grans.map(boton).join('')}</div></div>`;
   if(otros.length){
     html += `<div class="card"><h2>🍾 Licores y más</h2>`;
@@ -976,11 +1003,12 @@ function pintarGranizados(){
       <div class="tot"><div class="k">💰 Base de caja</div><div class="v">${plata(n.baseCaja)}</div></div>
       <div class="tot"><div class="k">🧾 Abonos recibidos</div><div class="v">${plata(ab.total)}</div></div>
       <div class="tot"><div class="k">💵 Efectivo en caja</div><div class="v">${plata(num(n.baseCaja) + t.efectivo + ab.efectivo)}</div></div>
+      <div class="tot"><div class="k">🪑 En mesas sin cobrar</div><div class="v">${plata(cuentas.reduce((s, c) => s + totalMesa(c), 0))}</div></div>
     </div>
     <div style="margin-top:10px">${ventas.length ? ventas.map(v => `
       <div class="venta-row"><div>
         <div class="prod">${v.items.map(i => `${i.cantidad}× ${esc(i.nombre)}${i.tipo !== 'granizado' && i.presentacion ? ' ' + esc(i.presentacion) : ''}`).join(', ')}</div>
-        <div class="pres">${esc(v.hora)} · ${esc(v.por)}${tagPago(v)}</div></div>
+        <div class="pres">${esc(v.hora)} · ${esc(v.por)}${v.mesa ? `<span class="tag">🪑 ${esc(v.mesa)}</span>` : ''}${tagPago(v)}</div></div>
         <div style="display:flex;align-items:center;gap:8px"><span class="precio" style="white-space:nowrap">${plata(v.total)}</span>
         ${esAdmin() ? `<button class="btn btn-ghost btn-sm" onclick="borrarVenta('${v.id}')">🗑️</button>` : ''}</div></div>`).join('')
       : `<div class="vacio">Todavía no hay ventas.</div>`}</div></div>`;
@@ -995,23 +1023,30 @@ const totalCarrito = () => lineasCarrito().reduce((s, l) => s + l.sub, 0);
 
 function pintarBarraCobro(){
   const lineas = lineasCarrito(), barra = $('barra-cobro');
-  const visible = lineas.length && nocheAbierta && !$('vista-granizados').classList.contains('oculto');
+  const visible = (lineas.length || mesaDestino) && nocheAbierta && !$('vista-granizados').classList.contains('oculto');
   barra.classList.toggle('oculto', !visible);
   $('vista-granizados').style.paddingBottom = visible ? '70px' : '';
   if(!visible) return;
   const unid = lineas.reduce((s, l) => s + l.c, 0);
+  const destino = cuentas.find(c => c.id === mesaDestino);
   barra.innerHTML = `<div class="in"><div><b>🛒 ${unid} producto${unid === 1 ? '' : 's'}</b><div class="precio" style="font-size:1.2rem">${plata(totalCarrito())}</div></div>
-    <div style="display:flex;gap:8px"><button class="btn btn-ghost btn-sm" onclick="vaciarCarrito()">Vaciar</button><button class="btn" onclick="modalCobro()">Cobrar →</button></div></div>`;
+    <div style="display:flex;gap:6px">${destino
+      ? `<button class="btn btn-ghost btn-sm" onclick="mesaDestino=null;vaciarCarrito()">Cancelar</button><button class="btn" onclick="agregarAMesa('${destino.id}')">➕ Agregar a ${esc(destino.nombre)}</button>`
+      : `<button class="btn btn-ghost btn-sm" onclick="vaciarCarrito()">Vaciar</button><button class="btn btn-ghost btn-sm" onclick="modalElegirMesa()">🪑 A mesa</button><button class="btn" onclick="cobroMesa=null;modalCobro()">Cobrar →</button>`}</div></div>`;
 }
 function vaciarCarrito(){ carrito = {}; pagoTipo = 'efectivo'; pagoMixtoEf = 0; pagoFiadoNombre = ''; pintarGranizados(); }
 
 function modalCobro(){
-  const lineas = lineasCarrito();
-  if(!lineas.length){ cerrarModal(); return; }
-  const total = totalCarrito();
+  const mesa = cobroMesa ? cuentas.find(c => c.id === cobroMesa) : null;
+  if(cobroMesa && !mesa){ cobroMesa = null; cerrarModal(); return; }
+  const lineas = mesa ? [] : lineasCarrito();
+  if(!mesa && !lineas.length){ cerrarModal(); return; }
+  const total = mesa ? totalMesa(mesa) : totalCarrito();
   abrirModal(`
-    <div class="fila"><h3 style="margin:0">🛒 Cobrar</h3><button class="btn btn-ghost btn-sm" onclick="cerrarModal()">✕</button></div>
-    <div style="margin-top:8px">${lineas.map(({ p, c, sub }) => `<div class="carrito-row">
+    <div class="fila"><h3 style="margin:0">${mesa ? `🪑 Cobrar ${esc(mesa.nombre)}` : '🛒 Cobrar'}</h3><button class="btn btn-ghost btn-sm" onclick="cobroMesa=null;cerrarModal()">✕</button></div>
+    <div style="margin-top:8px">${mesa ? itemsMesa(mesa).map(i => `<div class="carrito-row">
+      <div><span class="prod">${i.cantidad}× ${esc(i.nombre)}</span><span class="pres">${esc(i.presentacion || '')} · ${plata(i.precio)} c/u</span></div>
+      <span class="precio">${plata(i.cantidad * i.precio)}</span></div>`).join('') : lineas.map(({ p, c, sub }) => `<div class="carrito-row">
       <div><span class="prod">${esc(p.nombre)}</span><span class="pres">${esc(p.presentacion || '')} · ${plata(p.precio)} c/u</span></div>
       <div class="stepper"><button onclick="cambiarCarrito('${p.id}',-1)">−</button><b>${c}</b><button onclick="cambiarCarrito('${p.id}',1)">+</button>
       <span class="precio" style="min-width:80px;text-align:right">${plata(sub)}</span></div></div>`).join('')}</div>
@@ -1045,19 +1080,26 @@ function cambiarCarrito(id, d){
 }
 function setPago(t){ pagoTipo = t; modalCobro(); if(t === 'mixto') $('mix-ef')?.focus(); if(t === 'fiado') $('fiado-nombre')?.focus(); }
 
+// Línea de venta con copia de nombre y precio
+const lineaDe = (p, c) => ({ prodId: p.id, nombre: p.nombre, presentacion: p.presentacion || '', categoria: p.categoria || 'Otros', tipo: esGranizado(p) ? 'granizado' : 'inventario',
+  talla: p.talla || '', precio: num(p.precio), unidades: num(p.unidades) || 1, cantidad: c, subtotal: c * num(p.precio) });
+// Avisa si lo del carrito supera lo que hay en inventario
+function confirmarStock(items){
+  const sinStock = items.filter(i => i.tipo !== 'granizado').map(i => ({ i, hay: stockEsperado(nocheAbierta, productos.find(p => p.id === i.prodId)) })).filter(x => x.i.cantidad > x.hay);
+  return !sinStock.length || confirm(`⚠️ No alcanza el inventario:\n\n${sinStock.map(x => `• ${x.i.nombre} ${x.i.presentacion}: pides ${cant(x.i.cantidad)}, hay ${cant(x.hay)}`).join('\n')}\n\n¿Continuar igual?`);
+}
+
 async function registrarVenta(){
   if(!nocheAbierta) return;
-  const items = Object.entries(carrito).filter(([, c]) => c > 0).map(([id, c]) => {
-    const p = productos.find(x => x.id === id);
-    return { prodId: id, nombre: p.nombre, presentacion: p.presentacion || '', categoria: p.categoria || 'Otros', tipo: esGranizado(p) ? 'granizado' : 'inventario',
-      talla: p.talla || '', precio: num(p.precio), unidades: num(p.unidades) || 1, cantidad: c, subtotal: c * num(p.precio) };
-  });
+  const mesa = cobroMesa ? cuentas.find(c => c.id === cobroMesa) : null;
+  if(cobroMesa && !mesa){ alert('Esa mesa ya no está abierta.'); cobroMesa = null; cerrarModal(); return; }
+  const items = mesa
+    ? itemsMesa(mesa).map(i => ({ ...i, subtotal: i.cantidad * i.precio }))
+    : lineasCarrito().map(({ p, c }) => lineaDe(p, c));
   if(!items.length) return;
   const total = items.reduce((s, i) => s + i.subtotal, 0);
   const granizados = items.filter(i => i.tipo === 'granizado').reduce((s, i) => s + i.cantidad * i.unidades, 0);
-  // Avisa si se vende más de lo que hay en inventario
-  const sinStock = items.filter(i => i.tipo !== 'granizado').map(i => ({ i, hay: stockEsperado(nocheAbierta, productos.find(p => p.id === i.prodId)) })).filter(x => x.i.cantidad > x.hay);
-  if(sinStock.length && !confirm(`⚠️ No alcanza el inventario:\n\n${sinStock.map(x => `• ${x.i.nombre} ${x.i.presentacion}: vendes ${cant(x.i.cantidad)}, hay ${cant(x.hay)}`).join('\n')}\n\n¿Vender igual?`)) return;
+  if(!mesa && !confirmarStock(items)) return;   // en mesa ya se descontó al servir
   const montos = { efectivo: 0, transferencia: 0, fiado: 0 };
   let cliente = '';
   if(pagoTipo === 'mixto'){
@@ -1090,13 +1132,121 @@ async function registrarVenta(){
       batch.update(cliRef, { saldo: INC(total), totalFiado: INC(total), actualizadoEn: TS() });
       venta.clienteId = cliRef.id; venta.movId = movRef.id; venta.cliente = cli ? cli.nombre : cliente;
     }
+    if(mesa){ venta.mesa = mesa.nombre; venta.mesaAbierta = mesa.hora || ''; batch.delete(CUENTAS(nid).doc(mesa.id)); }
     batch.set(ventaRef, venta);
     await batch.commit();
-    carrito = {}; pagoTipo = 'efectivo'; pagoMixtoEf = 0; pagoFiadoNombre = '';
+    if(mesa) logAudit('cobrar_mesa', `Cobró ${mesa.nombre}: ${plata(total)}`, { mesa: mesa.nombre, total });
+    else carrito = {};
+    cobroMesa = null; pagoTipo = 'efectivo'; pagoMixtoEf = 0; pagoFiadoNombre = '';
     cerrarModal(); pintarGranizados();
     if(cliente) logAudit('fiado', `Fió ${plata(total)} a ${cliente}`, { cliente, total });
     toast(`✅ Venta ${plata(total)}`);
   } catch(e){ alert('No se pudo registrar: ' + e.message); if($('btn-venta')) $('btn-venta').disabled = false; }
+}
+
+// ══════════════════════════════════════
+//   MESAS ABIERTAS (cuentas que se cobran al final)
+// ══════════════════════════════════════
+const normalMesa = t => String(t || '').trim().toLowerCase();
+function modalNuevaMesa(conCarrito){
+  abrirModal(`<div class="fila"><h3 style="margin:0">🪑 Abrir mesa</h3><button class="btn btn-ghost btn-sm" onclick="cerrarModal()">✕</button></div>
+    <div class="lbl" style="margin-top:12px">Nombre de la mesa o cliente</div>
+    <input id="mesa-nombre" placeholder="Mesa 1, Barra, Juan…"/>
+    <div class="gran-grid" style="grid-template-columns:repeat(5,1fr);gap:6px">${[1,2,3,4,5,6,7,8,9,10].map(n => {
+      const usada = cuentas.some(c => normalMesa(c.nombre) === `mesa ${n}`);
+      return `<button class="btn btn-ghost btn-sm" ${usada ? 'disabled' : ''} onclick="$('mesa-nombre').value='Mesa ${n}'">${n}</button>`; }).join('')}</div>
+    <div class="acciones"><button class="btn btn-full" id="btn-mesa" onclick="crearMesa(${conCarrito ? 'true' : 'false'})">${conCarrito ? `Abrir y agregar ${plata(totalCarrito())}` : 'Abrir mesa'}</button></div>`);
+  $('mesa-nombre').focus();
+}
+
+async function crearMesa(conCarrito){
+  const nombre = $('mesa-nombre').value.trim();
+  if(!nombre){ alert('Escribe el nombre de la mesa.'); return; }
+  if(cuentas.some(c => normalMesa(c.nombre) === normalMesa(nombre))){ alert('Ya hay una mesa abierta con ese nombre.'); return; }
+  const items = conCarrito ? lineasCarrito().map(({ p, c }) => lineaDe(p, c)) : [];
+  if(conCarrito && !confirmarStock(items)) return;
+  $('btn-mesa').disabled = true;
+  try{
+    const ref = CUENTAS(nocheAbierta.id).doc();
+    const datos = { nombre, items: {}, t: Date.now(), hora: new Date().toLocaleTimeString('es-CO', {hour:'2-digit', minute:'2-digit'}), por: usuarioNombre, abiertaEn: TS() };
+    items.forEach(({ subtotal, ...i }) => datos.items[i.prodId] = i);
+    await ref.set(datos);
+    logAudit('abrir_mesa', `Abrió ${nombre}`, { items: items.length });
+    if(conCarrito) carrito = {};
+    cerrarModal(); pintarGranizados();
+    toast(`🪑 ${nombre} abierta`);
+  } catch(e){ alert('No se pudo abrir la mesa: ' + e.message); if($('btn-mesa')) $('btn-mesa').disabled = false; }
+}
+
+// Elegir a qué mesa mandar lo del carrito
+function modalElegirMesa(){
+  abrirModal(`<div class="fila"><h3 style="margin:0">🪑 ¿A qué mesa?</h3><button class="btn btn-ghost btn-sm" onclick="cerrarModal()">✕</button></div>
+    <div class="sub" style="margin-top:4px">${plata(totalCarrito())} en productos. Quedan en la cuenta y se cobran cuando el cliente se vaya.</div>
+    ${cuentas.length ? `<div class="gran-grid">${cuentas.map(c => `<button class="gran-btn" onclick="agregarAMesa('${c.id}')">
+      <div class="g-nom">🪑 ${esc(c.nombre)}</div><div class="pres">Lleva ${plata(totalMesa(c))}</div></button>`).join('')}</div>` : ''}
+    <div class="acciones"><button class="btn btn-full" onclick="modalNuevaMesa(true)">➕ Nueva mesa</button></div>`);
+}
+
+async function agregarAMesa(id){
+  const mesa = cuentas.find(c => c.id === id); if(!mesa) return;
+  const items = lineasCarrito().map(({ p, c }) => lineaDe(p, c));
+  if(!items.length){ alert('Toca los productos que quieres agregar.'); return; }
+  if(!confirmarStock(items)) return;
+  // Suma cantidades sin pisar lo que otro mesero haya agregado al tiempo
+  const upd = { actualizadoEn: TS() };
+  for(const { subtotal, cantidad, ...i } of items){
+    const ya = mesa.items?.[i.prodId];
+    if(ya) upd[`items.${i.prodId}.cantidad`] = INC(cantidad);
+    else upd[`items.${i.prodId}`] = { ...i, cantidad };
+  }
+  try{
+    await CUENTAS(nocheAbierta.id).doc(id).update(upd);
+    carrito = {}; mesaDestino = null;
+    cerrarModal(); pintarGranizados();
+    toast(`🪑 Agregado a ${mesa.nombre}`);
+  } catch(e){ alert('No se pudo agregar: ' + e.message); }
+}
+
+function verMesa(id){ mesaVista = id; pintarMesa(); }
+function cerrarMesaVista(){ mesaVista = null; cerrarModal(); }
+function pintarMesa(){
+  const c = cuentas.find(x => x.id === mesaVista);
+  if(!c){ cerrarMesaVista(); return; }
+  const items = itemsMesa(c);
+  abrirModal(`<div class="fila"><h3 style="margin:0">🪑 ${esc(c.nombre)}</h3><button class="btn btn-ghost btn-sm" onclick="cerrarMesaVista()">✕</button></div>
+    <div class="sub" style="margin-top:4px">Abierta a las ${esc(c.hora || '')} por ${esc(c.por || '')}</div>
+    <div style="margin-top:8px">${items.length ? items.map(i => `<div class="carrito-row">
+      <div><span class="prod">${esc(i.nombre)}</span><span class="pres">${esc(i.presentacion || '')} · ${plata(i.precio)} c/u</span></div>
+      <div class="stepper">${esAdmin() ? `<button onclick="cambiarItemMesa('${c.id}','${i.prodId}',-1)">−</button>` : ''}<b>${i.cantidad}</b><button onclick="cambiarItemMesa('${c.id}','${i.prodId}',1)">+</button>
+      <span class="precio" style="min-width:80px;text-align:right">${plata(i.cantidad * i.precio)}</span></div></div>`).join('') : '<div class="vacio">La mesa no tiene productos.</div>'}</div>
+    <div class="fila" style="margin-top:12px"><b>Total</b><span class="neon" style="font-size:1.5rem;font-weight:800">${plata(totalMesa(c))}</span></div>
+    <div class="acciones">
+      <button class="btn btn-ghost" style="flex:1" onclick="agregarProductosAMesa('${c.id}')">➕ Agregar productos</button>
+      <button class="btn" style="flex:1" ${items.length ? '' : 'disabled'} onclick="cobrarMesa('${c.id}')">💵 Cobrar</button>
+    </div>
+    ${!items.length ? `<div class="acciones"><button class="btn btn-ghost btn-full" onclick="eliminarMesa('${c.id}')">🗑️ Cerrar mesa vacía</button></div>` : ''}`);
+  mesaVista = c.id;   // abrirModal no la limpia, pero se deja explícito
+}
+function agregarProductosAMesa(id){ mesaDestino = id; carrito = {}; cerrarMesaVista(); irA('granizados'); pintarGranizados(); }
+function cobrarMesa(id){ mesaVista = null; cobroMesa = id; pagoTipo = 'efectivo'; pagoMixtoEf = 0; pagoFiadoNombre = ''; modalCobro(); }
+
+async function cambiarItemMesa(mesaId, prodId, d){
+  const c = cuentas.find(x => x.id === mesaId), i = c?.items?.[prodId]; if(!i) return;
+  if(d < 0){
+    if(!esAdmin()) return;
+    if(!confirm(`¿Quitar 1 ${i.nombre} de ${c.nombre}?`)) return;
+    logAudit('quitar_mesa', `Quitó 1 ${i.nombre} de ${c.nombre}`, { prodId, mesa: c.nombre });
+  } else {
+    const p = productos.find(x => x.id === prodId);
+    if(p && !esGranizado(p) && !confirmarStock([{ ...lineaDe(p, 1) }])) return;
+  }
+  await CUENTAS(nocheAbierta.id).doc(mesaId).update({ [`items.${prodId}.cantidad`]: INC(d), actualizadoEn: TS() });
+}
+
+async function eliminarMesa(id){
+  const c = cuentas.find(x => x.id === id); if(!c || totalMesa(c) > 0) return;
+  await CUENTAS(nocheAbierta.id).doc(id).delete();
+  cerrarMesaVista();
 }
 
 async function borrarVenta(id){
@@ -1291,7 +1441,7 @@ async function borrarTodo(){
   $('btn-borrar').disabled = true; $('btn-borrar').textContent = 'Borrando…';
   try{
     const r = {};
-    if(que.noches)    r.noches    = await borrarColeccion(NOCHES(), ['ventas', 'abonos']);
+    if(que.noches)    r.noches    = await borrarColeccion(NOCHES(), ['ventas', 'abonos', 'cuentas']);
     if(que.fiados)    r.clientes  = await borrarColeccion(CLIENTES(), ['movimientos']);
     if(que.productos){ r.productos = await borrarColeccion(PRODUCTOS()); await sembrarGranizados(); }
     carrito = {};
