@@ -5046,7 +5046,8 @@ async function cargarAuditoria(){
       .orderBy('fecha','desc');
     const snap = await q.get();
     // Ordenar por fecha+hora descendente en cliente (evita índice compuesto)
-    let docs = snap.docs.map(d=>d.data()).sort((a,b)=>{
+    // Los registros de la licorera se ven en la licorera (licorera.html); aquí solo Salchimonster
+    let docs = snap.docs.map(d=>d.data()).filter(d=>!String(d.modulo||'').startsWith('licorera')).sort((a,b)=>{
       const ka=(a.fecha||'')+' '+(a.hora||'');
       const kb=(b.fecha||'')+' '+(b.hora||'');
       return kb.localeCompare(ka);

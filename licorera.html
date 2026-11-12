@@ -167,6 +167,18 @@
   .editando .btn-ghost{background:transparent;color:#fff;border-color:rgba(255,255,255,.5)}
   .editando input{background:rgba(255,255,255,.95);color:#14201a;border:0}
 
+  /* ── Auditoría ── */
+  .au{background:var(--card);border:1px solid var(--line);border-left:4px solid var(--muted);border-radius:12px;padding:10px 12px;margin-bottom:8px;box-shadow:var(--sombra)}
+  .au.crear{border-left-color:var(--verde-txt)} .au.editar{border-left-color:#2b6cb0} .au.eliminar{border-left-color:var(--rojo)} .au.edicion{border-left-color:#7c3aed}
+  .au-tit{font-weight:700;font-size:.9rem}
+  .au-meta{font-size:.75rem;color:var(--muted);margin-top:3px}
+  .au-cambios{width:100%;margin-top:8px;font-size:.8rem;border-collapse:collapse}
+  .au-cambios td{padding:5px 6px;border-top:1px solid var(--line);text-align:left;vertical-align:top}
+  .au-cambios .antes{color:var(--rojo-txt);text-decoration:line-through;text-decoration-thickness:1px}
+  .au-cambios .despues{color:var(--verde-txt);font-weight:700}
+  .au details{margin-top:6px;font-size:.75rem;color:var(--muted)}
+  .au pre{white-space:pre-wrap;word-break:break-word;background:var(--bg2);border-radius:8px;padding:8px;margin-top:4px;max-height:240px;overflow:auto}
+
   .buscador{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
   .buscador input{flex:1 1 100%}
   .buscador select{flex:1 1 0;width:auto;min-width:0}
@@ -209,6 +221,7 @@
       <button id="nav-productos" class="solo-admin" onclick="irA('productos')">🍾 Productos</button>
       <button id="nav-fiados" onclick="irA('fiados')">🧾 Fiados</button>
       <button id="nav-historial" class="solo-admin" onclick="irA('historial')">📅 Historial</button>
+      <button id="nav-auditoria" class="solo-admin" onclick="irA('auditoria')">🔍 Auditoría</button>
     </nav>
   </header>
 
@@ -254,6 +267,29 @@
         <h2 id="hi-mes-titulo">Totales del mes</h2>
         <div class="totales" id="hi-totales"></div>
       </div>
+    </div>
+
+    <!-- ── AUDITORÍA (admin) ── -->
+    <div id="vista-auditoria" class="oculto">
+      <div class="card">
+        <h2>🔍 Auditoría de la licorera</h2>
+        <div class="sub">Todo lo que se hace en el sistema: quién, cuándo, y qué había antes y qué quedó.</div>
+        <div class="form-grid">
+          <div><div class="lbl">Desde</div><input type="date" id="au-desde" onchange="cargarAuditoria()"/></div>
+          <div><div class="lbl">Hasta</div><input type="date" id="au-hasta" onchange="cargarAuditoria()"/></div>
+        </div>
+        <div class="buscador" style="margin:10px 0 0">
+          <input id="au-q" placeholder="🔎 Buscar (producto, cliente, valor…)" oninput="pintarAuditoria()"/>
+          <select id="au-cat" onchange="pintarAuditoria()">
+            <option value="">Todo</option><option value="cambios">✏️ Ediciones y eliminaciones</option>
+            <option value="ventas">💰 Ventas</option><option value="inventario">📦 Inventario</option><option value="productos">🍾 Productos</option>
+            <option value="fiados">🧾 Fiados</option><option value="historial">📅 Historial</option><option value="sistema">⚙️ Sistema</option>
+          </select>
+          <select id="au-usuario" onchange="pintarAuditoria()"><option value="">Todos los usuarios</option></select>
+        </div>
+        <div class="sub" id="au-info" style="margin-top:8px"></div>
+      </div>
+      <div id="au-lista"></div>
     </div>
 
     <!-- ── GRANIZADOS ── -->
@@ -356,7 +392,7 @@ const INC  = n  => firebase.firestore.FieldValue.increment(n);
 // Colecciones propias de la licorera (no tocan nada de granizados ni facturas)
 const PRODUCTOS = () => db.collection('licorera_productos');
 const NOCHES    = () => db.collection('licorera_noches');
-const AUDIT_LOG = () => db.collection('audit_log');
+const AUDIT_LOG = () => db.collection('licorera_auditoria');   // auditoría propia (Salchimonster usa audit_log)
 const CLIENTES  = () => db.collection('licorera_clientes');
 const MOVS      = id => CLIENTES().doc(id).collection('movimientos');     // fiados y abonos del cliente
 // Espacio aparte para editar un día guardado (como en Salchimonster): el día en curso no se toca
@@ -389,11 +425,43 @@ function toast(msg){
   const t = document.createElement('div'); t.className = 'toast'; t.textContent = msg;
   document.body.appendChild(t); setTimeout(() => t.remove(), 2600);
 }
-function logAudit(accion, detalle, datos){
-  AUDIT_LOG().add({
-    ts: TS(), fecha: hoy(), hora: new Date().toTimeString().slice(0, 8),
-    uid: usuario?.uid || '', usuario: usuarioNombre, accion, modulo: 'licorera-inventario', detalle, datos: datos || {}
-  }).catch(() => {});
+// Registra una acción en la auditoría de la licorera. Nunca bloquea.
+//   cambios: [{ que, antes, despues }] — lo que había y lo que quedó
+const limpio = x => JSON.parse(JSON.stringify(x ?? {}));       // Firestore no acepta undefined
+const cambio = (que, antes, despues) => ({ que, antes: antes === undefined || antes === null || antes === '' ? '—' : String(antes), despues: despues === undefined || despues === null || despues === '' ? '—' : String(despues) });
+function logAudit(accion, detalle, datos, cambios){
+  try{
+    const ahora = new Date();
+    AUDIT_LOG().add({
+      ts: TS(), t: ahora.getTime(), fecha: hoy(), hora: ahora.toTimeString().slice(0, 8),
+      uid: usuario?.uid || '', usuario: usuarioNombre || usuario?.email || 'desconocido', rol: usuarioRol,
+      accion, categoria: (ACCIONES[accion] || [])[1] || 'sistema', detalle,
+      cambios: limpio(cambios || []), datos: limpio(datos),
+      dispositivo: (navigator.userAgent.match(/\(([^)]+)\)/) || [])[1] || ''
+    }).catch(e => console.error('auditoría', e));
+  } catch(e){ console.error('auditoría', e); }
+}
+// Nombre y categoría de cada acción (para filtrar y mostrar)
+const ACCIONES = {
+  login: ['Inició sesión', 'sistema'], logout: ['Cerró sesión', 'sistema'],
+  abrir_noche: ['Abrió la venta', 'ventas'], cerrar_noche: ['Cerró la venta', 'ventas'], editar_base: ['Cambió la base de caja', 'ventas'],
+  venta: ['Registró una venta', 'ventas'], borrar_venta: ['Eliminó una venta', 'ventas'],
+  abrir_mesa: ['Abrió una mesa', 'ventas'], agregar_mesa: ['Agregó a una mesa', 'ventas'], quitar_mesa: ['Quitó de una mesa', 'ventas'],
+  cobrar_mesa: ['Cobró una mesa', 'ventas'], eliminar_mesa: ['Cerró una mesa vacía', 'ventas'],
+  entrada: ['Entrada de mercancía', 'inventario'], corregir_inventario: ['Corrigió inventario', 'inventario'],
+  crear_producto: ['Creó un producto', 'productos'], editar_producto: ['Editó un producto', 'productos'],
+  activar_producto: ['Activó un producto', 'productos'], desactivar_producto: ['Desactivó un producto', 'productos'],
+  fiado: ['Fió', 'fiados'], crear_cliente: ['Creó un cliente', 'fiados'], abono: ['Recibió un abono', 'fiados'], borrar_abono: ['Eliminó un abono', 'fiados'],
+  editar_dia_inicio: ['Abrió un día para editar', 'historial'], editar_dia: ['Editó un día guardado', 'historial'],
+  editar_dia_salir: ['Salió sin guardar la edición', 'historial'], editar_dia_descartar: ['Descartó una edición pendiente', 'historial'],
+  eliminar_dia: ['Eliminó un día guardado', 'historial'], borrar_todo: ['Borró información', 'sistema'],
+};
+// Texto corto de una venta: "2× Águila Lata, 1× Combo M · $20.000 · Efectivo"
+function describirVenta(v){
+  if(!v) return '—';
+  const m = montosVenta(v);
+  const pago = v.pago === 'mixto' ? `Mixto (💵 ${plata(m.efectivo)} + 🏦 ${plata(m.transferencia)})` : v.pago === 'fiado' ? `Fiado a ${v.cliente || '?'}` : v.pago === 'transferencia' ? 'Transferencia' : 'Efectivo';
+  return `${(v.items || []).map(i => `${i.cantidad}× ${i.nombre}${i.tipo !== 'granizado' && i.presentacion ? ' ' + i.presentacion : ''}`).join(', ')} · ${plata(v.total)} · ${pago}${v.mesa ? ' · ' + v.mesa : ''}`;
 }
 
 // ══════════════════════════════════════
@@ -470,7 +538,7 @@ async function doLogin(){
   $('btn-login').disabled = false;
 }
 $('l-pass').addEventListener('keydown', e => { if(e.key === 'Enter') doLogin(); });
-function doLogout(){ auth.signOut(); }
+function doLogout(){ logAudit('logout', `Cerró sesión: ${usuarioNombre}`); auth.signOut(); }
 
 // ── Modo claro / oscuro (se recuerda en este dispositivo) ──
 function pintarBotonTema(){
@@ -487,11 +555,12 @@ function cambiarTema(){
 pintarBotonTema();
 
 function irA(vista){
-  ['inventario', 'granizados', 'fiados', 'productos', 'historial'].forEach(v => {
+  ['inventario', 'granizados', 'fiados', 'productos', 'historial', 'auditoria'].forEach(v => {
     $('vista-' + v).classList.toggle('oculto', v !== vista);
     $('nav-' + v).classList.toggle('activo', v === vista);
   });
   $('nav-' + vista).scrollIntoView?.({ inline: 'nearest', block: 'nearest' });
+  if(vista === 'auditoria') cargarAuditoria();
   pintarBarraCobro();
 }
 
@@ -794,7 +863,8 @@ async function abrirNoche(revision){
       fecha: diaJornada(), estado: 'abierta', abiertaEn: TS(), abiertaPor: usuarioNombre, abiertaPorUid: usuario.uid,
       baseCaja, revisionInventario: revision, conteoInicial: conteo, entradas: {}, movimientos: [], diferenciasApertura: diferencias
     });
-    logAudit('abrir_noche', `Abrió la venta con base ${plata(baseCaja)} · inventario ${revision}`, { baseCaja, revision, diferencias });
+    logAudit('abrir_noche', `Abrió la venta del ${diaJornada()} con base ${plata(baseCaja)} · inventario ${revision}`, { baseCaja, revision },
+      [cambio('Base de caja', '', plata(baseCaja)), ...diferencias.map(d => cambio(`Inventario de ${d.nombre}`, cant(d.esperado), cant(d.contado)))]);
     aperturaBase = '';
     cerrarModal(); toast('🌙 Venta abierta');
   } catch(e){ alert('No se pudo abrir: ' + e.message); $('btn-abrir').disabled = false; }
@@ -805,9 +875,9 @@ async function editarBase(){
   if(!esAdmin() || !nocheAbierta) return;
   const txt = prompt('Nueva base de caja:', String(nocheAbierta.baseCaja || 0));
   if(txt === null) return;
-  const nueva = parseInt(txt.replace(/\D/g, ''), 10) || 0;
-  await nocheRef(nocheAbierta.id).update({ baseCaja: nueva });
-  logAudit('editar_base', `Base de caja: ${plata(nocheAbierta.baseCaja)} → ${plata(nueva)}`, { antes: nocheAbierta.baseCaja || 0, despues: nueva });
+  const nueva = parseInt(txt.replace(/\D/g, ''), 10) || 0, n = { ...nocheAbierta };
+  await nocheRef(n.id).update({ baseCaja: nueva });
+  logAudit('editar_base', `Cambió la base de caja de la venta del ${n.fecha}`, { nocheId: n.id }, [cambio('Base de caja', plata(n.baseCaja), plata(nueva))]);
   toast('💰 Base actualizada');
 }
 
@@ -829,7 +899,7 @@ function modalEntrada(){
 async function guardarEntrada(){
   const id = $('ent-prod').value, c = num($('ent-cant').value);
   if(c <= 0){ alert('Escribe una cantidad mayor a 0.'); return; }
-  const p = productos.find(x => x.id === id);
+  const p = productos.find(x => x.id === id), stockAntes = stockEsperado(nocheAbierta, p), nota = $('ent-nota').value.trim();
   $('btn-ent').disabled = true;
   try{
     await nocheRef(nocheAbierta.id).update({
@@ -839,7 +909,8 @@ async function guardarEntrada(){
         por: usuarioNombre, hora: new Date().toLocaleTimeString('es-CO', {hour:'2-digit', minute:'2-digit'}), t: Date.now()
       })
     });
-    logAudit('entrada', `Entrada: ${cant(c)} × ${p?.nombre} ${p?.presentacion || ''}`, { prodId: id, cantidad: c });
+    logAudit('entrada', `Entrada de ${cant(c)} × ${p?.nombre} ${p?.presentacion || ''}${edicion ? ' (editando el día ' + edicion.fecha + ')' : ''}`, { prodId: id, cantidad: c, nota },
+      [cambio(`Stock de ${p?.nombre} ${p?.presentacion || ''}`, cant(stockAntes), cant(stockAntes + c))]);
     cerrarModal(); toast(`➕ ${cant(c)} × ${p?.nombre}`);
   } catch(e){ alert('No se pudo registrar: ' + e.message); $('btn-ent').disabled = false; }
 }
@@ -944,7 +1015,7 @@ async function cerrarNoche(){
   if(!esAdmin() || !nocheAbierta) return;
   if(cuentas.length){ alert('Hay mesas abiertas sin cobrar.'); return; }
   const c = calcularCierre();
-  const id = nocheAbierta.id, fecha = $('cie-fecha')?.value || nocheAbierta.fecha || diaJornada();
+  const id = nocheAbierta.id, fechaInicio = nocheAbierta.fecha, fecha = $('cie-fecha')?.value || nocheAbierta.fecha || diaJornada();
   if(!/^\d{4}-\d{2}-\d{2}$/.test(fecha)){ alert('Escoge el día de la venta.'); return; }
   if(fecha > hoy()){ alert('El día de la venta no puede ser en el futuro.'); return; }
   if(!confirm(`¿Cerrar la venta y guardarla como ${fechaLarga(fecha)}?`)) return;
@@ -954,7 +1025,8 @@ async function cerrarNoche(){
       estado: 'cerrada', fecha, cerradaEn: TS(), cerradaPor: usuarioNombre, cerradaPorUid: usuario.uid,
       conteoFinal: c.conteoFinal, detalle: c.detalle, porProducto: c.porProducto, resumen: c.resumen
     });
-    logAudit('cerrar_noche', `Cerró la venta del ${fecha}: ${plata(c.resumen.total)}`, { fecha, ...c.resumen });
+    logAudit('cerrar_noche', `Cerró la venta del ${fecha}: ${plata(c.resumen.total)} (💵 ${plata(c.resumen.efectivo)} · 🏦 ${plata(c.resumen.transferencia)} · 🧾 ${plata(c.resumen.fiado)})`, { fecha, nocheId: id, ...c.resumen },
+      fecha !== fechaInicio ? [cambio('Día de la venta', fechaInicio, fecha)] : []);
     cerrarModal(); toast('🔒 Venta cerrada · guardada en Historial');
     if(esAdmin()){ calAnio = +fecha.slice(0, 4); calMes = +fecha.slice(5, 7) - 1; irA('historial'); pintarHistorial(); }
     verNoche(id, { fecha, ...c });
@@ -1035,7 +1107,10 @@ async function eliminarDia(id){
     sc.docs.forEach(d => batch.delete(CUENTAS(id).doc(d.id)));
     batch.delete(NOCHES().doc(id));
     await batch.commit();
-    logAudit('eliminar_dia', `Eliminó el día ${h.fecha} (${plata(totalDia(h))})`, { nocheId: id, fecha: h.fecha, resumen: h.resumen || {}, ventas: lv.length, fiados: fiadas.length });
+    logAudit('eliminar_dia', `Eliminó el día ${h.fecha} (${plata(totalDia(h))}, ${lv.length} ventas)`, { nocheId: id, fecha: h.fecha, resumen: h.resumen || {}, abiertaPor: h.abiertaPor, cerradaPor: h.cerradaPor, ventas: lv },
+      [cambio(`Día ${h.fecha}`, `${plata(totalDia(h))} · ${lv.length} ventas`, 'Eliminado'),
+       ...lv.map(v => cambio(`Venta de las ${v.hora} (${v.por})`, describirVenta(v), 'Eliminada')),
+       ...fiadas.map(v => cambio(`Fiado de ${v.cliente}`, plata(v.total), 'Quitado del saldo'))]);
     cerrarModal(); toast('🗑️ Día eliminado');
   } catch(e){ alert('No se pudo eliminar: ' + e.message); if($('btn-eliminar-dia')) $('btn-eliminar-dia').disabled = false; }
 }
@@ -1154,7 +1229,7 @@ async function guardarInventarioEdicion(){
     if(el.value.trim() === '' || v < 0){ el.focus(); alert(`Revisa: ${p.nombre} ${p.presentacion || ''}`); return; }
     conteo[p.id] = v;
   }
-  await EDICION().update({ conteoInicial: conteo });
+  await EDICION().update({ conteoInicial: conteo });   // queda en auditoría al guardar el día
   cerrarModal(); toast('📦 Inventario del día corregido');
 }
 
@@ -1266,6 +1341,33 @@ async function guardarEdicion(){
     const nuevas = ventas.filter(v => !orig[v.id]), borradas = Object.values(orig).filter(o => !ventas.some(v => v.id === o.id));
     const cambiadas = ventas.filter(v => orig[v.id] && firmaVenta(v) !== firmaVenta(orig[v.id]));
     const antes = totalDia(h);
+    // Qué cambió exactamente (antes → después)
+    const nombreProd = id => { const p = productos.find(x => x.id === id) || (h.detalle || []).find(d => d.prodId === id); return p ? `${p.nombre} ${p.presentacion || ''}`.trim() : id; };
+    const cambiosAud = [];
+    if(h.fecha !== fecha) cambiosAud.push(cambio('Día de la venta', h.fecha, fecha));
+    if(num(h.baseCaja ?? h.resumen?.baseCaja) !== num(edicion.baseCaja)) cambiosAud.push(cambio('Base de caja', plata(h.baseCaja ?? h.resumen?.baseCaja), plata(edicion.baseCaja)));
+    new Set([...Object.keys(h.conteoInicial || {}), ...Object.keys(edicion.conteoInicial || {})]).forEach(id => {
+      if(num(h.conteoInicial?.[id]) !== num(edicion.conteoInicial?.[id])) cambiosAud.push(cambio(`Inventario inicial · ${nombreProd(id)}`, cant(h.conteoInicial?.[id]), cant(edicion.conteoInicial?.[id])));
+    });
+    new Set([...Object.keys(h.entradas || {}), ...Object.keys(edicion.entradas || {})]).forEach(id => {
+      if(num(h.entradas?.[id]) !== num(edicion.entradas?.[id])) cambiosAud.push(cambio(`Entradas · ${nombreProd(id)}`, cant(h.entradas?.[id]), cant(edicion.entradas?.[id])));
+    });
+    borradas.forEach(o => cambiosAud.push(cambio(`Venta de las ${o.hora} (${o.por})`, describirVenta(o), 'Eliminada')));
+    nuevas.forEach(v => cambiosAud.push(cambio('Venta nueva', '', describirVenta(v))));
+    cambiadas.forEach(v => {
+      const o = orig[v.id], q = `Venta de las ${o.hora} (${o.por})`;
+      const ids = new Set([...o.items.map(i => i.prodId), ...v.items.map(i => i.prodId)]);
+      ids.forEach(pid => {
+        const a = o.items.find(i => i.prodId === pid), d = v.items.find(i => i.prodId === pid);
+        if(!a) cambiosAud.push(cambio(`${q} · ${d.nombre}`, 'no estaba', `${d.cantidad}× ${plata(d.precio)}`));
+        else if(!d) cambiosAud.push(cambio(`${q} · ${a.nombre}`, `${a.cantidad}× ${plata(a.precio)}`, 'quitado'));
+        else if(a.cantidad !== d.cantidad || a.precio !== d.precio) cambiosAud.push(cambio(`${q} · ${a.nombre}`, `${a.cantidad}× ${plata(a.precio)}`, `${d.cantidad}× ${plata(d.precio)}`));
+      });
+      const pagoTxt = x => describirVenta({ ...x, items: [], total: x.total }).split(' · ').slice(2).join(' · ') || x.pago;
+      if(o.pago !== v.pago || (v.pago === 'mixto' && JSON.stringify(montosVenta(o)) !== JSON.stringify(montosVenta(v))) || (v.pago === 'fiado' && normal(o.cliente) !== normal(v.cliente))) cambiosAud.push(cambio(`${q} · forma de pago`, pagoTxt(o), pagoTxt(v)));
+      if(o.total !== v.total) cambiosAud.push(cambio(`${q} · total`, plata(o.total), plata(v.total)));
+    });
+    if(antes !== r.resumen.total) cambiosAud.push(cambio('Venta total del día', plata(antes), plata(r.resumen.total)));
     if(!confirm(`¿Guardar los cambios en el día ${fechaLarga(fecha)}?\n\nVenta del día: ${plata(antes)} → ${plata(r.resumen.total)}\nVentas: ${nuevas.length} nueva(s), ${cambiadas.length} corregida(s), ${borradas.length} eliminada(s)\n\nReemplaza lo que estaba guardado en ese día.`)) return;
     const batch = db.batch(), nuevosCli = {};
     borradas.forEach(o => { batch.delete(NOCHES().doc(nid).collection('ventas').doc(o.id)); quitarFiadoEnLote(batch, o); });
@@ -1281,7 +1383,8 @@ async function guardarEdicion(){
       resumen: r.resumen, porProducto: r.porProducto, detalle: r.detalle, conteoFinal: r.conteoFinal,
       editadoEn: TS(), editadoPor: usuarioNombre, editadoPorUid: usuario.uid });
     await batch.commit();
-    logAudit('editar_dia', `Actualizó el día ${fecha}: ${plata(antes)} → ${plata(r.resumen.total)}`, { nocheId: nid, fechaAntes: h.fecha, fecha, antes, despues: r.resumen.total, nuevas: nuevas.length, cambiadas: cambiadas.length, borradas: borradas.length });
+    logAudit('editar_dia', `Editó el día ${h.fecha}${h.fecha !== fecha ? ' (ahora ' + fecha + ')' : ''}: ${nuevas.length} venta(s) nueva(s), ${cambiadas.length} corregida(s), ${borradas.length} eliminada(s)`,
+      { nocheId: nid, fechaAntes: h.fecha, fecha, resumenAntes: h.resumen || {}, resumenDespues: r.resumen }, cambiosAud);
     volverAlDiaEnCurso();
     try{ await vaciarEdicion(); } catch(e){ console.error('vaciar edición', e); }
     alert(`✅ Día ${fechaLarga(fecha)} actualizado.`);
@@ -1575,11 +1678,12 @@ async function registrarVenta(){
     if(mesa){ venta.mesa = mesa.nombre; venta.mesaAbierta = mesa.hora || ''; batch.delete(CUENTAS(nid).doc(mesa.id)); }
     batch.set(ventaRef, venta);
     await batch.commit();
-    if(mesa) logAudit('cobrar_mesa', `Cobró ${mesa.nombre}: ${plata(total)}`, { mesa: mesa.nombre, total });
+    if(mesa) logAudit('cobrar_mesa', `Cobró ${mesa.nombre}: ${plata(total)}`, { mesa: mesa.nombre, venta: describirVenta(venta) });
+    else if(!edicion) logAudit('venta', `Venta ${plata(total)} · ${describirVenta(venta)}`, { ventaId: ventaRef.id, total, pago: pagoTipo });
     else carrito = {};
     cobroMesa = null; pagoTipo = 'efectivo'; pagoMixtoEf = 0; pagoFiadoNombre = '';
     cerrarModal(); pintarGranizados();
-    if(cliente && !edicion) logAudit('fiado', `Fió ${plata(total)} a ${cliente}`, { cliente, total });
+    if(cliente && !edicion){ const sal = num((cli || {}).saldo); logAudit('fiado', `Fió ${plata(total)} a ${cliente}`, { cliente, total, venta: describirVenta(venta) }, [cambio(`Saldo de ${cliente}`, plata(sal), plata(sal + total))]); }
     toast(`✅ Venta ${plata(total)}`);
   } catch(e){ alert('No se pudo registrar: ' + e.message); if($('btn-venta')) $('btn-venta').disabled = false; }
 }
@@ -1611,7 +1715,7 @@ async function crearMesa(conCarrito){
     const datos = { nombre, items: {}, t: Date.now(), hora: new Date().toLocaleTimeString('es-CO', {hour:'2-digit', minute:'2-digit'}), por: usuarioNombre, abiertaEn: TS() };
     items.forEach(({ subtotal, ...i }) => datos.items[i.prodId] = i);
     await ref.set(datos);
-    logAudit('abrir_mesa', `Abrió ${nombre}`, { items: items.length });
+    logAudit('abrir_mesa', `Abrió ${nombre}${items.length ? ' con ' + items.map(i => `${i.cantidad}× ${i.nombre}`).join(', ') : ''}`, { mesa: nombre, items });
     if(conCarrito) carrito = {};
     cerrarModal(); pintarGranizados();
     toast(`🪑 ${nombre} abierta`);
@@ -1643,6 +1747,8 @@ async function agregarAMesa(id){
     await CUENTAS(nocheAbierta.id).doc(id).update(upd);
     carrito = {}; mesaDestino = null;
     cerrarModal(); pintarGranizados();
+    logAudit('agregar_mesa', `Agregó a ${mesa.nombre}: ${items.map(i => `${i.cantidad}× ${i.nombre}`).join(', ')}`, { mesa: mesa.nombre, items },
+      items.map(i => cambio(`${mesa.nombre} · ${i.nombre}`, cant(mesa.items?.[i.prodId]?.cantidad || 0), cant((mesa.items?.[i.prodId]?.cantidad || 0) + i.cantidad))));
     toast(`🪑 Agregado a ${mesa.nombre}`);
   } catch(e){ alert('No se pudo agregar: ' + e.message); }
 }
@@ -1675,7 +1781,7 @@ async function cambiarItemMesa(mesaId, prodId, d){
   if(d < 0){
     if(!esAdmin()) return;
     if(!confirm(`¿Quitar 1 ${i.nombre} de ${c.nombre}?`)) return;
-    logAudit('quitar_mesa', `Quitó 1 ${i.nombre} de ${c.nombre}`, { prodId, mesa: c.nombre });
+    logAudit('quitar_mesa', `Quitó 1 ${i.nombre} de ${c.nombre}`, { prodId, mesa: c.nombre }, [cambio(`${c.nombre} · ${i.nombre}`, cant(i.cantidad), cant(i.cantidad - 1))]);
   } else {
     const p = productos.find(x => x.id === prodId);
     if(p && !esGranizado(p) && !confirmarStock([{ ...lineaDe(p, 1) }])) return;
@@ -1686,6 +1792,7 @@ async function cambiarItemMesa(mesaId, prodId, d){
 async function eliminarMesa(id){
   const c = cuentas.find(x => x.id === id); if(!c || totalMesa(c) > 0) return;
   await CUENTAS(nocheAbierta.id).doc(id).delete();
+  logAudit('eliminar_mesa', `Cerró ${c.nombre} sin productos`, { mesa: c.nombre });
   cerrarMesaVista();
 }
 
@@ -1700,7 +1807,8 @@ async function borrarVenta(id){
     batch.update(CLIENTES().doc(v.clienteId), { saldo: INC(-v.total), totalFiado: INC(-v.total), actualizadoEn: TS() });
   }
   await batch.commit();
-  if(!edicion) logAudit('borrar_venta', `Eliminó venta ${plata(v.total)}`, { items: v.items, pago: v.pago });
+  if(!edicion) logAudit('borrar_venta', `Eliminó la venta de las ${v.hora} (${plata(v.total)}) hecha por ${v.por}`, { venta: v, nocheId: nocheAbierta.id },
+    [cambio(`Venta de las ${v.hora} (${v.por})`, describirVenta(v), 'Eliminada'), ...(v.clienteId ? [cambio(`Fiado de ${v.cliente}`, plata(v.total), 'Quitado')] : [])]);
 }
 
 // ══════════════════════════════════════
@@ -1742,7 +1850,7 @@ async function crearCliente(){
   $('btn-nc').disabled = true;
   try{
     await CLIENTES().add({ nombre, telefono, saldo: 0, totalFiado: 0, totalAbonado: 0, creadoEn: TS(), creadoPor: usuarioNombre });
-    logAudit('crear_cliente', `Creó cliente ${nombre}`, { nombre, telefono });
+    logAudit('crear_cliente', `Creó el cliente ${nombre}`, { nombre, telefono }, [cambio('Cliente', '', `${nombre}${telefono ? ' · ' + telefono : ''}`)]);
     cerrarModal(); toast('✅ Cliente creado');
   } catch(e){ alert('No se pudo crear: ' + e.message); $('btn-nc').disabled = false; }
 }
@@ -1834,7 +1942,7 @@ async function registrarAbono(){
     batch.update(CLIENTES().doc(c.id), { saldo: INC(-monto), totalAbonado: INC(monto), actualizadoEn: TS() });
     if(abNocheRef) batch.set(abNocheRef, { clienteId: c.id, cliente: c.nombre, monto, montos, pago: abonoTipo, movId: movRef.id, hora, por: usuarioNombre, t: Date.now() });
     await batch.commit();
-    logAudit('abono', `Abono ${plata(monto)} de ${c.nombre}`, { clienteId: c.id, monto, montos });
+    logAudit('abono', `Abono de ${plata(monto)} de ${c.nombre} (${abonoTipo})`, { clienteId: c.id, monto, montos }, [cambio(`Saldo de ${c.nombre}`, plata(saldo), plata(saldo - monto))]);
     abonoTipo = 'efectivo';
     if($('ab-monto')) $('ab-monto').value = '';
     if($('ab-ef')) $('ab-ef').value = '';
@@ -1854,7 +1962,49 @@ async function borrarAbono(movId){
   batch.update(CLIENTES().doc(c.id), { saldo: INC(m.monto), totalAbonado: INC(-m.monto), actualizadoEn: TS() });
   if(m.nocheId && m.abonoNocheId) batch.delete(ABONOS_NOCHE(m.nocheId).doc(m.abonoNocheId));
   await batch.commit();
-  logAudit('borrar_abono', `Eliminó abono ${plata(m.monto)} de ${c.nombre}`, { clienteId: c.id, monto: m.monto });
+  logAudit('borrar_abono', `Eliminó el abono de ${plata(m.monto)} de ${c.nombre} (${m.fecha || ''} ${m.hora || ''}, registrado por ${m.por || ''})`, { clienteId: c.id, abono: m },
+    [cambio(`Abono del ${m.fecha || ''} ${m.hora || ''}`, `${plata(m.monto)} · ${m.pago || ''}`, 'Eliminado'), cambio(`Saldo de ${c.nombre}`, plata(c.saldo), plata(num(c.saldo) + m.monto))]);
+}
+
+// ══════════════════════════════════════
+//   AUDITORÍA (solo admin) — solo lo de la licorera (licorera_auditoria)
+// ══════════════════════════════════════
+let auditoria = [];
+async function cargarAuditoria(){
+  if(!esAdmin()) return;
+  if(!$('au-desde').value){ $('au-desde').value = new Date(Date.now() - 6 * 864e5).toLocaleDateString('en-CA'); $('au-hasta').value = hoy(); }
+  const desde = $('au-desde').value, hasta = $('au-hasta').value || hoy();
+  $('au-info').textContent = 'Cargando…';
+  try{
+    const sn = await AUDIT_LOG().where('fecha', '>=', desde).where('fecha', '<=', hasta).orderBy('fecha', 'desc').get();
+    auditoria = sn.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => (b.t || 0) - (a.t || 0) || `${b.fecha} ${b.hora}`.localeCompare(`${a.fecha} ${a.hora}`));
+    const us = [...new Set(auditoria.map(a => a.usuario).filter(Boolean))].sort();
+    const sel = $('au-usuario'), actual = sel.value;
+    sel.innerHTML = `<option value="">Todos los usuarios</option>` + us.map(u => `<option${u === actual ? ' selected' : ''}>${esc(u)}</option>`).join('');
+    pintarAuditoria();
+  } catch(e){ $('au-info').textContent = 'No se pudo cargar: ' + e.message; }
+}
+const tipoAccion = a => /^(borrar|eliminar|quitar)/.test(a) ? 'eliminar' : /^editar_dia/.test(a) ? 'edicion' : /^(editar|corregir|activar|desactivar)/.test(a) ? 'editar' : /^(crear|abrir|venta|fiado|abono|entrada|agregar|cobrar)/.test(a) ? 'crear' : '';
+function pintarAuditoria(){
+  const q = normal($('au-q').value), cat = $('au-cat').value, us = $('au-usuario').value;
+  const lista = auditoria.filter(a =>
+    (!cat || (cat === 'cambios' ? ['editar', 'eliminar', 'edicion'].includes(tipoAccion(a.accion)) : a.categoria === cat)) &&
+    (!us || a.usuario === us) &&
+    (!q || normal(JSON.stringify([a.detalle, a.usuario, a.cambios, ACCIONES[a.accion]?.[0]])).includes(q)));
+  $('au-info').textContent = `${lista.length} registro${lista.length === 1 ? '' : 's'}${lista.length !== auditoria.length ? ` de ${auditoria.length}` : ''}`;
+  $('au-lista').innerHTML = lista.length ? lista.map(a => {
+    const datos = a.datos && Object.keys(a.datos).length ? a.datos : null;
+    return `<div class="au ${tipoAccion(a.accion)}">
+      <div class="fila" style="align-items:flex-start;flex-wrap:nowrap">
+        <div style="min-width:0"><div class="au-tit">${esc(ACCIONES[a.accion]?.[0] || a.accion)}</div>
+          <div style="font-size:.85rem;margin-top:2px">${esc(a.detalle || '')}</div></div>
+        <div style="text-align:right;flex-shrink:0;font-size:.75rem"><b style="text-transform:capitalize">${esc(a.fecha ? new Date(a.fecha + 'T00:00').toLocaleDateString('es-CO', {weekday:'short', day:'numeric', month:'short'}) : '')}</b><div class="sub">${esc(a.hora || '')}</div></div>
+      </div>
+      <div class="au-meta">👤 ${esc(a.usuario || '—')}${a.rol ? ` (${esc(a.rol)})` : ''}${a.dispositivo ? ` · 📱 ${esc(a.dispositivo)}` : ''}</div>
+      ${(a.cambios || []).length ? `<table class="au-cambios"><tr><td class="sub" style="width:34%">Qué</td><td class="sub">Antes</td><td class="sub">Después</td></tr>
+        ${a.cambios.map(c => `<tr><td>${esc(c.que)}</td><td class="antes">${esc(c.antes)}</td><td class="despues">${esc(c.despues)}</td></tr>`).join('')}</table>` : ''}
+      ${datos ? `<details><summary>Más información</summary><pre>${esc(JSON.stringify(datos, null, 2))}</pre></details>` : ''}
+    </div>`; }).join('') : `<div class="card vacio">Sin registros para ese filtro.</div>`;
 }
 
 // ══════════════════════════════════════
@@ -1887,7 +2037,7 @@ async function borrarTodo(){
     if(que.fiados)    r.clientes  = await borrarColeccion(CLIENTES(), ['movimientos']);
     if(que.productos){ r.productos = await borrarColeccion(PRODUCTOS()); await sembrarGranizados(); }
     carrito = {};
-    logAudit('borrar_todo', `Borró información de licorera: ${lista.join(', ')}`, r);
+    logAudit('borrar_todo', `Borró información de la licorera: ${lista.join(', ')}`, r, Object.entries(r).map(([k, n]) => cambio(k.charAt(0).toUpperCase() + k.slice(1), `${n} registro(s)`, 'Borrado')));
     toast('🗑️ Información borrada');
   } catch(e){ alert('No se pudo borrar todo: ' + e.message); }
   $('btn-borrar').disabled = false; $('btn-borrar').textContent = '🗑️ Borrar todo lo marcado';
@@ -1966,12 +2116,17 @@ async function guardarProducto(){
   $('pf-guardar').disabled = true;
   try{
     if(editandoId){
+      const antes = productos.find(p => p.id === editandoId) || {};
       await PRODUCTOS().doc(editandoId).update({ ...datos, actualizadoEn: TS() });
-      logAudit('editar_producto', `Editó ${datos.nombre} ${datos.presentacion}`, datos);
+      const campos = [['nombre', 'Nombre'], ['presentacion', 'Presentación'], ['categoria', 'Categoría'], ['precio', 'Precio', plata], ['tipo', 'Tipo'], ['unidades', 'Granizados por venta']];
+      const cambios = campos.filter(([k]) => datos[k] !== undefined && String(antes[k] ?? '') !== String(datos[k] ?? ''))
+        .map(([k, l, f]) => cambio(l, f ? f(antes[k]) : antes[k], f ? f(datos[k]) : datos[k]));
+      logAudit('editar_producto', `Editó ${antes.nombre || ''} ${antes.presentacion || ''}`, { prodId: editandoId, antes, despues: datos }, cambios);
       toast('✅ Producto actualizado');
     } else {
       await PRODUCTOS().add({ ...datos, activo: true, creadoEn: TS() });
-      logAudit('crear_producto', `Creó ${datos.nombre} ${datos.presentacion}`, datos);
+      logAudit('crear_producto', `Creó ${datos.nombre} ${datos.presentacion} a ${plata(datos.precio)}`, datos,
+        [cambio('Producto', '', `${datos.nombre} ${datos.presentacion} · ${datos.categoria} · ${plata(datos.precio)}`)]);
       toast('✅ Producto creado');
     }
     limpiarFormProducto();
@@ -1984,6 +2139,8 @@ async function toggleProducto(id){
   const p = productos.find(x => x.id === id); if(!p || !esAdmin()) return;
   if(nocheAbierta && p.activo !== false && !esGranizado(p) && !confirm('Hay una venta abierta. Si lo desactivas no aparecerá en el conteo de cierre. ¿Desactivar?')) return;
   await PRODUCTOS().doc(id).update({ activo: p.activo === false, actualizadoEn: TS() });
+  logAudit(p.activo === false ? 'activar_producto' : 'desactivar_producto', `${p.activo === false ? 'Activó' : 'Desactivó'} ${p.nombre} ${p.presentacion || ''}`, { prodId: id },
+    [cambio(`${p.nombre} ${p.presentacion || ''}`, p.activo === false ? 'Inactivo' : 'Activo', p.activo === false ? 'Activo' : 'Inactivo')]);
 }
 </script>
 </body>
