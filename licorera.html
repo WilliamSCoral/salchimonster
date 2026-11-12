@@ -163,6 +163,9 @@
   .cal-sw.con{background:var(--verde-txt);border:0}
   .cal-sw.hoy{background:var(--card);border:2px solid var(--verde-txt)}
   .editando{background:linear-gradient(135deg,#7c3aed,#5b21b6);color:#fff;border-radius:12px;padding:10px 12px;margin-top:12px;font-size:.85rem}
+  .editando .btn{background:#fff;color:#5b21b6}
+  .editando .btn-ghost{background:transparent;color:#fff;border-color:rgba(255,255,255,.5)}
+  .editando input{background:rgba(255,255,255,.95);color:#14201a;border:0}
 
   .buscador{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
   .buscador input{flex:1 1 100%}
@@ -209,6 +212,7 @@
     </nav>
   </header>
 
+  <div id="banner-edicion" class="oculto" style="max-width:960px;margin:12px auto 0;padding:0 14px"></div>
   <main>
     <!-- ── INVENTARIO ── -->
     <div id="vista-inventario">
@@ -355,8 +359,12 @@ const NOCHES    = () => db.collection('licorera_noches');
 const AUDIT_LOG = () => db.collection('audit_log');
 const CLIENTES  = () => db.collection('licorera_clientes');
 const MOVS      = id => CLIENTES().doc(id).collection('movimientos');     // fiados y abonos del cliente
-const ABONOS_NOCHE = id => NOCHES().doc(id).collection('abonos');
-const CUENTAS = id => NOCHES().doc(id).collection('cuentas');               // mesas abiertas (se cobran al final)       // abonos recibidos durante una venta (para la caja)
+// Espacio aparte para editar un día guardado (como en Salchimonster): el día en curso no se toca
+const ED_ID = '__edicion';
+const EDICION = () => db.collection('licorera_edicion').doc('actual');
+const nocheRef = id => id === ED_ID ? EDICION() : NOCHES().doc(id);
+const ABONOS_NOCHE = id => id === ED_ID ? NOCHES().doc(edicion?.nocheId || '-').collection('abonos') : NOCHES().doc(id).collection('abonos');
+const CUENTAS = id => nocheRef(id).collection('cuentas');               // mesas abiertas (se cobran al final)       // abonos recibidos durante una venta (para la caja)
 
 // ══════════════════════════════════════
 //   UTILIDADES
@@ -410,6 +418,14 @@ let cuentas = [], escuchaCuentas = null;   // mesas abiertas de la noche
 let mesaDestino = null;                     // mesa a la que se están agregando productos
 let cobroMesa = null;                       // mesa que se está cobrando (null = venta directa)
 let mesaVista = null;                       // mesa abierta en el modal de detalle
+let nocheReal = null;                       // venta abierta de verdad (mientras se edita, sigue su curso)
+let edicion = null, escuchaEdicion = null;  // día guardado que se está editando (copia en licorera_edicion/actual)
+const enEdicion = () => !!edicion;
+function bloqueadoPorEdicion(){
+  if(!edicion) return false;
+  alert(`Estás editando el día guardado ${fechaLarga(edicion.fecha)}.\n\nGuarda los cambios o sal de la edición para hacer esto en el día en curso.`);
+  return true;
+}
 const esAdmin = () => usuarioRol === 'admin';
 
 // ══════════════════════════════════════
@@ -421,6 +437,7 @@ auth.onAuthStateChanged(async u => {
     if(escuchaVentas){ escuchaVentas(); escuchaVentas = null; ventasDeNoche = null; }
   if(escuchaAbonos){ escuchaAbonos(); escuchaAbonos = null; }
     if(escuchaCuentas){ escuchaCuentas(); escuchaCuentas = null; }
+    if(escuchaEdicion){ escuchaEdicion(); escuchaEdicion = null; } edicion = null;
     $('app').classList.add('oculto'); $('login').classList.remove('oculto');
     return;
   }
@@ -439,7 +456,7 @@ auth.onAuthStateChanged(async u => {
   $('login').classList.add('oculto'); $('app').classList.remove('oculto');
   irA('granizados');
   escuchar();
-  if(esAdmin()) sembrarGranizados();
+  if(esAdmin()){ sembrarGranizados(); revisarEdicionPendiente(); }
 });
 
 async function doLogin(){
@@ -509,7 +526,9 @@ function escuchar(){
   }, e => console.error('clientes', e)));
 
   escuchas.push(NOCHES().where('estado', '==', 'abierta').limit(1).onSnapshot(s => {
-    nocheAbierta = s.empty ? null : { id: s.docs[0].id, ...s.docs[0].data() };
+    nocheReal = s.empty ? null : { id: s.docs[0].id, ...s.docs[0].data() };
+    if(edicion) return;            // mientras se edita, la pantalla muestra el día editado
+    nocheAbierta = nocheReal;
     escucharVentas();
     pintarInventario(); pintarGranizados(); pintarHistorial();
   }, errorFirestore('noche abierta')));
@@ -576,7 +595,13 @@ function agrupar(lista){
 function pintarInventario(){
   const n = nocheAbierta;
   $('punto').classList.toggle('on', !!n);
-  if(n){
+  if(n && edicion){
+    $('estado-txt').textContent = '✏️ Editando día guardado';
+    $('estado-sub').innerHTML = `<span style="text-transform:capitalize">${esc(fechaLarga(edicion.fecha))}</span> · base ${plata(edicion.baseCaja)}`;
+    $('acciones-noche').innerHTML = `
+      <button class="btn btn-ghost btn-sm" onclick="modalInventarioEdicion()">✏️ Corregir inventario inicial</button>
+      <button class="btn btn-ghost btn-sm" onclick="modalEntrada()">➕ Entrada de mercancía</button>`;
+  } else if(n){
     $('estado-txt').textContent = 'Venta abierta';
     $('estado-sub').innerHTML = `${esc(fechaLarga(n.fecha))} · abrió ${esc(n.abiertaPor || '')} a las ${horaDe(n.abiertaEn)}<br>💰 Base de caja: <b>${plata(n.baseCaja)}</b>${esAdmin() ? ` <button class="btn btn-ghost btn-sm" style="padding:2px 8px" onclick="editarBase()">✏️</button>` : ''}`;
     $('acciones-noche').innerHTML = `
@@ -639,7 +664,7 @@ function pintarHistorial(){
     if(regs){
       const tot = regs.reduce((s, h) => s + totalDia(h), 0);
       html += `<div class="cal-d con" onclick="abrirDia('${key}')" title="Ver ventas del ${d}"><div>${d}</div><div class="t">${plataCorta(tot)}${regs.length > 1 ? ' ·' + regs.length : ''}</div></div>`;
-    } else if(nocheAbierta?.fecha === key) html += `<div class="cal-d abierta" title="Venta abierta">${d}<div class="t">abierta</div></div>`;
+    } else if(nocheReal?.fecha === key) html += `<div class="cal-d abierta" title="Venta abierta">${d}<div class="t">abierta</div></div>`;
     else html += `<div class="cal-d${key === hoyStr ? ' hoy' : ''}">${d}</div>`;
   }
   $('cal-grid').innerHTML = html + '</div>';
@@ -704,6 +729,7 @@ function revisionesSemana(){
   return [...historial, ...(nocheAbierta ? [nocheAbierta] : [])].filter(h => h.fecha >= desde && h.revisionInventario).length;
 }
 function modalApertura(modo){
+  if(bloqueadoPorEdicion()) return;
   if(!esAdmin()){ alert('⛔ Solo un admin puede abrir la venta.'); return; }
   if(!activos().length){ alert('Primero crea los productos.'); return; }
   if($('ini-base')) aperturaBase = $('ini-base').value;
@@ -780,7 +806,7 @@ async function editarBase(){
   const txt = prompt('Nueva base de caja:', String(nocheAbierta.baseCaja || 0));
   if(txt === null) return;
   const nueva = parseInt(txt.replace(/\D/g, ''), 10) || 0;
-  await NOCHES().doc(nocheAbierta.id).update({ baseCaja: nueva });
+  await nocheRef(nocheAbierta.id).update({ baseCaja: nueva });
   logAudit('editar_base', `Base de caja: ${plata(nocheAbierta.baseCaja)} → ${plata(nueva)}`, { antes: nocheAbierta.baseCaja || 0, despues: nueva });
   toast('💰 Base actualizada');
 }
@@ -806,7 +832,7 @@ async function guardarEntrada(){
   const p = productos.find(x => x.id === id);
   $('btn-ent').disabled = true;
   try{
-    await NOCHES().doc(nocheAbierta.id).update({
+    await nocheRef(nocheAbierta.id).update({
       [`entradas.${id}`]: INC(c),
       movimientos: firebase.firestore.FieldValue.arrayUnion({
         tipo: 'entrada', prodId: id, cantidad: c, nota: $('ent-nota').value.trim(),
@@ -894,6 +920,7 @@ function htmlResumen(r, porProducto, detalle){
 }
 
 function modalCierre(){
+  if(bloqueadoPorEdicion()) return;
   if(!esAdmin()){ alert('⛔ Solo un admin puede cerrar la venta.'); return; }
   if(cuentas.length){ alert(`Hay ${cuentas.length} mesa(s) abierta(s): ${cuentas.map(c => c.nombre).join(', ')}.\nCóbralas antes de cerrar la venta.`); irA('granizados'); return; }
   const c = calcularCierre();
@@ -986,7 +1013,7 @@ async function cargarVentasDia(id){
 
 // ── Eliminar un día guardado (solo admin) ──
 async function eliminarDia(id){
-  if(!esAdmin()) return;
+  if(!esAdmin() || bloqueadoPorEdicion()) return;
   const h = historial.find(x => x.id === id); if(!h) return;
   try{
     const [sv, sa, sc] = await Promise.all([VENTAS(id).get(), ABONOS_NOCHE(id).get(), CUENTAS(id).get()]);
@@ -1014,90 +1041,142 @@ async function eliminarDia(id){
 }
 
 // ══════════════════════════════════════
-//   EDITAR UN DÍA GUARDADO (solo admin)
-//   Se trabaja sobre una copia; nada se guarda hasta "Actualizar día"
+//   EDITAR UN DÍA GUARDADO (solo admin) — igual que en Salchimonster:
+//   el día se copia a un espacio aparte, se edita con los mismos módulos
+//   (Ventas, Inventario) y "Guardar cambios" escribe encima de lo guardado.
+//   El día en curso no se toca y los demás siguen trabajando normal.
 // ══════════════════════════════════════
-let ed = null;        // { id, noche, fecha, base, ventas, borradas, abonos, cambios }
-let edVenta = null;   // venta que se está editando dentro del día
-
-function modalFijo(html){   // como abrirModal, pero tocar afuera no lo cierra (para no perder cambios)
-  if(escuchaMovs){ escuchaMovs(); escuchaMovs = null; } clienteAbierto = null;
-  $('modal-raiz').innerHTML = `<div class="modal-fondo"><div class="modal">${html}</div></div>`;
+async function vaciarEdicion(){
+  const ventasEd = await EDICION().collection('ventas').get();
+  const b = db.batch();
+  ventasEd.docs.forEach(d => b.delete(EDICION().collection('ventas').doc(d.id)));
+  b.delete(EDICION());
+  await b.commit();
 }
 
 async function editarDia(id){
-  if(!esAdmin()) return;
+  if(!esAdmin()){ alert('⛔ Solo un admin puede editar días guardados.'); return; }
+  if(edicion){ alert(`Ya estás editando el día ${fechaLarga(edicion.fecha)}. Guarda o sal de la edición primero.`); return; }
   const h = historial.find(x => x.id === id); if(!h) return;
   try{
-    const [sv, sa] = await Promise.all([VENTAS(id).orderBy('t', 'desc').get(), ABONOS_NOCHE(id).get()]);
-    ed = { id, noche: h, fecha: h.fecha, base: num(h.resumen?.baseCaja ?? h.baseCaja), borradas: [], cambios: false,
-      abonos: sa.docs.map(d => d.data()),
-      ventas: sv.docs.map(d => { const v = { id: d.id, ...d.data() }; v._estado = 'orig'; v._orig = { clienteId: v.clienteId || null, movId: v.movId || null, total: v.total, cliente: v.cliente || '' }; return v; }) };
-    logAudit('editar_dia_inicio', `Abrió la edición del día ${h.fecha}`, { nocheId: id });
-    pintarEditor();
-  } catch(e){ alert('No se pudo abrir la edición: ' + e.message); }
+    const pend = await EDICION().get();
+    if(pend.exists){
+      const pd = pend.data();
+      if(pd.editorUid !== usuario.uid){
+        if(!confirm(`⚠️ ${pd.editorNombre || 'Otro administrador'} tiene abierta la edición del día ${fechaLarga(pd.fecha)}.\n\n¿Descartarla y editar este día?`)) return;
+      } else if(pd.nocheId === id){
+        if(confirm('Tienes una edición sin terminar de este mismo día.\n\nAceptar = continuar donde ibas\nCancelar = empezar de nuevo desde lo guardado')){ entrarEdicion(); return; }
+      } else if(!confirm(`Tienes una edición sin terminar del día ${fechaLarga(pd.fecha)}. Se descartará para editar este. ¿Continuar?`)) return;
+    }
+    if(!confirm(`¿Editar el día ${fechaLarga(h.fecha)}?\n\nSe abre en un espacio aparte, tal como quedó guardado: ventas, base de caja e inventario.\nEl día en curso no se toca: los demás siguen trabajando normal y tú vuelves a él al terminar.\n\nCuando termines toca "💾 Guardar cambios".`)) return;
+    await vaciarEdicion();
+    const sv = await NOCHES().doc(id).collection('ventas').get();
+    const b = db.batch();
+    sv.docs.forEach(d => b.set(EDICION().collection('ventas').doc(d.id), d.data()));
+    b.set(EDICION(), {
+      nocheId: id, fecha: h.fecha, baseCaja: num(h.baseCaja ?? h.resumen?.baseCaja), conteoInicial: h.conteoInicial || {}, entradas: h.entradas || {},
+      movimientos: h.movimientos || [], abiertaEn: h.abiertaEn || null, abiertaPor: h.abiertaPor || '', revisionInventario: h.revisionInventario || null,
+      editorUid: usuario.uid, editorNombre: usuarioNombre, iniciadoEn: TS()
+    });
+    await b.commit();
+    logAudit('editar_dia_inicio', `Abrió para editar el día ${h.fecha}`, { nocheId: id });
+    entrarEdicion();
+  } catch(e){ alert('No se pudo abrir el día para editar: ' + e.message); }
 }
 
-function pintarEditor(){
-  if(!ed) return;
-  const t = totalesVentas(ed.ventas), ab = totalesAbonos(ed.abonos);
-  modalFijo(`
-    <h3 style="margin:0">✏️ Editar día guardado</h3>
-    <div class="editando">✏️ Editando el día <b style="text-transform:capitalize">${esc(fechaLarga(ed.fecha))}</b>. Nada se guarda hasta que toques <b>Actualizar día</b>.</div>
-    <div class="form-grid">
-      <div><div class="lbl">📅 Día de la venta</div><input type="date" value="${esc(ed.fecha)}" max="${hoy()}" onchange="ed.fecha=this.value;ed.cambios=true;pintarEditor()"/></div>
-      <div><div class="lbl">💰 Base de caja</div><input id="ed-base" inputmode="numeric" value="${ed.base ? ed.base.toLocaleString('es-CO') : ''}" placeholder="$ 0" oninput="formatoPlata(this);ed.base=valorPlata('ed-base');ed.cambios=true"/></div>
-    </div>
-    <div class="totales">
-      <div class="tot"><div class="k">Total ventas</div><div class="v neon">${plata(t.total)}</div><div class="sub">${t.ventas} venta(s)</div></div>
-      <div class="tot"><div class="k">💵 Efectivo</div><div class="v">${plata(t.efectivo)}</div></div>
-      <div class="tot"><div class="k">🏦 Transferencia</div><div class="v">${plata(t.transferencia)}</div></div>
-      <div class="tot"><div class="k">🧾 Fiado</div><div class="v">${plata(t.fiado)}</div></div>
-    </div>
-    <div class="cat"><div class="fila"><div class="cat-titulo">🧾 Ventas del día</div><button class="btn btn-sm" onclick="editarVentaDia(-1)">➕ Agregar venta</button></div>
-      ${ed.ventas.length ? ed.ventas.map((v, i) => filaVenta(v, `<button class="btn btn-ghost btn-sm" onclick="editarVentaDia(${i})">✏️</button><button class="btn btn-ghost btn-sm" onclick="borrarVentaDia(${i})">🗑️</button>`)).join('') : '<div class="vacio">Sin ventas.</div>'}
-      ${ed.borradas.length ? `<div class="sub" style="margin-top:6px">🗑️ ${ed.borradas.length} venta(s) se eliminarán al actualizar.</div>` : ''}
-    </div>
-    ${ab.cantidad ? `<div class="sub" style="margin-top:10px">💵 Abonos de fiados de ese día: ${plata(ab.total)} (se corrigen desde Fiados).</div>` : ''}
-    <div class="aviso">El inventario de este día se recalcula con las ventas corregidas. Si después ya se abrió otra venta, su inventario no cambia: corrígelo en la próxima apertura.</div>
-    <div class="acciones">
-      <button class="btn" style="flex:1;background:#7c3aed;color:#fff" id="btn-actualizar" onclick="actualizarDia()">💾 Actualizar día</button>
-      <button class="btn btn-ghost" onclick="salirEdicion()">Salir sin guardar</button>
-    </div>`);
+// La pantalla pasa a mostrar el día editado
+function entrarEdicion(){
+  if(escuchaEdicion) escuchaEdicion();
+  cerrarModal(); carrito = {}; mesaDestino = null;
+  escuchaEdicion = EDICION().onSnapshot(sn => {
+    if(!sn.exists){ if(edicion) volverAlDiaEnCurso(); return; }
+    edicion = sn.data();
+    nocheAbierta = { id: ED_ID, ...edicion, estado: 'abierta' };
+    escucharVentas();
+    pintarBannerEdicion(); pintarInventario(); pintarGranizados(); pintarHistorial();
+  }, e => console.error('edicion', e));
+  irA('granizados');
 }
 
-function salirEdicion(){
-  if(ed?.cambios && !confirm('¿Salir sin guardar? Los cambios hechos a este día se pierden.')) return;
-  const id = ed?.id; ed = null; edVenta = null;
-  cerrarModal(); if(id) verNoche(id);
+function volverAlDiaEnCurso(){
+  if(escuchaEdicion){ escuchaEdicion(); escuchaEdicion = null; }
+  edicion = null; carrito = {}; mesaDestino = null;
+  nocheAbierta = nocheReal;
+  escucharVentas();
+  pintarBannerEdicion(); pintarInventario(); pintarGranizados(); pintarHistorial();
 }
 
-function borrarVentaDia(i){
-  const v = ed.ventas[i];
-  if(!confirm(`¿Eliminar la venta de ${plata(v.total)}?${v._orig?.clienteId ? `\nTambién se quita el fiado de ${v._orig.cliente}.` : ''}`)) return;
-  if(v._estado !== 'nuevo') ed.borradas.push(v);
-  ed.ventas.splice(i, 1); ed.cambios = true; pintarEditor();
+function pintarBannerEdicion(){
+  const b = $('banner-edicion'); if(!b) return;
+  b.classList.toggle('oculto', !edicion);
+  if(!edicion) return;
+  b.innerHTML = `<div class="editando" style="margin:0">
+    <div>✏️ <b>Editando el día guardado: <span style="text-transform:capitalize">${esc(fechaLarga(edicion.fecha))}</span>.</b> El día en curso no se toca.</div>
+    <div class="acciones" style="margin-top:8px">
+      <button class="btn btn-sm" onclick="guardarEdicion()">💾 Guardar cambios</button>
+      <button class="btn btn-ghost btn-sm" onclick="salirEdicion()">Salir sin guardar</button>
+    </div></div>`;
 }
 
-// ── Editor de una venta del día ──
-function editarVentaDia(i){
-  const v = i >= 0 ? ed.ventas[i] : null;
+async function salirEdicion(){
+  if(!edicion) return;
+  if(!confirm(`¿Salir sin guardar? Los cambios hechos al día ${fechaLarga(edicion.fecha)} se pierden y vuelves al día en curso.`)) return;
+  const nid = edicion.nocheId;
+  logAudit('editar_dia_salir', `Salió sin guardar de la edición del día ${edicion.fecha}`, { nocheId: nid });
+  volverAlDiaEnCurso();
+  try{ await vaciarEdicion(); } catch(e){ console.error('vaciar edición', e); }
+  irA('historial'); verNoche(nid);
+}
+
+// Si quedó una edición sin terminar, se avisa al entrar
+async function revisarEdicionPendiente(){
+  try{
+    const sn = await EDICION().get();
+    if(!sn.exists || sn.data().editorUid !== usuario?.uid || edicion) return;
+    const d = sn.data();
+    if(confirm(`✏️ Tienes una edición sin terminar del día ${fechaLarga(d.fecha)}.\n\nAceptar = continuar editando\nCancelar = descartarla (lo guardado no cambia)`)) entrarEdicion();
+    else { await vaciarEdicion(); logAudit('editar_dia_descartar', `Descartó la edición sin terminar del día ${d.fecha}`, { nocheId: d.nocheId }); }
+  } catch(e){ console.error('edición pendiente', e); }
+}
+
+// Corregir el inventario inicial del día editado
+function modalInventarioEdicion(){
+  if(!edicion) return;
+  abrirModal(`<div class="fila"><h3 style="margin:0">✏️ Inventario inicial del día</h3><button class="btn btn-ghost btn-sm" onclick="cerrarModal()">✕</button></div>
+    <div class="sub" style="margin-top:4px">Lo que había al abrir ese día. Corrige lo que no esté bien.</div>
+    ${tablaConteo('edi', p => num(edicion.conteoInicial?.[p.id]))}
+    <div class="acciones"><button class="btn btn-full" onclick="guardarInventarioEdicion()">Guardar inventario del día</button></div>`);
+}
+async function guardarInventarioEdicion(){
+  const conteo = {};
+  for(const p of activos()){
+    const el = $('edi-' + p.id); const v = num(el.value);
+    if(el.value.trim() === '' || v < 0){ el.focus(); alert(`Revisa: ${p.nombre} ${p.presentacion || ''}`); return; }
+    conteo[p.id] = v;
+  }
+  await EDICION().update({ conteoInicial: conteo });
+  cerrarModal(); toast('📦 Inventario del día corregido');
+}
+
+// ── Editar una venta del día (en el espacio de edición) ──
+let edVenta = null;
+function editarVentaDia(ventaId){
+  const v = ventas.find(x => x.id === ventaId); if(!v || !edicion) return;
   const lineas = {};
-  (v?.items || []).forEach(it => lineas[it.prodId] = { ...it });
-  edVenta = { i, lineas, pago: v?.pago || 'efectivo', mixtoEf: v?.pago === 'mixto' ? (v.montos?.efectivo || 0) : 0, cliente: v?.cliente || '' };
+  v.items.forEach(it => lineas[it.prodId] = { ...it });
+  edVenta = { ventaId, lineas, pago: v.pago || 'efectivo', mixtoEf: v.pago === 'mixto' ? (v.montos?.efectivo || 0) : 0, cliente: v.cliente || '' };
   pintarEdVenta();
 }
 function pintarEdVenta(){
   const e = edVenta, lineas = Object.values(e.lineas).filter(l => l.cantidad > 0);
   const total = lineas.reduce((s, l) => s + l.cantidad * l.precio, 0);
   const opciones = [...granizadosActivos(), ...vendibles()].map(p => `<option value="${p.id}"${p.id === e.sel ? ' selected' : ''}>${esc(p.nombre)} ${esc(p.presentacion || '')} · ${plata(p.precio)}</option>`).join('');
-  modalFijo(`
-    <h3 style="margin:0">${e.i >= 0 ? '✏️ Editar venta' : '➕ Agregar venta'}</h3>
-    <div class="sub" style="margin-top:4px;text-transform:capitalize">${esc(fechaLarga(ed.fecha))}</div>
+  abrirModal(`
+    <div class="fila"><h3 style="margin:0">✏️ Corregir venta</h3><button class="btn btn-ghost btn-sm" onclick="edVenta=null;cerrarModal()">✕</button></div>
     <div style="margin-top:8px">${lineas.length ? lineas.map(l => `<div class="carrito-row">
       <div><span class="prod">${esc(l.nombre)}</span><span class="pres">${esc(l.presentacion || '')} · ${plata(l.precio)} c/u</span></div>
       <div class="stepper"><button onclick="edCant('${l.prodId}',-1)">−</button><b>${l.cantidad}</b><button onclick="edCant('${l.prodId}',1)">+</button>
-      <span class="precio" style="min-width:80px;text-align:right">${plata(l.cantidad * l.precio)}</span></div></div>`).join('') : '<div class="vacio">Agrega los productos de esta venta.</div>'}</div>
+      <span class="precio" style="min-width:80px;text-align:right">${plata(l.cantidad * l.precio)}</span></div></div>`).join('') : '<div class="vacio">Sin productos. Agrega alguno o elimina la venta.</div>'}</div>
     <div class="buscador" style="margin:10px 0 0;flex-wrap:nowrap">
       <select id="ed-prod" style="flex:1 1 auto;min-width:0">${opciones}</select>
       <button class="btn btn-sm" onclick="edAgregar()">➕</button>
@@ -1114,8 +1193,8 @@ function pintarEdVenta(){
       <input list="lista-fiados-ed" value="${esc(e.cliente)}" placeholder="Nombre" oninput="edVenta.cliente=this.value"/>
       <datalist id="lista-fiados-ed">${clientes.map(c => `<option>${esc(c.nombre)}</option>`).join('')}</datalist></div>` : ''}
     <div class="acciones">
-      <button class="btn" style="flex:1" onclick="guardarVentaDia()">✅ Listo</button>
-      <button class="btn btn-ghost" onclick="edVenta=null;pintarEditor()">Cancelar</button>
+      <button class="btn" style="flex:1" id="btn-edventa" onclick="guardarVentaDia()">✅ Guardar venta</button>
+      <button class="btn btn-ghost" onclick="edVenta=null;cerrarModal()">Cancelar</button>
     </div>`);
 }
 function edCant(id, d){ const l = edVenta.lineas[id]; if(!l) return; l.cantidad = Math.max(0, l.cantidad + d); pintarEdVenta(); }
@@ -1126,7 +1205,7 @@ function edAgregar(){
   if(l) l.cantidad++; else edVenta.lineas[p.id] = lineaDe(p, 1);
   pintarEdVenta();
 }
-function guardarVentaDia(){
+async function guardarVentaDia(){
   const e = edVenta;
   const items = Object.values(e.lineas).filter(l => l.cantidad > 0).map(l => ({ ...l, subtotal: l.cantidad * l.precio }));
   if(!items.length){ alert('La venta no tiene productos. Para quitarla usa 🗑️.'); return; }
@@ -1143,23 +1222,20 @@ function guardarVentaDia(){
     montos.fiado = total;
   } else montos[e.pago] = total;
   const granizados = items.filter(i => i.tipo === 'granizado').reduce((s, i) => s + i.cantidad * (i.unidades || 1), 0);
-  const datos = { items, total, granizados, pago: e.pago, montos, cliente };
-  if(e.i >= 0){
-    const v = ed.ventas[e.i];
-    ed.ventas[e.i] = { ...v, ...datos, _estado: v._estado === 'nuevo' ? 'nuevo' : 'mod' };
-  } else {
-    ed.ventas.unshift({ ...datos, hora: 'agregada al editar', por: usuarioNombre, porUid: usuario.uid, t: Date.now(), _estado: 'nuevo' });
-  }
-  ed.cambios = true; edVenta = null; pintarEditor();
+  $('btn-edventa').disabled = true;
+  try{
+    await VENTAS(ED_ID).doc(e.ventaId).update({ items, total, granizados, pago: e.pago, montos, cliente, corregidaPor: usuarioNombre });
+    edVenta = null; cerrarModal(); toast('✏️ Venta corregida');
+  } catch(err){ alert('No se pudo guardar: ' + err.message); if($('btn-edventa')) $('btn-edventa').disabled = false; }
 }
 
-// ── Guardar la edición ──
+// ── Guardar cambios: escribe encima del día guardado ──
 function quitarFiadoEnLote(batch, o){
   if(!o?.clienteId) return;
   if(o.movId) batch.delete(MOVS(o.clienteId).doc(o.movId));
   batch.update(CLIENTES().doc(o.clienteId), { saldo: INC(-o.total), totalFiado: INC(-o.total), actualizadoEn: TS() });
 }
-function ponerFiadoEnLote(batch, datos, ventaId, nuevos){
+function ponerFiadoEnLote(batch, datos, ventaId, nocheId, fecha, nuevos){
   let cli = buscarCliente(datos.cliente) || nuevos[normal(datos.cliente)];
   if(!cli){
     const ref = CLIENTES().doc();
@@ -1168,50 +1244,57 @@ function ponerFiadoEnLote(batch, datos, ventaId, nuevos){
   }
   const movRef = MOVS(cli.id).doc();
   batch.set(movRef, { tipo: 'fiado', monto: datos.total, detalle: datos.items.map(i => `${i.cantidad}× ${i.nombre}`).join(', '),
-    nocheId: ed.id, ventaId, fecha: ed.fecha, hora: datos.hora || '', por: usuarioNombre, t: Date.now(), editado: true });
+    nocheId, ventaId, fecha, hora: datos.hora || '', por: usuarioNombre, t: Date.now(), editado: true });
   batch.update(CLIENTES().doc(cli.id), { saldo: INC(datos.total), totalFiado: INC(datos.total), actualizadoEn: TS() });
   datos.clienteId = cli.id; datos.movId = movRef.id; datos.cliente = cli.nombre;
 }
+// Lo que importa para saber si una venta cambió
+const firmaVenta = v => JSON.stringify([v.items.map(i => [i.prodId, i.cantidad, i.precio]), v.total, v.pago, v.montos, v.pago === 'fiado' ? normal(v.cliente) : '']);
 
-async function actualizarDia(){
-  if(!ed || !esAdmin()) return;
-  const fecha = ed.fecha;
+async function guardarEdicion(){
+  if(!edicion || !esAdmin()) return;
+  const nid = edicion.nocheId, fecha = edicion.fecha;
   if(!/^\d{4}-\d{2}-\d{2}$/.test(fecha) || fecha > hoy()){ alert('Revisa el día de la venta.'); return; }
-  const cambiadas = ed.ventas.filter(v => v._estado !== 'orig').length;
-  if(!confirm(`¿Actualizar el día ${fechaLarga(fecha)}?\n\n${cambiadas} venta(s) nuevas o editadas · ${ed.borradas.length} eliminada(s).`)) return;
-  // Productos de inventario del día: los que se contaron al abrir
-  const prods = Object.keys(ed.noche.conteoInicial || {}).map(id => productos.find(p => p.id === id)
-    || (ed.noche.detalle || []).map(d => ({ id: d.prodId, nombre: d.nombre, presentacion: d.presentacion, categoria: d.categoria })).find(p => p.id === id)).filter(Boolean);
-  const limpias = ed.ventas.map(({ _estado, _orig, ...v }) => v);
-  const r = resumenDe({ ...ed.noche, baseCaja: ed.base }, limpias, ed.abonos, [], prods);
-  $('btn-actualizar').disabled = true;
   try{
-    const batch = db.batch(), nuevos = {};
-    ed.borradas.forEach(v => { batch.delete(VENTAS(ed.id).doc(v.id)); quitarFiadoEnLote(batch, v._orig); });
-    ed.ventas.forEach(v => {
-      if(v._estado === 'orig') return;
-      if(v._estado === 'mod') quitarFiadoEnLote(batch, v._orig);
-      const ref = v.id ? VENTAS(ed.id).doc(v.id) : VENTAS(ed.id).doc();
-      const { _estado, _orig, id, clienteId, movId, ...datos } = v;
-      if(datos.pago === 'fiado') ponerFiadoEnLote(batch, datos, ref.id, nuevos);
-      else datos.cliente = '';
-      datos.editadaPor = usuarioNombre; datos.editadaEn = TS();
-      batch.set(ref, datos);
+    const [sv, sa] = await Promise.all([NOCHES().doc(nid).collection('ventas').get(), NOCHES().doc(nid).collection('abonos').get()]);
+    const orig = {}; sv.docs.forEach(d => orig[d.id] = { id: d.id, ...d.data() });
+    const h = historial.find(x => x.id === nid) || {};
+    const prods = [...new Set([...Object.keys(edicion.conteoInicial || {}), ...activos().map(p => p.id)])]
+      .map(id => productos.find(p => p.id === id) || (h.detalle || []).map(d => ({ id: d.prodId, nombre: d.nombre, presentacion: d.presentacion, categoria: d.categoria })).find(p => p.id === id))
+      .filter(p => p && (edicion.conteoInicial?.[p.id] !== undefined || p.activo !== false) && !esGranizado(p));
+    const r = resumenDe(edicion, ventas, sa.docs.map(d => d.data()), [], prods);
+    const nuevas = ventas.filter(v => !orig[v.id]), borradas = Object.values(orig).filter(o => !ventas.some(v => v.id === o.id));
+    const cambiadas = ventas.filter(v => orig[v.id] && firmaVenta(v) !== firmaVenta(orig[v.id]));
+    const antes = totalDia(h);
+    if(!confirm(`¿Guardar los cambios en el día ${fechaLarga(fecha)}?\n\nVenta del día: ${plata(antes)} → ${plata(r.resumen.total)}\nVentas: ${nuevas.length} nueva(s), ${cambiadas.length} corregida(s), ${borradas.length} eliminada(s)\n\nReemplaza lo que estaba guardado en ese día.`)) return;
+    const batch = db.batch(), nuevosCli = {};
+    borradas.forEach(o => { batch.delete(NOCHES().doc(nid).collection('ventas').doc(o.id)); quitarFiadoEnLote(batch, o); });
+    [...nuevas, ...cambiadas].forEach(v => {
+      const o = orig[v.id];
+      if(o) quitarFiadoEnLote(batch, o);
+      const { id, clienteId, movId, ...datos } = v;
+      if(datos.pago === 'fiado') ponerFiadoEnLote(batch, datos, id, nid, fecha, nuevosCli); else datos.cliente = '';
+      datos.editadaPor = usuarioNombre;
+      batch.set(NOCHES().doc(nid).collection('ventas').doc(id), datos);
     });
-    batch.update(NOCHES().doc(ed.id), { fecha, baseCaja: ed.base, resumen: r.resumen, porProducto: r.porProducto, detalle: r.detalle, conteoFinal: r.conteoFinal,
+    batch.update(NOCHES().doc(nid), { fecha, baseCaja: num(edicion.baseCaja), conteoInicial: edicion.conteoInicial || {}, entradas: edicion.entradas || {}, movimientos: edicion.movimientos || [],
+      resumen: r.resumen, porProducto: r.porProducto, detalle: r.detalle, conteoFinal: r.conteoFinal,
       editadoEn: TS(), editadoPor: usuarioNombre, editadoPorUid: usuario.uid });
     await batch.commit();
-    logAudit('editar_dia', `Actualizó el día ${fecha}: ${plata(r.resumen.total)}`, { nocheId: ed.id, fechaAntes: ed.noche.fecha, fecha, totalAntes: totalDia(ed.noche), total: r.resumen.total, cambiadas, borradas: ed.borradas.length });
-    const id = ed.id; ed = null;
-    toast('💾 Día actualizado');
-    verNoche(id, { ...historial.find(x => x.id === id), fecha, ...r });
-  } catch(e){ alert('No se pudo actualizar: ' + e.message); if($('btn-actualizar')) $('btn-actualizar').disabled = false; }
+    logAudit('editar_dia', `Actualizó el día ${fecha}: ${plata(antes)} → ${plata(r.resumen.total)}`, { nocheId: nid, fechaAntes: h.fecha, fecha, antes, despues: r.resumen.total, nuevas: nuevas.length, cambiadas: cambiadas.length, borradas: borradas.length });
+    volverAlDiaEnCurso();
+    try{ await vaciarEdicion(); } catch(e){ console.error('vaciar edición', e); }
+    alert(`✅ Día ${fechaLarga(fecha)} actualizado.`);
+    calAnio = +fecha.slice(0, 4); calMes = +fecha.slice(5, 7) - 1;
+    irA('historial'); pintarHistorial();
+    verNoche(nid, { ...h, fecha, ...r });
+  } catch(e){ alert('No se pudo guardar: ' + e.message); }
 }
 
 // ══════════════════════════════════════
 //   GRANIZADOS
 // ══════════════════════════════════════
-const VENTAS = id => NOCHES().doc(id).collection('ventas');
+const VENTAS = id => nocheRef(id).collection('ventas');
 
 // Los 6 granizados base. Se crean una sola vez (si ya existen no se tocan, así respetan lo editado).
 const GRANIZADOS_BASE = [
@@ -1320,14 +1403,21 @@ function pintarGranizados(){
       ${quedan === null ? '' : `<div class="g-stock${quedan <= 0 ? ' bajo' : ''}">Quedan ${cant(quedan)}</div>`}</button>`;
   };
 
-  let html = `<div class="card"><div class="fila">
+  let html = edicion ? `<div class="card" style="border-color:#7c3aed">
+      <h2>✏️ Día que estás editando</h2>
+      <div class="form-grid">
+        <div><div class="lbl">📅 Día de la venta</div><input type="date" value="${esc(edicion.fecha)}" max="${hoy()}" onchange="if(this.value)EDICION().update({fecha:this.value})"/></div>
+        <div><div class="lbl">💰 Base de caja</div><input id="ed-base" inputmode="numeric" value="${num(edicion.baseCaja) ? num(edicion.baseCaja).toLocaleString('es-CO') : ''}" placeholder="$ 0" oninput="formatoPlata(this)" onchange="EDICION().update({baseCaja:valorPlata('ed-base')})"/></div>
+      </div>
+      <div class="sub" style="margin-top:8px">Agrega ventas tocando los productos, corrige con ✏️ o elimina con 🗑️. El inventario del día está en 📦 Inventario.</div>
+    </div>` : `<div class="card"><div class="fila">
       <div><div class="estado"><span class="punto on"></span>Venta abierta</div>
         <div class="sub">${esc(fechaLarga(n.fecha))} · base ${plata(n.baseCaja)}</div></div>
       ${esAdmin() ? `<button class="btn btn-sm" onclick="modalCierre()">🔒 Cerrar venta</button>` : ''}
     </div></div>`;
   const destino = cuentas.find(c => c.id === mesaDestino);
   if(destino) html += `<div class="aviso" style="margin:0 0 14px">🪑 Agregando productos a <b>${esc(destino.nombre)}</b>. Toca los productos y luego <b>Agregar</b>.</div>`;
-  html += `<div class="card"><div class="fila"><h2 style="margin:0">🪑 Mesas abiertas</h2><button class="btn btn-ghost btn-sm" onclick="modalNuevaMesa()">➕ Abrir mesa</button></div>
+  if(!edicion) html += `<div class="card"><div class="fila"><h2 style="margin:0">🪑 Mesas abiertas</h2><button class="btn btn-ghost btn-sm" onclick="modalNuevaMesa()">➕ Abrir mesa</button></div>
     ${cuentas.length ? `<div class="gran-grid">${cuentas.map(c => `
       <button class="gran-btn" style="text-align:left" onclick="verMesa('${c.id}')">
         <div class="g-nom">🪑 ${esc(c.nombre)}</div>
@@ -1351,14 +1441,14 @@ function pintarGranizados(){
       <div class="tot"><div class="k">💰 Base de caja</div><div class="v">${plata(n.baseCaja)}</div></div>
       <div class="tot"><div class="k">🧾 Abonos recibidos</div><div class="v">${plata(ab.total)}</div></div>
       <div class="tot"><div class="k">💵 Efectivo en caja</div><div class="v">${plata(num(n.baseCaja) + t.efectivo + ab.efectivo)}</div></div>
-      <div class="tot"><div class="k">🪑 En mesas sin cobrar</div><div class="v">${plata(cuentas.reduce((s, c) => s + totalMesa(c), 0))}</div></div>
+      ${edicion ? '' : `<div class="tot"><div class="k">🪑 En mesas sin cobrar</div><div class="v">${plata(cuentas.reduce((s, c) => s + totalMesa(c), 0))}</div></div>`}
     </div>
     <div style="margin-top:10px">${ventas.length ? ventas.map(v => `
       <div class="venta-row"><div>
         <div class="prod">${v.items.map(i => `${i.cantidad}× ${esc(i.nombre)}${i.tipo !== 'granizado' && i.presentacion ? ' ' + esc(i.presentacion) : ''}`).join(', ')}</div>
         <div class="pres">${esc(v.hora)} · ${esc(v.por)}${v.mesa ? `<span class="tag">🪑 ${esc(v.mesa)}</span>` : ''}${tagPago(v)}</div></div>
         <div style="display:flex;align-items:center;gap:8px"><span class="precio" style="white-space:nowrap">${plata(v.total)}</span>
-        ${esAdmin() ? `<button class="btn btn-ghost btn-sm" onclick="borrarVenta('${v.id}')">🗑️</button>` : ''}</div></div>`).join('')
+        ${edicion ? `<button class="btn btn-ghost btn-sm" onclick="editarVentaDia('${v.id}')">✏️</button>` : ''}${esAdmin() ? `<button class="btn btn-ghost btn-sm" onclick="borrarVenta('${v.id}')">🗑️</button>` : ''}</div></div>`).join('')
       : `<div class="vacio">Todavía no hay ventas.</div>`}</div></div>`;
   $('gran-cuerpo').innerHTML = html;
   pintarBarraCobro();
@@ -1380,7 +1470,7 @@ function pintarBarraCobro(){
   barra.innerHTML = `<div class="in"><div><b>🛒 ${unid} producto${unid === 1 ? '' : 's'}</b><div class="precio" style="font-size:1.2rem">${plata(totalCarrito())}</div></div>
     <div style="display:flex;gap:6px">${destino
       ? `<button class="btn btn-ghost btn-sm" onclick="mesaDestino=null;vaciarCarrito()">Cancelar</button><button class="btn" onclick="agregarAMesa('${destino.id}')">➕ Agregar a ${esc(destino.nombre)}</button>`
-      : `<button class="btn btn-ghost btn-sm" onclick="vaciarCarrito()">Vaciar</button><button class="btn btn-ghost btn-sm" onclick="modalElegirMesa()">🪑 A mesa</button><button class="btn" onclick="cobroMesa=null;modalCobro()">Cobrar →</button>`}</div></div>`;
+      : `<button class="btn btn-ghost btn-sm" onclick="vaciarCarrito()">Vaciar</button>${edicion ? '' : `<button class="btn btn-ghost btn-sm" onclick="modalElegirMesa()">🪑 A mesa</button>`}<button class="btn" onclick="cobroMesa=null;modalCobro()">${edicion ? 'Agregar venta →' : 'Cobrar →'}</button>`}</div></div>`;
 }
 function vaciarCarrito(){ carrito = {}; pagoTipo = 'efectivo'; pagoMixtoEf = 0; pagoFiadoNombre = ''; pintarGranizados(); }
 
@@ -1460,7 +1550,8 @@ async function registrarVenta(){
     montos.fiado = total;
   } else montos[pagoTipo] = total;
   let cli = null;
-  if(cliente){
+  if(cliente && edicion){ cli = buscarCliente(cliente); if(cli) cliente = cli.nombre; }
+  else if(cliente){
     cli = buscarCliente(cliente);
     if(!cli && !confirm(`"${cliente}" no está en la lista de clientes.\n¿Crearlo y fiarle ${plata(total)}?`)) return;
   }
@@ -1470,7 +1561,8 @@ async function registrarVenta(){
     const batch = db.batch();
     const ventaRef = VENTAS(nid).doc();
     const venta = { items, total, granizados, pago: pagoTipo, montos, cliente, por: usuarioNombre, porUid: usuario.uid, hora, t: Date.now(), creadaEn: TS() };
-    if(cliente){
+    if(edicion) venta.agregadaEnEdicion = true;
+    if(cliente && !edicion){
       // El fiado queda en la cuenta del cliente y sube su saldo
       const cliRef = cli ? CLIENTES().doc(cli.id) : CLIENTES().doc();
       if(!cli) batch.set(cliRef, { nombre: cliente, telefono: '', saldo: 0, totalFiado: 0, totalAbonado: 0, creadoEn: TS(), creadoPor: usuarioNombre });
@@ -1487,7 +1579,7 @@ async function registrarVenta(){
     else carrito = {};
     cobroMesa = null; pagoTipo = 'efectivo'; pagoMixtoEf = 0; pagoFiadoNombre = '';
     cerrarModal(); pintarGranizados();
-    if(cliente) logAudit('fiado', `Fió ${plata(total)} a ${cliente}`, { cliente, total });
+    if(cliente && !edicion) logAudit('fiado', `Fió ${plata(total)} a ${cliente}`, { cliente, total });
     toast(`✅ Venta ${plata(total)}`);
   } catch(e){ alert('No se pudo registrar: ' + e.message); if($('btn-venta')) $('btn-venta').disabled = false; }
 }
@@ -1600,15 +1692,15 @@ async function eliminarMesa(id){
 async function borrarVenta(id){
   if(!esAdmin() || !nocheAbierta) return;
   const v = ventas.find(x => x.id === id); if(!v) return;
-  if(!confirm(`¿Eliminar la venta de ${plata(v.total)} (${v.hora})?${v.clienteId ? `\nTambién se quita el fiado de ${v.cliente}.` : ''}`)) return;
+  if(!confirm(`¿Eliminar la venta de ${plata(v.total)} (${v.hora})?${v.clienteId ? `\nTambién se quita el fiado de ${v.cliente}${edicion ? ' al guardar los cambios' : ''}.` : ''}`)) return;
   const batch = db.batch();
   batch.delete(VENTAS(nocheAbierta.id).doc(id));
-  if(v.clienteId){
+  if(v.clienteId && !edicion){
     batch.delete(MOVS(v.clienteId).doc(v.movId));
     batch.update(CLIENTES().doc(v.clienteId), { saldo: INC(-v.total), totalFiado: INC(-v.total), actualizadoEn: TS() });
   }
   await batch.commit();
-  logAudit('borrar_venta', `Eliminó venta ${plata(v.total)}`, { items: v.items, pago: v.pago });
+  if(!edicion) logAudit('borrar_venta', `Eliminó venta ${plata(v.total)}`, { items: v.items, pago: v.pago });
 }
 
 // ══════════════════════════════════════
@@ -1634,6 +1726,7 @@ function pintarFiados(){
 }
 
 function modalNuevoCliente(){
+  if(bloqueadoPorEdicion()) return;
   abrirModal(`<h3>➕ Nuevo cliente</h3>
     <div class="form-grid">
       <div><div class="lbl">Nombre</div><input id="nc-nombre" placeholder="Nombre y apellido"/></div>
@@ -1718,6 +1811,7 @@ function actualizarMixtoAbono(){
 }
 
 async function registrarAbono(){
+  if(bloqueadoPorEdicion()) return;
   const c = clientes.find(x => x.id === clienteAbierto); if(!c) return;
   const monto = valorPlata('ab-monto'), saldo = num(c.saldo);
   if(monto <= 0){ alert('Escribe el monto del abono.'); return; }
@@ -1780,7 +1874,7 @@ async function borrarColeccion(ref, subcolecciones = []){
 }
 
 async function borrarTodo(){
-  if(!esAdmin()) return;
+  if(!esAdmin() || bloqueadoPorEdicion()) return;
   const que = { noches: $('bo-noches').checked, fiados: $('bo-fiados').checked, productos: $('bo-productos').checked };
   const lista = [que.noches && '• Ventas, conteos e historial de noches', que.fiados && '• Clientes, fiados y abonos', que.productos && '• Productos'].filter(Boolean);
   if(!lista.length){ alert('Marca qué quieres borrar.'); return; }
@@ -1789,7 +1883,7 @@ async function borrarTodo(){
   $('btn-borrar').disabled = true; $('btn-borrar').textContent = 'Borrando…';
   try{
     const r = {};
-    if(que.noches)    r.noches    = await borrarColeccion(NOCHES(), ['ventas', 'abonos', 'cuentas']);
+    if(que.noches){   r.noches    = await borrarColeccion(NOCHES(), ['ventas', 'abonos', 'cuentas']); await vaciarEdicion().catch(() => {}); }
     if(que.fiados)    r.clientes  = await borrarColeccion(CLIENTES(), ['movimientos']);
     if(que.productos){ r.productos = await borrarColeccion(PRODUCTOS()); await sembrarGranizados(); }
     carrito = {};
