@@ -147,6 +147,23 @@
   .g-stock{font-size:.72rem;color:var(--muted);margin-top:2px}
   .g-stock.bajo{color:var(--rojo)}
 
+  /* ── Calendario ── */
+  .cal{display:grid;grid-template-columns:repeat(7,1fr);gap:5px}
+  .cal-h{text-align:center;font-size:.68rem;font-weight:700;color:var(--muted);padding:4px 0;text-transform:uppercase}
+  .cal-d{text-align:center;padding:9px 2px;border-radius:10px;background:var(--bg2);color:var(--muted);font-size:.85rem;min-height:46px}
+  .cal-d.hoy{border:2px solid var(--verde-txt);color:var(--verde-txt);font-weight:800;background:var(--card)}
+  .cal-d.con{background:var(--verde-txt);color:#fff;cursor:pointer;font-weight:800;box-shadow:0 2px 6px rgba(59,135,0,.25);padding:7px 2px}
+  [data-theme="dark"] .cal-d.con{color:#071000}
+  .cal-d.con:active{transform:scale(.95)}
+  .cal-d .t{font-size:.6rem;font-weight:600;opacity:.9;margin-top:3px}
+  .cal-d.abierta{background:var(--amarillo-bg);border:2px dashed var(--amarillo);color:var(--amarillo-txt);font-weight:800}
+  .cal-leyenda{display:flex;gap:12px;flex-wrap:wrap;margin-top:12px;font-size:.75rem;color:var(--muted)}
+  .cal-leyenda span{display:flex;align-items:center;gap:5px}
+  .cal-sw{display:inline-block;width:14px;height:14px;border-radius:5px;background:var(--bg2);border:1px solid var(--line)}
+  .cal-sw.con{background:var(--verde-txt);border:0}
+  .cal-sw.hoy{background:var(--card);border:2px solid var(--verde-txt)}
+  .editando{background:linear-gradient(135deg,#7c3aed,#5b21b6);color:#fff;border-radius:12px;padding:10px 12px;margin-top:12px;font-size:.85rem}
+
   .buscador{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
   .buscador input{flex:1 1 100%}
   .buscador select{flex:1 1 0;width:auto;min-width:0}
@@ -215,22 +232,24 @@
     <!-- ── HISTORIAL (admin) ── -->
     <div id="vista-historial" class="oculto">
       <div class="card">
-        <h2>📅 Historial de ventas</h2>
-        <div class="sub">Cada día queda guardado al tocar <b>Cerrar venta</b>. Toca un día para ver el detalle.</div>
-        <div class="buscador" style="margin:12px 0 0">
-          <select id="hi-periodo" onchange="cambioPeriodo()" style="flex:1 1 100%">
-            <option value="semana">Esta semana</option>
-            <option value="mes" selected>Este mes</option>
-            <option value="mes-ant">Mes anterior</option>
-            <option value="todo">Todo</option>
-            <option value="rango">Escoger fechas…</option>
-          </select>
-          <input id="hi-desde" type="date" class="oculto" onchange="pintarHistorial()" style="flex:1 1 0;min-width:0"/>
-          <input id="hi-hasta" type="date" class="oculto" onchange="pintarHistorial()" style="flex:1 1 0;min-width:0"/>
+        <h2>📅 Días guardados</h2>
+        <div class="sub">Cada día queda guardado al tocar <b>Cerrar venta</b>. Toca un día en verde para ver y editar sus ventas.</div>
+        <div class="fila" style="margin:14px 0 10px;flex-wrap:nowrap">
+          <button class="btn btn-ghost btn-sm" onclick="calMover(-1)">←</button>
+          <b id="cal-titulo" style="font-size:1.05rem"></b>
+          <button class="btn btn-ghost btn-sm" onclick="calMover(1)">→</button>
         </div>
+        <div id="cal-grid"></div>
+        <div class="cal-leyenda">
+          <span><i class="cal-sw con"></i>Con venta guardada</span>
+          <span><i class="cal-sw hoy"></i>Hoy</span>
+          <span><i class="cal-sw"></i>Sin registro</span>
+        </div>
+      </div>
+      <div class="card">
+        <h2 id="hi-mes-titulo">Totales del mes</h2>
         <div class="totales" id="hi-totales"></div>
       </div>
-      <div class="card"><div id="historial"></div></div>
     </div>
 
     <!-- ── GRANIZADOS ── -->
@@ -492,7 +511,7 @@ function escuchar(){
   escuchas.push(NOCHES().where('estado', '==', 'abierta').limit(1).onSnapshot(s => {
     nocheAbierta = s.empty ? null : { id: s.docs[0].id, ...s.docs[0].data() };
     escucharVentas();
-    pintarInventario(); pintarGranizados();
+    pintarInventario(); pintarGranizados(); pintarHistorial();
   }, errorFirestore('noche abierta')));
 
   escuchas.push(NOCHES().orderBy('cerradaEn', 'desc').limit(400).onSnapshot(s => {
@@ -599,45 +618,56 @@ function pintarInventario(){
   $('inv-cuerpo').innerHTML = html;
 }
 
-// ── Historial: días cerrados con filtro por periodo y totales ──
-function rangoPeriodo(){
-  const per = $('hi-periodo')?.value || 'mes', d = new Date(), f = x => x.toLocaleDateString('en-CA');
-  if(per === 'semana'){ const l = new Date(d); l.setDate(d.getDate() - ((d.getDay() + 6) % 7)); return [f(l), f(d)]; }
-  if(per === 'mes') return [f(new Date(d.getFullYear(), d.getMonth(), 1)), f(d)];
-  if(per === 'mes-ant') return [f(new Date(d.getFullYear(), d.getMonth() - 1, 1)), f(new Date(d.getFullYear(), d.getMonth(), 0))];
-  if(per === 'rango') return [$('hi-desde').value || '0000-00-00', $('hi-hasta').value || '9999-99-99'];
-  return ['0000-00-00', '9999-99-99'];
-}
-function cambioPeriodo(){
-  const rango = $('hi-periodo').value === 'rango';
-  ['hi-desde', 'hi-hasta'].forEach(id => $(id).classList.toggle('oculto', !rango));
-  if(rango && !$('hi-desde').value){ const [a, b] = [new Date(Date.now() - 6 * 864e5), new Date()].map(x => x.toLocaleDateString('en-CA')); $('hi-desde').value = a; $('hi-hasta').value = b; }
-  pintarHistorial();
-}
+// ── Historial: calendario de días guardados ──
+const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+let calAnio = new Date().getFullYear(), calMes = new Date().getMonth();
+function calMover(d){ calMes += d; if(calMes < 0){ calMes = 11; calAnio--; } if(calMes > 11){ calMes = 0; calAnio++; } pintarHistorial(); }
+const totalDia = h => h.resumen?.total ?? h.resumen?.totalNoche ?? 0;
+const plataCorta = n => n >= 1e6 ? '$' + (n / 1e6).toFixed(1).replace('.0', '') + 'M' : n >= 1000 ? '$' + Math.round(n / 1000) + 'k' : '$' + Math.round(n);
+
 function pintarHistorial(){
-  if(!$('historial')) return;
-  const [desde, hasta] = rangoPeriodo();
-  const dias = historial.filter(h => h.fecha >= desde && h.fecha <= hasta).sort((a, b) => b.fecha.localeCompare(a.fecha));
+  if(!$('cal-grid')) return;
+  $('cal-titulo').textContent = `${MESES[calMes]} ${calAnio}`;
+  const pref = `${calAnio}-${String(calMes + 1).padStart(2, '0')}`;
+  const porDia = {};
+  historial.filter(h => (h.fecha || '').startsWith(pref)).forEach(h => (porDia[h.fecha] ||= []).push(h));
+  const offset = (new Date(calAnio, calMes, 1).getDay() + 6) % 7, dias = new Date(calAnio, calMes + 1, 0).getDate(), hoyStr = hoy();
+  let html = '<div class="cal">' + ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'].map(d => `<div class="cal-h">${d}</div>`).join('');
+  for(let i = 0; i < offset; i++) html += '<div></div>';
+  for(let d = 1; d <= dias; d++){
+    const key = `${pref}-${String(d).padStart(2, '0')}`, regs = porDia[key];
+    if(regs){
+      const tot = regs.reduce((s, h) => s + totalDia(h), 0);
+      html += `<div class="cal-d con" onclick="abrirDia('${key}')" title="Ver ventas del ${d}"><div>${d}</div><div class="t">${plataCorta(tot)}${regs.length > 1 ? ' ·' + regs.length : ''}</div></div>`;
+    } else if(nocheAbierta?.fecha === key) html += `<div class="cal-d abierta" title="Venta abierta">${d}<div class="t">abierta</div></div>`;
+    else html += `<div class="cal-d${key === hoyStr ? ' hoy' : ''}">${d}</div>`;
+  }
+  $('cal-grid').innerHTML = html + '</div>';
+
+  // Totales del mes visible
+  const regs = Object.values(porDia).flat();
   const t = { total: 0, efectivo: 0, transferencia: 0, fiado: 0, ventas: 0, abonos: 0 };
-  dias.forEach(h => { const r = h.resumen || {};
-    t.total += r.total ?? r.totalNoche ?? 0; t.efectivo += r.efectivo || 0; t.transferencia += r.transferencia || 0;
+  regs.forEach(h => { const r = h.resumen || {}; t.total += totalDia(h); t.efectivo += r.efectivo || 0; t.transferencia += r.transferencia || 0;
     t.fiado += r.fiado || 0; t.ventas += r.ventas || 0; t.abonos += r.abonos?.total || 0; });
+  const nDias = Object.keys(porDia).length;
+  $('hi-mes-titulo').textContent = `Totales de ${MESES[calMes].toLowerCase()}`;
   $('hi-totales').innerHTML = `
-    <div class="tot"><div class="k">Vendido en el periodo</div><div class="v neon">${plata(t.total)}</div><div class="sub">${dias.length} día(s) · ${cant(t.ventas)} ventas</div></div>
-    <div class="tot"><div class="k">Promedio por día</div><div class="v">${plata(dias.length ? t.total / dias.length : 0)}</div></div>
+    <div class="tot"><div class="k">Vendido en el mes</div><div class="v neon">${plata(t.total)}</div><div class="sub">${nDias} día(s) · ${cant(t.ventas)} ventas</div></div>
+    <div class="tot"><div class="k">Promedio por día</div><div class="v">${plata(nDias ? t.total / nDias : 0)}</div></div>
     <div class="tot"><div class="k">💵 Efectivo</div><div class="v">${plata(t.efectivo)}</div></div>
     <div class="tot"><div class="k">🏦 Transferencia</div><div class="v">${plata(t.transferencia)}</div></div>
     <div class="tot"><div class="k">🧾 Fiado</div><div class="v">${plata(t.fiado)}</div></div>
     <div class="tot"><div class="k">Abonos recibidos</div><div class="v">${plata(t.abonos)}</div></div>`;
-  if(!historial.length){ $('historial').innerHTML = `<div class="vacio">Todavía no hay días cerrados.<br>Se guardan al tocar <b>Cerrar venta</b>.</div>`; return; }
-  if(!dias.length){ $('historial').innerHTML = `<div class="vacio">No hay días cerrados en este periodo.</div>`; return; }
-  $('historial').innerHTML = dias.map(h => { const r = h.resumen || {}; return `
-    <div class="hist-item" onclick="verNoche('${h.id}')">
-      <div><div class="hist-fecha">${esc(fechaLarga(h.fecha))}</div>
-        <div class="hist-meta">${horaDe(h.abiertaEn)} – ${horaDe(h.cerradaEn)} · cerró ${esc(h.cerradaPor || '')} · ${cant(r.ventas)} ventas${h.revisionInventario ? ` · inventario ${h.revisionInventario === 'corregido' ? '✏️' : '✅'}` : ''}</div>
-        <div class="hist-meta">💵 ${plata(r.efectivo)} · 🏦 ${plata(r.transferencia)}${r.fiado ? ` · 🧾 ${plata(r.fiado)}` : ''}</div></div>
-      <div class="precio" style="white-space:nowrap">${plata(r.total ?? r.totalNoche)}</div>
-    </div>`; }).join('');
+}
+
+// Un día puede tener más de una venta cerrada (si se abrió dos veces); si es una sola se abre directo
+function abrirDia(fecha){
+  const regs = historial.filter(h => h.fecha === fecha);
+  if(regs.length === 1){ verNoche(regs[0].id); return; }
+  abrirModal(`<div class="fila"><h3 style="margin:0">📅 ${esc(fechaLarga(fecha))}</h3><button class="btn btn-ghost btn-sm" onclick="cerrarModal()">✕</button></div>
+    <div class="sub" style="margin-top:4px">Este día tiene ${regs.length} cierres.</div>
+    ${regs.map(h => `<div class="hist-item" onclick="verNoche('${h.id}')"><div><div class="hist-fecha">${horaDe(h.abiertaEn)} – ${horaDe(h.cerradaEn)}</div>
+      <div class="hist-meta">${cant(h.resumen?.ventas)} ventas · cerró ${esc(h.cerradaPor || '')}</div></div><div class="precio">${plata(totalDia(h))}</div></div>`).join('')}`);
 }
 
 // ══════════════════════════════════════
@@ -789,12 +819,14 @@ async function guardarEntrada(){
 }
 
 // ── Cerrar venta (solo admin): resumen de lo vendido y de la caja ──
-function calcularCierre(){
-  const n = nocheAbierta, g = totalesVentas(), ab = totalesAbonos(), base = num(n.baseCaja);
-  // Vendido por producto (todas las ventas de la noche)
+// Resumen de un día a partir de sus ventas y abonos (sirve al cerrar y al editar un día guardado)
+//   n: datos de la noche (conteoInicial, entradas, baseCaja) · lv: ventas · la: abonos
+//   extra: líneas servidas sin cobrar (mesas) · prods: productos de inventario del día
+function resumenDe(n, lv, la, extra = [], prods = activos()){
+  const g = totalesVentas(lv), ab = totalesAbonos(la), base = num(n.baseCaja);
   const porProducto = {};
   let unidades = 0, valorGranizados = 0, valorOtros = 0, cantGranizados = 0;
-  ventas.forEach(v => v.items.forEach(i => {
+  lv.forEach(v => v.items.forEach(i => {
     const p = productos.find(x => x.id === i.prodId);
     const gran = i.tipo ? i.tipo === 'granizado' : (p ? esGranizado(p) : false);
     const k = porProducto[i.prodId] ||= { nombre: i.nombre, presentacion: i.presentacion || '', categoria: i.categoria || p?.categoria || (gran ? 'Granizados' : 'Otros'), granizado: gran, cantidad: 0, valor: 0 };
@@ -802,13 +834,16 @@ function calcularCierre(){
     if(gran){ valorGranizados += i.subtotal; cantGranizados += i.cantidad * (i.unidades || 1); }
     else { valorOtros += i.subtotal; unidades += i.cantidad; }
   }));
-  // Inventario: lo que debe quedar queda como inicial de la próxima venta
+  // Inventario: inicial + entradas − vendido (vasos: granizados de su talla, combo = 2)
+  const lineas = [...lv.flatMap(v => v.items), ...extra];
+  const porTalla = {};
+  lineas.forEach(i => { const t = i.talla || productos.find(p => p.id === i.prodId)?.talla; if(t) porTalla[t] = (porTalla[t] || 0) + i.cantidad * (i.unidades || 1); });
+  const vendido = p => esVaso(p) ? (porTalla[p.talla] || 0) : lineas.filter(i => i.prodId === p.id).reduce((s, i) => s + i.cantidad, 0);
   const conteoFinal = {}, detalle = [];
-  for(const p of activos()){
-    const fin = stockEsperado(n, p);
+  for(const p of prods){
+    const ini = num(n.conteoInicial?.[p.id]), ent = num(n.entradas?.[p.id]), ven = vendido(p), fin = ini + ent - ven;
     conteoFinal[p.id] = fin;
-    detalle.push({ prodId: p.id, nombre: p.nombre, presentacion: p.presentacion || '', categoria: p.categoria || 'Otros',
-      inicial: num(n.conteoInicial?.[p.id]), entradas: num(n.entradas?.[p.id]), vendido: vendidosEnVentas(p), final: fin });
+    detalle.push({ prodId: p.id, nombre: p.nombre, presentacion: p.presentacion || '', categoria: p.categoria || 'Otros', inicial: ini, entradas: ent, vendido: ven, final: fin });
   }
   const resumen = {
     total: g.total, totalNoche: g.total, efectivo: g.efectivo, transferencia: g.transferencia, fiado: g.fiado, ventas: g.ventas,
@@ -818,6 +853,7 @@ function calcularCierre(){
   };
   return { conteoFinal, detalle, porProducto, resumen };
 }
+const calcularCierre = () => resumenDe(nocheAbierta, ventas, abonosNoche, cuentas.flatMap(itemsMesa));
 
 // HTML del resumen (se usa al cerrar y en el historial)
 function htmlResumen(r, porProducto, detalle){
@@ -893,7 +929,7 @@ async function cerrarNoche(){
     });
     logAudit('cerrar_noche', `Cerró la venta del ${fecha}: ${plata(c.resumen.total)}`, { fecha, ...c.resumen });
     cerrarModal(); toast('🔒 Venta cerrada · guardada en Historial');
-    if(esAdmin()) irA('historial');
+    if(esAdmin()){ calAnio = +fecha.slice(0, 4); calMes = +fecha.slice(5, 7) - 1; irA('historial'); pintarHistorial(); }
     verNoche(id, { fecha, ...c });
   } catch(e){ alert('No se pudo cerrar: ' + e.message); if($('btn-cerrar')) $('btn-cerrar').disabled = false; }
 }
@@ -916,12 +952,230 @@ function verNoche(id, datos){
         <td>${cant(d.inicial)}</td><td>${d.entradas ? '+' + cant(d.entradas) : '—'}</td><td class="vendido">${cant(d.vendido)}</td><td class="${d.final < 0 ? 'neg' : ''}">${cant(d.final)}</td></tr>`).join('')}
       </tbody></table></div></div>`).join('')}</div>`;
   }
+  const hh = historial.find(x => x.id === id) || {};
   abrirModal(`
-    <div class="fila"><h3 style="margin:0">📊 ${esc(fechaLarga(h.fecha))}</h3><button class="btn btn-ghost btn-sm" onclick="cerrarModal()">✕</button></div>
-    ${h.revisionInventario ? `<div class="sub" style="margin-top:4px">Inventario inicial: ${h.revisionInventario === 'corregido' ? '✏️ corregido' : '✅ confirmado'}</div>` : ''}
+    <div class="fila"><h3 style="margin:0;text-transform:capitalize">📊 ${esc(fechaLarga(h.fecha))}</h3><button class="btn btn-ghost btn-sm" onclick="cerrarModal()">✕</button></div>
+    <div class="sub" style="margin-top:4px">${hh.abiertaEn ? `Abrió ${esc(hh.abiertaPor || '')} ${horaDe(hh.abiertaEn)} · cerró ${esc(hh.cerradaPor || '')} ${horaDe(hh.cerradaEn)}` : ''}
+      ${h.revisionInventario || hh.revisionInventario ? `<br>Inventario inicial: ${(h.revisionInventario || hh.revisionInventario) === 'corregido' ? '✏️ corregido' : '✅ confirmado'}` : ''}
+      ${hh.editadoPor ? `<br>✏️ Editado por ${esc(hh.editadoPor)} ${hh.editadoEn?.toDate ? hh.editadoEn.toDate().toLocaleString('es-CO', {day:'numeric', month:'short', hour:'2-digit', minute:'2-digit'}) : ''}` : ''}</div>
+    ${esAdmin() && id ? `<div class="acciones"><button class="btn btn-full" style="background:#7c3aed;color:#fff" onclick="editarDia('${id}')">✏️ Editar este día</button></div>` : ''}
     ${htmlResumen(r, porProducto, det)}
+    <div class="cat"><div class="cat-titulo">🧾 Ventas del día</div><div id="vn-ventas"><div class="vacio">Cargando ventas…</div></div></div>
+    <div class="cat"><div class="cat-titulo">💵 Abonos de fiados</div><div id="vn-abonos"><div class="vacio">Cargando…</div></div></div>
     ${inv}
     <div class="acciones"><button class="btn btn-ghost btn-full" onclick="cerrarModal()">Cerrar</button></div>`);
+  if(id) cargarVentasDia(id);
+}
+
+const filaVenta = (v, acciones = '') => `
+  <div class="venta-row"><div>
+    <div class="prod">${v.items.map(i => `${i.cantidad}× ${esc(i.nombre)}${i.tipo !== 'granizado' && i.presentacion ? ' ' + esc(i.presentacion) : ''}`).join(', ')}</div>
+    <div class="pres">${esc(v.hora || '')} · ${esc(v.por || '')}${v.mesa ? `<span class="tag">🪑 ${esc(v.mesa)}</span>` : ''}${tagPago(v)}${v._estado === 'nuevo' ? '<span class="tag" style="color:#7c3aed;border-color:#7c3aed">nueva</span>' : v._estado === 'mod' ? '<span class="tag" style="color:#7c3aed;border-color:#7c3aed">editada</span>' : ''}</div></div>
+    <div style="display:flex;align-items:center;gap:6px"><span class="precio" style="white-space:nowrap">${plata(v.total)}</span>${acciones}</div></div>`;
+
+async function cargarVentasDia(id){
+  try{
+    const [sv, sa] = await Promise.all([VENTAS(id).orderBy('t', 'desc').get(), ABONOS_NOCHE(id).get()]);
+    if(!$('vn-ventas')) return;
+    const lv = sv.docs.map(d => ({ id: d.id, ...d.data() })), la = sa.docs.map(d => d.data());
+    $('vn-ventas').innerHTML = lv.length ? lv.map(v => filaVenta(v)).join('') : '<div class="vacio">Sin ventas.</div>';
+    $('vn-abonos').innerHTML = la.length ? la.map(a => `<div class="venta-row"><div><div class="prod">${esc(a.cliente)}</div><div class="pres">${esc(a.hora || '')} · ${esc(a.por || '')}${tagPago(a)}</div></div><span class="precio">${plata(a.monto)}</span></div>`).join('') : '<div class="vacio">Sin abonos.</div>';
+  } catch(e){ if($('vn-ventas')) $('vn-ventas').innerHTML = `<div class="alerta">No se pudieron cargar las ventas: ${esc(e.message)}</div>`; }
+}
+
+// ══════════════════════════════════════
+//   EDITAR UN DÍA GUARDADO (solo admin)
+//   Se trabaja sobre una copia; nada se guarda hasta "Actualizar día"
+// ══════════════════════════════════════
+let ed = null;        // { id, noche, fecha, base, ventas, borradas, abonos, cambios }
+let edVenta = null;   // venta que se está editando dentro del día
+
+function modalFijo(html){   // como abrirModal, pero tocar afuera no lo cierra (para no perder cambios)
+  if(escuchaMovs){ escuchaMovs(); escuchaMovs = null; } clienteAbierto = null;
+  $('modal-raiz').innerHTML = `<div class="modal-fondo"><div class="modal">${html}</div></div>`;
+}
+
+async function editarDia(id){
+  if(!esAdmin()) return;
+  const h = historial.find(x => x.id === id); if(!h) return;
+  try{
+    const [sv, sa] = await Promise.all([VENTAS(id).orderBy('t', 'desc').get(), ABONOS_NOCHE(id).get()]);
+    ed = { id, noche: h, fecha: h.fecha, base: num(h.resumen?.baseCaja ?? h.baseCaja), borradas: [], cambios: false,
+      abonos: sa.docs.map(d => d.data()),
+      ventas: sv.docs.map(d => { const v = { id: d.id, ...d.data() }; v._estado = 'orig'; v._orig = { clienteId: v.clienteId || null, movId: v.movId || null, total: v.total, cliente: v.cliente || '' }; return v; }) };
+    logAudit('editar_dia_inicio', `Abrió la edición del día ${h.fecha}`, { nocheId: id });
+    pintarEditor();
+  } catch(e){ alert('No se pudo abrir la edición: ' + e.message); }
+}
+
+function pintarEditor(){
+  if(!ed) return;
+  const t = totalesVentas(ed.ventas), ab = totalesAbonos(ed.abonos);
+  modalFijo(`
+    <h3 style="margin:0">✏️ Editar día guardado</h3>
+    <div class="editando">✏️ Editando el día <b style="text-transform:capitalize">${esc(fechaLarga(ed.fecha))}</b>. Nada se guarda hasta que toques <b>Actualizar día</b>.</div>
+    <div class="form-grid">
+      <div><div class="lbl">📅 Día de la venta</div><input type="date" value="${esc(ed.fecha)}" max="${hoy()}" onchange="ed.fecha=this.value;ed.cambios=true;pintarEditor()"/></div>
+      <div><div class="lbl">💰 Base de caja</div><input id="ed-base" inputmode="numeric" value="${ed.base ? ed.base.toLocaleString('es-CO') : ''}" placeholder="$ 0" oninput="formatoPlata(this);ed.base=valorPlata('ed-base');ed.cambios=true"/></div>
+    </div>
+    <div class="totales">
+      <div class="tot"><div class="k">Total ventas</div><div class="v neon">${plata(t.total)}</div><div class="sub">${t.ventas} venta(s)</div></div>
+      <div class="tot"><div class="k">💵 Efectivo</div><div class="v">${plata(t.efectivo)}</div></div>
+      <div class="tot"><div class="k">🏦 Transferencia</div><div class="v">${plata(t.transferencia)}</div></div>
+      <div class="tot"><div class="k">🧾 Fiado</div><div class="v">${plata(t.fiado)}</div></div>
+    </div>
+    <div class="cat"><div class="fila"><div class="cat-titulo">🧾 Ventas del día</div><button class="btn btn-sm" onclick="editarVentaDia(-1)">➕ Agregar venta</button></div>
+      ${ed.ventas.length ? ed.ventas.map((v, i) => filaVenta(v, `<button class="btn btn-ghost btn-sm" onclick="editarVentaDia(${i})">✏️</button><button class="btn btn-ghost btn-sm" onclick="borrarVentaDia(${i})">🗑️</button>`)).join('') : '<div class="vacio">Sin ventas.</div>'}
+      ${ed.borradas.length ? `<div class="sub" style="margin-top:6px">🗑️ ${ed.borradas.length} venta(s) se eliminarán al actualizar.</div>` : ''}
+    </div>
+    ${ab.cantidad ? `<div class="sub" style="margin-top:10px">💵 Abonos de fiados de ese día: ${plata(ab.total)} (se corrigen desde Fiados).</div>` : ''}
+    <div class="aviso">El inventario de este día se recalcula con las ventas corregidas. Si después ya se abrió otra venta, su inventario no cambia: corrígelo en la próxima apertura.</div>
+    <div class="acciones">
+      <button class="btn" style="flex:1;background:#7c3aed;color:#fff" id="btn-actualizar" onclick="actualizarDia()">💾 Actualizar día</button>
+      <button class="btn btn-ghost" onclick="salirEdicion()">Salir sin guardar</button>
+    </div>`);
+}
+
+function salirEdicion(){
+  if(ed?.cambios && !confirm('¿Salir sin guardar? Los cambios hechos a este día se pierden.')) return;
+  const id = ed?.id; ed = null; edVenta = null;
+  cerrarModal(); if(id) verNoche(id);
+}
+
+function borrarVentaDia(i){
+  const v = ed.ventas[i];
+  if(!confirm(`¿Eliminar la venta de ${plata(v.total)}?${v._orig?.clienteId ? `\nTambién se quita el fiado de ${v._orig.cliente}.` : ''}`)) return;
+  if(v._estado !== 'nuevo') ed.borradas.push(v);
+  ed.ventas.splice(i, 1); ed.cambios = true; pintarEditor();
+}
+
+// ── Editor de una venta del día ──
+function editarVentaDia(i){
+  const v = i >= 0 ? ed.ventas[i] : null;
+  const lineas = {};
+  (v?.items || []).forEach(it => lineas[it.prodId] = { ...it });
+  edVenta = { i, lineas, pago: v?.pago || 'efectivo', mixtoEf: v?.pago === 'mixto' ? (v.montos?.efectivo || 0) : 0, cliente: v?.cliente || '' };
+  pintarEdVenta();
+}
+function pintarEdVenta(){
+  const e = edVenta, lineas = Object.values(e.lineas).filter(l => l.cantidad > 0);
+  const total = lineas.reduce((s, l) => s + l.cantidad * l.precio, 0);
+  const opciones = [...granizadosActivos(), ...vendibles()].map(p => `<option value="${p.id}"${p.id === e.sel ? ' selected' : ''}>${esc(p.nombre)} ${esc(p.presentacion || '')} · ${plata(p.precio)}</option>`).join('');
+  modalFijo(`
+    <h3 style="margin:0">${e.i >= 0 ? '✏️ Editar venta' : '➕ Agregar venta'}</h3>
+    <div class="sub" style="margin-top:4px;text-transform:capitalize">${esc(fechaLarga(ed.fecha))}</div>
+    <div style="margin-top:8px">${lineas.length ? lineas.map(l => `<div class="carrito-row">
+      <div><span class="prod">${esc(l.nombre)}</span><span class="pres">${esc(l.presentacion || '')} · ${plata(l.precio)} c/u</span></div>
+      <div class="stepper"><button onclick="edCant('${l.prodId}',-1)">−</button><b>${l.cantidad}</b><button onclick="edCant('${l.prodId}',1)">+</button>
+      <span class="precio" style="min-width:80px;text-align:right">${plata(l.cantidad * l.precio)}</span></div></div>`).join('') : '<div class="vacio">Agrega los productos de esta venta.</div>'}</div>
+    <div class="buscador" style="margin:10px 0 0;flex-wrap:nowrap">
+      <select id="ed-prod" style="flex:1 1 auto;min-width:0">${opciones}</select>
+      <button class="btn btn-sm" onclick="edAgregar()">➕</button>
+    </div>
+    <div class="fila" style="margin-top:12px"><b>Total</b><span class="neon" style="font-size:1.4rem;font-weight:800">${plata(total)}</span></div>
+    <div class="pago" style="flex-wrap:wrap">
+      ${[['efectivo', '💵 Efectivo'], ['transferencia', '🏦 Transferencia'], ['mixto', '🔀 Mixto'], ['fiado', '🧾 Fiado']].map(([k, t]) =>
+        `<button style="flex:1 1 40%" class="${e.pago === k ? 'activo' : ''}" onclick="edVenta.pago='${k}';pintarEdVenta()">${t}</button>`).join('')}
+    </div>
+    ${e.pago === 'mixto' ? `<div class="form-grid">
+      <div><div class="lbl">💵 Efectivo</div><input id="ed-mix" inputmode="numeric" placeholder="$ 0" value="${e.mixtoEf ? e.mixtoEf.toLocaleString('es-CO') : ''}" oninput="formatoPlata(this);edVenta.mixtoEf=valorPlata('ed-mix');$('ed-mix-tr').textContent=plata(Math.max(0,${total}-edVenta.mixtoEf))"/></div>
+      <div><div class="lbl">🏦 Transferencia</div><div class="precio" style="padding:10px 0" id="ed-mix-tr">${plata(Math.max(0, total - e.mixtoEf))}</div></div></div>` : ''}
+    ${e.pago === 'fiado' ? `<div style="margin-top:10px"><div class="lbl">🧾 ¿A quién se le fió?</div>
+      <input list="lista-fiados-ed" value="${esc(e.cliente)}" placeholder="Nombre" oninput="edVenta.cliente=this.value"/>
+      <datalist id="lista-fiados-ed">${clientes.map(c => `<option>${esc(c.nombre)}</option>`).join('')}</datalist></div>` : ''}
+    <div class="acciones">
+      <button class="btn" style="flex:1" onclick="guardarVentaDia()">✅ Listo</button>
+      <button class="btn btn-ghost" onclick="edVenta=null;pintarEditor()">Cancelar</button>
+    </div>`);
+}
+function edCant(id, d){ const l = edVenta.lineas[id]; if(!l) return; l.cantidad = Math.max(0, l.cantidad + d); pintarEdVenta(); }
+function edAgregar(){
+  const p = productos.find(x => x.id === $('ed-prod').value); if(!p) return;
+  edVenta.sel = p.id;
+  const l = edVenta.lineas[p.id];
+  if(l) l.cantidad++; else edVenta.lineas[p.id] = lineaDe(p, 1);
+  pintarEdVenta();
+}
+function guardarVentaDia(){
+  const e = edVenta;
+  const items = Object.values(e.lineas).filter(l => l.cantidad > 0).map(l => ({ ...l, subtotal: l.cantidad * l.precio }));
+  if(!items.length){ alert('La venta no tiene productos. Para quitarla usa 🗑️.'); return; }
+  const total = items.reduce((s, l) => s + l.subtotal, 0);
+  const montos = { efectivo: 0, transferencia: 0, fiado: 0 };
+  let cliente = '';
+  if(e.pago === 'mixto'){
+    if(e.mixtoEf <= 0 || e.mixtoEf >= total){ alert('En pago mixto escribe cuánto fue en efectivo (mayor a $0 y menor al total).'); return; }
+    montos.efectivo = e.mixtoEf; montos.transferencia = total - e.mixtoEf;
+  } else if(e.pago === 'fiado'){
+    cliente = e.cliente.trim();
+    if(!cliente){ alert('Escribe a quién se le fió.'); return; }
+    const c = buscarCliente(cliente); if(c) cliente = c.nombre;
+    montos.fiado = total;
+  } else montos[e.pago] = total;
+  const granizados = items.filter(i => i.tipo === 'granizado').reduce((s, i) => s + i.cantidad * (i.unidades || 1), 0);
+  const datos = { items, total, granizados, pago: e.pago, montos, cliente };
+  if(e.i >= 0){
+    const v = ed.ventas[e.i];
+    ed.ventas[e.i] = { ...v, ...datos, _estado: v._estado === 'nuevo' ? 'nuevo' : 'mod' };
+  } else {
+    ed.ventas.unshift({ ...datos, hora: 'agregada al editar', por: usuarioNombre, porUid: usuario.uid, t: Date.now(), _estado: 'nuevo' });
+  }
+  ed.cambios = true; edVenta = null; pintarEditor();
+}
+
+// ── Guardar la edición ──
+function quitarFiadoEnLote(batch, o){
+  if(!o?.clienteId) return;
+  if(o.movId) batch.delete(MOVS(o.clienteId).doc(o.movId));
+  batch.update(CLIENTES().doc(o.clienteId), { saldo: INC(-o.total), totalFiado: INC(-o.total), actualizadoEn: TS() });
+}
+function ponerFiadoEnLote(batch, datos, ventaId, nuevos){
+  let cli = buscarCliente(datos.cliente) || nuevos[normal(datos.cliente)];
+  if(!cli){
+    const ref = CLIENTES().doc();
+    batch.set(ref, { nombre: datos.cliente, telefono: '', saldo: 0, totalFiado: 0, totalAbonado: 0, creadoEn: TS(), creadoPor: usuarioNombre });
+    cli = nuevos[normal(datos.cliente)] = { id: ref.id, nombre: datos.cliente };
+  }
+  const movRef = MOVS(cli.id).doc();
+  batch.set(movRef, { tipo: 'fiado', monto: datos.total, detalle: datos.items.map(i => `${i.cantidad}× ${i.nombre}`).join(', '),
+    nocheId: ed.id, ventaId, fecha: ed.fecha, hora: datos.hora || '', por: usuarioNombre, t: Date.now(), editado: true });
+  batch.update(CLIENTES().doc(cli.id), { saldo: INC(datos.total), totalFiado: INC(datos.total), actualizadoEn: TS() });
+  datos.clienteId = cli.id; datos.movId = movRef.id; datos.cliente = cli.nombre;
+}
+
+async function actualizarDia(){
+  if(!ed || !esAdmin()) return;
+  const fecha = ed.fecha;
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(fecha) || fecha > hoy()){ alert('Revisa el día de la venta.'); return; }
+  const cambiadas = ed.ventas.filter(v => v._estado !== 'orig').length;
+  if(!confirm(`¿Actualizar el día ${fechaLarga(fecha)}?\n\n${cambiadas} venta(s) nuevas o editadas · ${ed.borradas.length} eliminada(s).`)) return;
+  // Productos de inventario del día: los que se contaron al abrir
+  const prods = Object.keys(ed.noche.conteoInicial || {}).map(id => productos.find(p => p.id === id)
+    || (ed.noche.detalle || []).map(d => ({ id: d.prodId, nombre: d.nombre, presentacion: d.presentacion, categoria: d.categoria })).find(p => p.id === id)).filter(Boolean);
+  const limpias = ed.ventas.map(({ _estado, _orig, ...v }) => v);
+  const r = resumenDe({ ...ed.noche, baseCaja: ed.base }, limpias, ed.abonos, [], prods);
+  $('btn-actualizar').disabled = true;
+  try{
+    const batch = db.batch(), nuevos = {};
+    ed.borradas.forEach(v => { batch.delete(VENTAS(ed.id).doc(v.id)); quitarFiadoEnLote(batch, v._orig); });
+    ed.ventas.forEach(v => {
+      if(v._estado === 'orig') return;
+      if(v._estado === 'mod') quitarFiadoEnLote(batch, v._orig);
+      const ref = v.id ? VENTAS(ed.id).doc(v.id) : VENTAS(ed.id).doc();
+      const { _estado, _orig, id, clienteId, movId, ...datos } = v;
+      if(datos.pago === 'fiado') ponerFiadoEnLote(batch, datos, ref.id, nuevos);
+      else datos.cliente = '';
+      datos.editadaPor = usuarioNombre; datos.editadaEn = TS();
+      batch.set(ref, datos);
+    });
+    batch.update(NOCHES().doc(ed.id), { fecha, baseCaja: ed.base, resumen: r.resumen, porProducto: r.porProducto, detalle: r.detalle, conteoFinal: r.conteoFinal,
+      editadoEn: TS(), editadoPor: usuarioNombre, editadoPorUid: usuario.uid });
+    await batch.commit();
+    logAudit('editar_dia', `Actualizó el día ${fecha}: ${plata(r.resumen.total)}`, { nocheId: ed.id, fechaAntes: ed.noche.fecha, fecha, totalAntes: totalDia(ed.noche), total: r.resumen.total, cambiadas, borradas: ed.borradas.length });
+    const id = ed.id; ed = null;
+    toast('💾 Día actualizado');
+    verNoche(id, { ...historial.find(x => x.id === id), fecha, ...r });
+  } catch(e){ alert('No se pudo actualizar: ' + e.message); if($('btn-actualizar')) $('btn-actualizar').disabled = false; }
 }
 
 // ══════════════════════════════════════
